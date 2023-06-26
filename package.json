@@ -28,9 +28,12 @@
     "test:cov": "npm run test -- --coverage"
   },
   "dependencies": {
-    "class-validator": "^0.14.0"
+    "@nestjs/common": "^10.0.3",
+    "class-validator": "^0.14.0",
+    "firebase-admin": "^11.9.0"
   },
   "devDependencies": {
+    "@nestjs/testing": "^10.0.3",
     "@tsconfig/node18": "^2.0.1",
     "@types/jest": "^29.5.2",
     "@types/node": "^18.16.18",
