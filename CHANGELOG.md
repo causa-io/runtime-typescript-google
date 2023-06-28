@@ -7,3 +7,5 @@ Features:
 - Implement the `IsValidFirestoreId` decorator.
 - Implement the NestJS `FirebaseModule`.
 - Implement the `getDefaultFirebaseApp()` function.
+- Implement the `IdentityPlatformStrategy`.
+- Implement Identity Platform-related testing utilities.

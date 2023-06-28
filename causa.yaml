@@ -1,0 +1,16 @@
+version: 1
+
+workspace:
+  name: causa
+
+causa:
+  modules:
+    '@causa/workspace-core': '>= 0.7.0'
+    '@causa/workspace-google': '>= 0.3.1'
+    '@causa/workspace-typescript': '>= 0.3.0'
+
+project:
+  name: runtime-typescript-google
+  description: An extension to the Causa runtime SDK (`@causa/runtime`), providing Google-specific features.
+  language: typescript
+  type: package

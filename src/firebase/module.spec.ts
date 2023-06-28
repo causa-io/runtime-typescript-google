@@ -4,6 +4,7 @@ import { App, deleteApp } from 'firebase-admin/app';
 import { Auth } from 'firebase-admin/auth';
 import { Firestore } from 'firebase-admin/firestore';
 import 'jest-extended';
+import { getDefaultFirebaseApp } from './app.js';
 import {
   FIREBASE_APP_TOKEN,
   FirebaseModule,
@@ -24,11 +25,13 @@ describe('FirebaseModule', () => {
   let service: MyService;
 
   async function createInjectedService(
-    options?: FirebaseModuleOptions,
+    options?: FirebaseModuleOptions | 'testing',
   ): Promise<void> {
     const testModule = await Test.createTestingModule({
       imports: [
-        options === undefined
+        options === 'testing'
+          ? FirebaseModule.forTesting()
+          : options === undefined
           ? FirebaseModule
           : FirebaseModule.forRoot(options),
       ],
@@ -85,5 +88,13 @@ describe('FirebaseModule', () => {
     const actualModule = FirebaseModule.register();
 
     expect(actualModule.global).toBeFalsy();
+  });
+
+  it('should create a module using the default Firebase app', async () => {
+    const expectedApp = getDefaultFirebaseApp();
+
+    await createInjectedService('testing');
+
+    expect(service.app).toBe(expectedApp);
   });
 });
