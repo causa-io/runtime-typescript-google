@@ -14,3 +14,9 @@ project:
   description: An extension to the Causa runtime SDK (`@causa/runtime`), providing Google-specific features.
   language: typescript
   type: package
+
+google:
+  firestore:
+    securityRuleFile: .causa/firestore.rules
+  firebaseStorage:
+    securityRuleFile: .causa/storage.rules
