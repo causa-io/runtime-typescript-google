@@ -9,6 +9,7 @@ import {
 import { AppOptions, initializeApp } from 'firebase-admin/app';
 import { Auth, getAuth } from 'firebase-admin/auth';
 import { Firestore, getFirestore } from 'firebase-admin/firestore';
+import { getDefaultFirebaseApp } from './app.js';
 
 /**
  * The NestJS token used to inject the Firebase `App`.
@@ -50,19 +51,23 @@ export type FirebaseModuleOptions = AppOptions & {
  * Creates the module metadata for the {@link FirebaseModule}.
  *
  * @param options Options when configuring the {@link FirebaseModule}.
+ *   If set to `default`, the default Firebase app will be (re)used using {@link getDefaultFirebaseApp}.
  * @returns The module metadata.
  */
 function createModuleMetadata(
-  options: FirebaseModuleOptions = {},
+  options: FirebaseModuleOptions | 'default' = {},
 ): ModuleMetadata {
-  const { appName, ...appOptions } = options;
+  const useDefaultFactory = options === 'default';
+  const { appName, ...appOptions } = useDefaultFactory
+    ? ({} as FirebaseModuleOptions)
+    : options;
+  const appFactory = useDefaultFactory
+    ? getDefaultFirebaseApp
+    : () => initializeApp(appOptions, appName);
 
   return {
     providers: [
-      {
-        provide: FIREBASE_APP_TOKEN,
-        useFactory: () => initializeApp(appOptions, appName),
-      },
+      { provide: FIREBASE_APP_TOKEN, useFactory: appFactory },
       ...childProviders,
     ],
     exports: [FIREBASE_APP_TOKEN, ...childProviders.map((p) => p.provide)],
@@ -98,6 +103,22 @@ export class FirebaseModule {
     return {
       ...createModuleMetadata(options),
       module: FirebaseModule,
+    };
+  }
+
+  /**
+   * Creates a global NestJS module that exports providers for the Firebase `App` and service-specific clients.
+   * The default Firebase app will be (re)used using {@link getDefaultFirebaseApp}, and no options will be passed to
+   * {@link initializeApp}.
+   * When testing, this avoids repeatedly initializing the same app, which would result in an error.
+   *
+   * @returns The module.
+   */
+  static forTesting(): DynamicModule {
+    return {
+      ...createModuleMetadata('default'),
+      module: FirebaseModule,
+      global: true,
     };
   }
 }
