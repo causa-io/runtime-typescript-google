@@ -11,3 +11,4 @@ Features:
 - Implement Identity Platform-related testing utilities.
 - Define the logger configuration for GCP.
 - Implement the `PubSubPublisher`, the `PubSubEventHandlerInterceptor`, and the corresponding modules.
+- Implement the `PubSubHealthIndicator`.

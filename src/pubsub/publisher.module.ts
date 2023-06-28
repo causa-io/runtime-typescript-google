@@ -1,4 +1,5 @@
 import { EVENT_PUBLISHER_INJECTION_NAME } from '@causa/runtime/nestjs';
+import { PubSub } from '@google-cloud/pubsub';
 import { DynamicModule } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PinoLogger } from 'nestjs-pino';
@@ -20,18 +21,24 @@ export class PubSubPublisherModule {
     return {
       module: PubSubPublisherModule,
       providers: [
+        { provide: PubSub, useValue: new PubSub() },
         {
           provide: EVENT_PUBLISHER_INJECTION_NAME,
-          useFactory: (configService: ConfigService, logger: PinoLogger) =>
+          useFactory: (
+            pubSub: PubSub,
+            configService: ConfigService,
+            logger: PinoLogger,
+          ) =>
             new PubSubPublisher({
               ...options,
+              pubSub,
               configurationGetter: (key) => configService.get(key),
               logger: logger.logger,
             }),
-          inject: [ConfigService, PinoLogger],
+          inject: [PubSub, ConfigService, PinoLogger],
         },
       ],
-      exports: [EVENT_PUBLISHER_INJECTION_NAME],
+      exports: [PubSub, EVENT_PUBLISHER_INJECTION_NAME],
       global: true,
     };
   }
