@@ -180,6 +180,10 @@ describe('PubSubPublisher', () => {
 
       await publisher.flush();
 
+      await fixture.expectMessageInTopic(
+        'my.awesome-topic.v1',
+        expect.anything(),
+      );
       expect(
         publisher['topicCache']['my.awesome-topic.v1'].flush,
       ).toHaveBeenCalledOnce();

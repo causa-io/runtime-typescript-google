@@ -12,6 +12,7 @@ import {
   Topic,
   PublishOptions as TopicPublishOptions,
 } from '@google-cloud/pubsub';
+import { OnApplicationShutdown } from '@nestjs/common';
 import { Logger } from 'pino';
 import { getConfigurationKeyForTopic } from './configuration.js';
 import { PubSubTopicNotConfiguredError } from './errors.js';
@@ -54,7 +55,7 @@ export type PubSubPublisherOptions = {
 /**
  * An implementation of the {@link EventPublisher} using Google Pub/Sub as the broker.
  */
-export class PubSubPublisher implements EventPublisher {
+export class PubSubPublisher implements EventPublisher, OnApplicationShutdown {
   /**
    * The {@link PubSub} client to use.
    */
@@ -176,5 +177,9 @@ export class PubSubPublisher implements EventPublisher {
     await Promise.all(
       Object.values(this.topicCache).map((topic) => topic.flush()),
     );
+  }
+
+  async onApplicationShutdown(): Promise<void> {
+    await this.flush();
   }
 }

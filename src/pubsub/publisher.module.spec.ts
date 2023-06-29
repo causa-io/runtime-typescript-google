@@ -1,10 +1,16 @@
 import { EventPublisher, JsonObjectSerializer } from '@causa/runtime';
-import { InjectEventPublisher, LoggerModule } from '@causa/runtime/nestjs';
+import {
+  EVENT_PUBLISHER_INJECTION_NAME,
+  InjectEventPublisher,
+  LoggerModule,
+} from '@causa/runtime/nestjs';
 import { createMockConfigService } from '@causa/runtime/nestjs/testing';
 import { Topic } from '@google-cloud/pubsub';
+import { jest } from '@jest/globals';
 import { Controller } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
+import 'jest-extended';
 import { PinoLogger } from 'nestjs-pino';
 import { PubSubPublisher } from './publisher.js';
 import { PubSubPublisherModule } from './publisher.module.js';
@@ -69,5 +75,24 @@ describe('PubSubPublisherModule', () => {
     expect((actualPublisher as any).publishOptions).toEqual({
       batching: { maxMessages: 1 },
     });
+  });
+
+  it('should flush the publisher on application shutdown', async () => {
+    const testModule = await Test.createTestingModule({
+      controllers: [MyController],
+      imports: [
+        ConfigModule.forRoot({ isGlobal: true }),
+        LoggerModule,
+        PubSubPublisherModule.forRoot(),
+      ],
+    }).compile();
+    const publisher: PubSubPublisher = testModule.get(
+      EVENT_PUBLISHER_INJECTION_NAME,
+    );
+    jest.spyOn(publisher, 'flush');
+
+    await testModule.close();
+
+    expect(publisher.flush).toHaveBeenCalledOnce();
   });
 });
