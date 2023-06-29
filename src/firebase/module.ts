@@ -4,6 +4,7 @@ import {
   FactoryProvider,
   Module,
   ModuleMetadata,
+  Provider,
   ValueProvider,
 } from '@nestjs/common';
 import { AppOptions, initializeApp } from 'firebase-admin/app';
@@ -12,6 +13,7 @@ import { Auth, getAuth } from 'firebase-admin/auth';
 import { Firestore, getFirestore } from 'firebase-admin/firestore';
 import { getDefaultFirebaseApp } from './app.js';
 import { FIREBASE_APP_TOKEN } from './inject-firebase-app.decorator.js';
+import { FirebaseLifecycleService } from './lifecycle.service.js';
 
 /**
  * The providers for service-specific Firebase clients.
@@ -55,15 +57,21 @@ function createModuleMetadata(
   const { appName, ...appOptions } = useDefaultFactory
     ? ({} as FirebaseModuleOptions)
     : options;
+
   const appFactory = useDefaultFactory
     ? getDefaultFirebaseApp
     : () => initializeApp(appOptions, appName);
 
+  const providers: Provider[] = [
+    { provide: FIREBASE_APP_TOKEN, useFactory: appFactory },
+    ...childProviders,
+  ];
+  if (!useDefaultFactory) {
+    providers.push(FirebaseLifecycleService);
+  }
+
   return {
-    providers: [
-      { provide: FIREBASE_APP_TOKEN, useFactory: appFactory },
-      ...childProviders,
-    ],
+    providers,
     exports: [FIREBASE_APP_TOKEN, ...childProviders.map((p) => p.provide)],
   };
 }

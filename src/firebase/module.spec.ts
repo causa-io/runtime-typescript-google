@@ -1,8 +1,9 @@
-import { Test } from '@nestjs/testing';
+import { jest } from '@jest/globals';
 import { Injectable } from '@nestjs/common';
+import { Test, TestingModule } from '@nestjs/testing';
 import { App, deleteApp } from 'firebase-admin/app';
 import { AppCheck } from 'firebase-admin/app-check';
-import { Auth } from 'firebase-admin/auth';
+import { Auth, getAuth } from 'firebase-admin/auth';
 import { Firestore } from 'firebase-admin/firestore';
 import 'jest-extended';
 import { getDefaultFirebaseApp } from './app.js';
@@ -21,12 +22,13 @@ describe('FirebaseModule', () => {
     ) {}
   }
 
+  let testModule: TestingModule;
   let service: MyService;
 
   async function createInjectedService(
     options?: FirebaseModuleOptions | 'testing',
   ): Promise<void> {
-    const testModule = await Test.createTestingModule({
+    testModule = await Test.createTestingModule({
       imports: [
         options === 'testing'
           ? FirebaseModule.forTesting()
@@ -101,5 +103,15 @@ describe('FirebaseModule', () => {
     await createInjectedService('testing');
 
     expect(service.app).toBe(expectedApp);
+  });
+
+  it('should terminate Firebase clients and the app when the application shuts down', async () => {
+    await createInjectedService();
+    jest.spyOn(service.firestore, 'terminate');
+
+    await testModule.close();
+
+    expect(service.firestore.terminate).toHaveBeenCalledOnce();
+    expect(() => getAuth(service.app)).toThrow('has already been deleted.');
   });
 });
