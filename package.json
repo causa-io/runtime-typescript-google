@@ -43,7 +43,8 @@
     "jsonwebtoken": "^9.0.0",
     "nestjs-pino": "^3.3.0",
     "passport-http-bearer": "^1.0.1",
-    "pino": "^8.14.1"
+    "pino": "^8.14.1",
+    "reflect-metadata": "^0.1.13"
   },
   "devDependencies": {
     "@nestjs/testing": "^10.0.3",

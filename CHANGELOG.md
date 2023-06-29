@@ -13,3 +13,4 @@ Features:
 - Implement the `PubSubPublisher`, the `PubSubEventHandlerInterceptor`, and the corresponding modules.
 - Implement the `PubSubHealthIndicator`.
 - Implement the `AppCheckGuard`.
+- Implement the Firestore utilities, including testing and dependency injection for NestJS.

@@ -1,0 +1,3 @@
+match /{document=**} {
+  allow read, write: if true;
+}
