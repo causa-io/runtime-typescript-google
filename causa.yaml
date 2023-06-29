@@ -17,6 +17,7 @@ project:
 
 google:
   firestore:
+    securityRuleFiles: [firestore.rules]
     securityRuleFile: .causa/firestore.rules
   firebaseStorage:
     securityRuleFile: .causa/storage.rules
