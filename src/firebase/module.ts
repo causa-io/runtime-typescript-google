@@ -7,6 +7,7 @@ import {
   ValueProvider,
 } from '@nestjs/common';
 import { AppOptions, initializeApp } from 'firebase-admin/app';
+import { AppCheck, getAppCheck } from 'firebase-admin/app-check';
 import { Auth, getAuth } from 'firebase-admin/auth';
 import { Firestore, getFirestore } from 'firebase-admin/firestore';
 import { getDefaultFirebaseApp } from './app.js';
@@ -25,16 +26,13 @@ const childProviders: (
   | ValueProvider<any>
   | FactoryProvider<any>
 )[] = [
-  {
-    provide: Auth,
-    useFactory: getAuth,
-    inject: [FIREBASE_APP_TOKEN],
-  },
+  { provide: Auth, useFactory: getAuth, inject: [FIREBASE_APP_TOKEN] },
   {
     provide: Firestore,
     useFactory: getFirestore,
     inject: [FIREBASE_APP_TOKEN],
   },
+  { provide: AppCheck, useFactory: getAppCheck, inject: [FIREBASE_APP_TOKEN] },
 ];
 
 /**
@@ -76,6 +74,9 @@ function createModuleMetadata(
 
 /**
  * A NestJS module that exports providers for the Firebase `App` and service-specific clients.
+ *
+ * The Firebase `App` can be injected using the {@link FIREBASE_APP_TOKEN} token.
+ * {@link Auth}, {@link Firestore}, and {@link AppCheck} can be injected using their respective classes.
  */
 @Module(createModuleMetadata())
 export class FirebaseModule {

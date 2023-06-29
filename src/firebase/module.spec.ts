@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { App, deleteApp } from 'firebase-admin/app';
+import { AppCheck } from 'firebase-admin/app-check';
 import { Auth } from 'firebase-admin/auth';
 import { Firestore } from 'firebase-admin/firestore';
 import 'jest-extended';
@@ -19,6 +20,7 @@ describe('FirebaseModule', () => {
       readonly app: App,
       readonly firestore: Firestore,
       readonly auth: Auth,
+      readonly appCheck: AppCheck,
     ) {}
   }
 
@@ -68,6 +70,12 @@ describe('FirebaseModule', () => {
     await createInjectedService();
 
     expect(service.auth).toBeInstanceOf(Auth);
+  });
+
+  it('should inject the AppCheck client', async () => {
+    await createInjectedService();
+
+    expect(service.appCheck).toBeInstanceOf(AppCheck);
   });
 
   it('should use options when initializing the app', async () => {
