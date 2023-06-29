@@ -11,11 +11,7 @@ import { AppCheck, getAppCheck } from 'firebase-admin/app-check';
 import { Auth, getAuth } from 'firebase-admin/auth';
 import { Firestore, getFirestore } from 'firebase-admin/firestore';
 import { getDefaultFirebaseApp } from './app.js';
-
-/**
- * The NestJS token used to inject the Firebase `App`.
- */
-export const FIREBASE_APP_TOKEN = 'CAUSA_FIREBASE';
+import { FIREBASE_APP_TOKEN } from './inject-firebase-app.decorator.js';
 
 /**
  * The providers for service-specific Firebase clients.

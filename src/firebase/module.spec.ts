@@ -1,22 +1,19 @@
-import { Inject, Injectable } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import { Injectable } from '@nestjs/common';
 import { App, deleteApp } from 'firebase-admin/app';
 import { AppCheck } from 'firebase-admin/app-check';
 import { Auth } from 'firebase-admin/auth';
 import { Firestore } from 'firebase-admin/firestore';
 import 'jest-extended';
 import { getDefaultFirebaseApp } from './app.js';
-import {
-  FIREBASE_APP_TOKEN,
-  FirebaseModule,
-  FirebaseModuleOptions,
-} from './module.js';
+import { InjectFirebaseApp } from './inject-firebase-app.decorator.js';
+import { FirebaseModule, FirebaseModuleOptions } from './module.js';
 
 describe('FirebaseModule', () => {
   @Injectable()
   class MyService {
     constructor(
-      @Inject(FIREBASE_APP_TOKEN)
+      @InjectFirebaseApp()
       readonly app: App,
       readonly firestore: Firestore,
       readonly auth: Auth,

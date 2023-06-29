@@ -1,2 +1,3 @@
 export { getDefaultFirebaseApp } from './app.js';
-export { FIREBASE_APP_TOKEN, FirebaseModule } from './module.js';
+export { InjectFirebaseApp } from './inject-firebase-app.decorator.js';
+export { FirebaseModule } from './module.js';
