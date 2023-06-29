@@ -4,4 +4,5 @@ export * from './firestore/index.js';
 export * from './identity-platform/index.js';
 export * from './logging/index.js';
 export * from './pubsub/index.js';
+export * from './spanner/index.js';
 export * from './validation/index.js';
