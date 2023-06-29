@@ -1,19 +1,24 @@
 import { CollectionReference, Firestore } from 'firebase-admin/firestore';
 import * as uuid from 'uuid';
+import { getFirestoreCollectionNameForType } from './collection-name.decorator.js';
+import { makeFirestoreDataConverter } from './converter.js';
 
 /**
- * Creates a new collection suffixed with a random ID.
+ * Creates a new collection prefixed with a random ID.
  *
  * @param firestore The {@link Firestore} instance to use.
- * @param prefix A human-readable prefix for the collection.
+ * @param documentType The type of the document stored in the collection.
+ *   It should be decorated with `FirestoreCollectionName`.
  * @returns The {@link CollectionReference} of the created collection.
  */
-export function createFirestoreTemporaryCollection(
+export function createFirestoreTemporaryCollection<T>(
   firestore: Firestore,
-  prefix = 'test',
-): CollectionReference {
-  const collectionName = `${prefix}-${uuid.v4().slice(-10)}`;
-  return firestore.collection(collectionName);
+  documentType: { new (): T },
+): CollectionReference<T> {
+  const prefix = `${uuid.v4().slice(-10)}-`;
+  return firestore
+    .collection(getFirestoreCollectionNameForType(documentType, prefix))
+    .withConverter(makeFirestoreDataConverter(documentType));
 }
 
 /**

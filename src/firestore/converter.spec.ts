@@ -4,12 +4,13 @@ import {
   getFirestore,
 } from 'firebase-admin/firestore';
 import { getDefaultFirebaseApp } from '../firebase/index.js';
-import { makeFirestoreDataConverter } from './converter.js';
+import { FirestoreCollectionName } from './collection-name.decorator.js';
 import {
   clearFirestoreCollection,
   createFirestoreTemporaryCollection,
 } from './testing.js';
 
+@FirestoreCollectionName('someCollection')
 class SomeDocument {
   constructor(data: Partial<SomeDocument> = {}) {
     Object.assign(this, {
@@ -31,10 +32,7 @@ describe('converter', () => {
     let collection: CollectionReference<SomeDocument>;
 
     beforeAll(async () => {
-      collection = createFirestoreTemporaryCollection(
-        firestore,
-        'test',
-      ).withConverter(makeFirestoreDataConverter(SomeDocument));
+      collection = createFirestoreTemporaryCollection(firestore, SomeDocument);
     });
 
     afterEach(async () => {
