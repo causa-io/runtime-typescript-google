@@ -1,15 +1,27 @@
 import { Database, Snapshot, Transaction } from '@google-cloud/spanner';
-import { Type } from '@google-cloud/spanner/build/src/codec.js';
+import { Int, Type } from '@google-cloud/spanner/build/src/codec.js';
 import { TimestampBounds } from '@google-cloud/spanner/build/src/transaction.js';
-import { spannerObjectToInstance } from './conversion.js';
+import {
+  instanceToSpannerObject,
+  spannerObjectToInstance,
+} from './conversion.js';
 import { convertSpannerToEntityError } from './error-converter.js';
-import { TransactionFinishedError } from './errors.js';
+import {
+  EntityMissingPrimaryKeyError,
+  TransactionFinishedError,
+} from './errors.js';
 import { SpannerTableCache } from './table-cache.js';
+import { RecursivePartialEntity } from './types.js';
 
 /**
  * Any Spanner transaction that can be used for reading.
  */
 export type SpannerReadOnlyTransaction = Snapshot | Transaction;
+
+/**
+ * A key for a Spanner row.
+ */
+export type SpannerKey = (string | null)[];
 
 /**
  * Base options for all write operations.
@@ -92,6 +104,56 @@ export class SpannerEntityManager {
    * @param database The {@link Database} to use to connect to Spanner.
    */
   constructor(readonly database: Database) {}
+
+  /**
+   * Returns the primary key of the given entity.
+   * The primary key is the ordered list of values of the columns that make up the key.
+   *
+   * @param entity The entity for which to get the primary key.
+   * @param entityType The type of the entity. If not provided, the type will be inferred from the entity (using its
+   *   constructor).
+   * @returns The primary key of the entity.
+   */
+  getPrimaryKey<T>(
+    entity: T | RecursivePartialEntity<T>,
+    entityType?: { new (): T },
+  ): SpannerKey {
+    entityType ??= (entity as any).constructor as { new (): T };
+    const obj = instanceToSpannerObject(entity, entityType);
+    return this.getPrimaryKeyForSpannerObject(obj, entityType);
+  }
+
+  /**
+   * Returns the primary key of the given Spanner object, assumed to be an entity of the given type.
+   *
+   * @param obj The Spanner object for which to get the primary key.
+   * @param entityType The type of the entity.
+   * @returns The primary key of the entity.
+   */
+  protected getPrimaryKeyForSpannerObject(
+    obj: Record<string, any>,
+    entityType: { new (): any },
+  ): SpannerKey {
+    const { primaryKeyColumns } = this.tableCache.getMetadata(entityType);
+
+    return primaryKeyColumns.map((c) => {
+      const value = obj[c];
+
+      if (value === undefined) {
+        throw new EntityMissingPrimaryKeyError();
+      }
+
+      if (value instanceof Int) {
+        return value.value;
+      }
+
+      if (value instanceof Date) {
+        return value.toJSON();
+      }
+
+      return value;
+    });
+  }
 
   /**
    * Runs the provided function in a (read write) {@link Transaction}.

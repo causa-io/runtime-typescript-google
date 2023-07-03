@@ -10,7 +10,9 @@ import {
   SpannerReadOnlyTransaction,
 } from './entity-manager.js';
 import {
+  EntityMissingPrimaryKeyError,
   InvalidArgumentError,
+  InvalidEntityDefinitionError,
   InvalidQueryError,
   TemporarySpannerError,
   TransactionFinishedError,
@@ -508,6 +510,52 @@ describe('SpannerEntityManager', () => {
         json: true,
       });
       expect(actualRows).toEqual([{ id: '1', value: 10 }]);
+    });
+  });
+
+  describe('getPrimaryKey', () => {
+    it('should throw when the object has no type and the entity type is not provided', () => {
+      expect(() => manager.getPrimaryKey({})).toThrow(
+        InvalidEntityDefinitionError,
+      );
+    });
+
+    it('should default to the object constructor when the entity type is not provided', () => {
+      const obj = new SomeEntity({ id: '1' });
+
+      const actualPrimaryKey = manager.getPrimaryKey(obj);
+
+      expect(actualPrimaryKey).toEqual(['1']);
+    });
+
+    it('should return a composite primary key as a list of strings', () => {
+      @SpannerTable({ primaryKey: ['first', 'second', 'third', 'fourth'] })
+      class MyWeirdEntity {
+        @SpannerColumn({ isBigInt: true })
+        first!: bigint;
+        @SpannerColumn()
+        second!: string | null;
+        @SpannerColumn()
+        third!: string;
+        @SpannerColumn()
+        fourth!: Date;
+      }
+      const expectedDate = new Date();
+
+      const actualPrimaryKey = manager.getPrimaryKey(
+        { first: 1n, second: null, third: '3', fourth: expectedDate },
+        MyWeirdEntity,
+      );
+
+      expect(actualPrimaryKey).toEqual(['1', null, '3', expectedDate.toJSON()]);
+    });
+
+    it('should throw when a primary key column is missing', () => {
+      const obj = new SomeEntity({ value: 'value' });
+
+      expect(() => manager.getPrimaryKey(obj)).toThrow(
+        EntityMissingPrimaryKeyError,
+      );
     });
   });
 });

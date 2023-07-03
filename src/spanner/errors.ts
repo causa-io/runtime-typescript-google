@@ -18,6 +18,19 @@ export class InvalidEntityDefinitionError extends Error {
 export abstract class UnexpectedSpannerError extends Error {}
 
 /**
+ * An error thrown when a partial or full entity does not contain all the values for the columns that are part of the
+ * primary key.
+ */
+export class EntityMissingPrimaryKeyError extends UnexpectedSpannerError {
+  constructor(message?: string) {
+    super(
+      message ??
+        'The entity is missing at least one of its primary key columns.',
+    );
+  }
+}
+
+/**
  * An error thrown when the query passed to Spanner is not valid.
  */
 export class InvalidQueryError extends UnexpectedSpannerError {
