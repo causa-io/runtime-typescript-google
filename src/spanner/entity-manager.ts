@@ -108,7 +108,7 @@ export class SpannerEntityManager {
    * @param runFn The function to run in the transaction.
    * @returns The return value of the function.
    */
-  async snapshot<T>(runFn: SnapshotFunction<T>): Promise<T>;
+  snapshot<T>(runFn: SnapshotFunction<T>): Promise<T>;
   /**
    * Runs the provided function in a read-only transaction ({@link Snapshot}).
    * The snapshot will be automatically released when the function returns.
@@ -117,10 +117,7 @@ export class SpannerEntityManager {
    * @param runFn The function to run in the transaction.
    * @returns The return value of the function.
    */
-  async snapshot<T>(
-    options: SnapshotOptions,
-    runFn: SnapshotFunction<T>,
-  ): Promise<T>;
+  snapshot<T>(options: SnapshotOptions, runFn: SnapshotFunction<T>): Promise<T>;
   async snapshot<T>(
     optionsOrRunFn: SnapshotOptions | SnapshotFunction<T>,
     runFn?: (snapshot: Snapshot) => Promise<T>,
@@ -185,5 +182,28 @@ export class SpannerEntityManager {
     }
 
     return this.transaction(fn);
+  }
+
+  /**
+   * Runs the given "read-only" function on a transaction. If a transaction is not passed, a new {@link Snapshot} is
+   * created instead.
+   *
+   * @param transaction The transaction to use. If `undefined`, a new {@link Snapshot} is created.
+   * @param fn The function to run on the transaction.
+   * @returns The result of the function.
+   */
+  async runInExistingOrNewReadOnlyTransaction<T>(
+    transaction: SpannerReadOnlyTransaction | undefined,
+    fn: (transaction: SpannerReadOnlyTransaction) => Promise<T>,
+  ) {
+    if (transaction) {
+      try {
+        return await fn(transaction);
+      } catch (error) {
+        throw convertSpannerToEntityError(error) ?? error;
+      }
+    }
+
+    return this.snapshot(fn);
   }
 }

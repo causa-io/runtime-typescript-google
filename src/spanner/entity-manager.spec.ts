@@ -5,7 +5,10 @@ import { jest } from '@jest/globals';
 import { grpc } from 'google-gax';
 import 'jest-extended';
 import { SpannerColumn } from './column.decorator.js';
-import { SpannerEntityManager } from './entity-manager.js';
+import {
+  SpannerEntityManager,
+  SpannerReadOnlyTransaction,
+} from './entity-manager.js';
 import {
   InvalidQueryError,
   TemporarySpannerError,
@@ -308,7 +311,71 @@ describe('SpannerEntityManager', () => {
         await actualPromise.catch(() => {
           // Ignore the error, just to finish the transaction.
         });
+
+        transaction.end();
       });
+
+      await expect(actualPromise).rejects.toThrow(TemporarySpannerError);
+    });
+  });
+
+  describe('runInExistingOrNewReadOnlyTransaction', () => {
+    it('should run the provided function in the provided transaction', async () => {
+      const expectedReturnValue = { value: '✅' };
+
+      let expectedTransaction!: Transaction;
+      let actualTransaction!: SpannerReadOnlyTransaction;
+      const actualReturnValue = await database.runTransactionAsync(
+        async (transaction) => {
+          expectedTransaction = transaction;
+
+          return await manager.runInExistingOrNewReadOnlyTransaction(
+            transaction,
+            async (transaction) => {
+              actualTransaction = transaction;
+              return expectedReturnValue;
+            },
+          );
+        },
+      );
+
+      expect(actualTransaction).toBe(expectedTransaction);
+      expect(actualReturnValue).toEqual(expectedReturnValue);
+    });
+
+    it('should run the provided function in a new snapshot if none is provided', async () => {
+      const expectedReturnValue = { value: '✅' };
+
+      let actualTransaction!: SpannerReadOnlyTransaction;
+      const actualReturnValue =
+        await manager.runInExistingOrNewReadOnlyTransaction(
+          undefined,
+          async (transaction) => {
+            actualTransaction = transaction;
+            return expectedReturnValue;
+          },
+        );
+
+      expect(actualTransaction).toBeInstanceOf(Snapshot);
+      expect(actualTransaction.ended).toBeTrue();
+      expect(actualReturnValue).toEqual(expectedReturnValue);
+    });
+
+    it('should convert a Spanner error', async () => {
+      const [snapshot] = await database.getSnapshot();
+
+      const actualPromise = manager.runInExistingOrNewReadOnlyTransaction(
+        snapshot,
+        async () => {
+          const error = new Error('⌛');
+          (error as any).code = grpc.status.DEADLINE_EXCEEDED;
+          throw error;
+        },
+      );
+      await actualPromise.catch(() => {
+        // Ignore the error, just to make sure the snapshot can be ended.
+      });
+      snapshot.end();
 
       await expect(actualPromise).rejects.toThrow(TemporarySpannerError);
     });
