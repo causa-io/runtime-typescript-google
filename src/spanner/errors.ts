@@ -6,6 +6,15 @@ import { RetryableError } from '@causa/runtime';
 export abstract class UnexpectedSpannerError extends Error {}
 
 /**
+ * An error thrown when the query passed to Spanner is not valid.
+ */
+export class InvalidQueryError extends UnexpectedSpannerError {
+  constructor(message?: string) {
+    super(message ?? 'The read query is invalid.');
+  }
+}
+
+/**
  * Error raised when the transaction has been committed or rolled back but it was not expected.
  */
 export class TransactionFinishedError extends UnexpectedSpannerError {

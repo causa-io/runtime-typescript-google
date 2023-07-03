@@ -1,4 +1,5 @@
 import { Database, Snapshot, Transaction } from '@google-cloud/spanner';
+import { TimestampBounds } from '@google-cloud/spanner/build/src/transaction.js';
 import { convertSpannerToEntityError } from './error-converter.js';
 import { TransactionFinishedError } from './errors.js';
 
@@ -26,6 +27,21 @@ type ReadOperationOptions = {
    */
   transaction?: SpannerReadOnlyTransaction;
 };
+
+/**
+ * Options for {@link SpannerEntityManager.snapshot}.
+ */
+type SnapshotOptions = {
+  /**
+   * Sets how the timestamp will be selected when creating the snapshot.
+   */
+  timestampBounds?: TimestampBounds;
+};
+
+/**
+ * A function that can be passed to the {@link SpannerEntityManager.snapshot} method.
+ */
+export type SnapshotFunction<T> = (snapshot: Snapshot) => Promise<T>;
 
 /**
  * A class that manages access to entities stored in a Cloud Spanner database.
@@ -76,6 +92,48 @@ export class SpannerEntityManager {
       });
     } catch (error) {
       throw convertSpannerToEntityError(error) ?? error;
+    }
+  }
+
+  /**
+   * Runs the provided function in a read-only transaction ({@link Snapshot}).
+   * The snapshot will be automatically released when the function returns.
+   *
+   * @param runFn The function to run in the transaction.
+   * @returns The return value of the function.
+   */
+  async snapshot<T>(runFn: SnapshotFunction<T>): Promise<T>;
+  /**
+   * Runs the provided function in a read-only transaction ({@link Snapshot}).
+   * The snapshot will be automatically released when the function returns.
+   *
+   * @param options The options to use when creating the snapshot.
+   * @param runFn The function to run in the transaction.
+   * @returns The return value of the function.
+   */
+  async snapshot<T>(
+    options: SnapshotOptions,
+    runFn: SnapshotFunction<T>,
+  ): Promise<T>;
+  async snapshot<T>(
+    optionsOrRunFn: SnapshotOptions | SnapshotFunction<T>,
+    runFn?: (snapshot: Snapshot) => Promise<T>,
+  ): Promise<T> {
+    const snapshotFn =
+      typeof optionsOrRunFn === 'function'
+        ? optionsOrRunFn
+        : (runFn as SnapshotFunction<T>);
+    const options: SnapshotOptions =
+      typeof optionsOrRunFn === 'object' ? optionsOrRunFn : {};
+
+    let snapshot: Snapshot | undefined;
+    try {
+      [snapshot] = await this.database.getSnapshot(options.timestampBounds);
+      return await snapshotFn(snapshot);
+    } catch (error) {
+      throw convertSpannerToEntityError(error) ?? error;
+    } finally {
+      snapshot?.end();
     }
   }
 }

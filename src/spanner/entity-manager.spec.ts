@@ -1,10 +1,15 @@
 import { EntityAlreadyExistsError } from '@causa/runtime';
-import { Database, Transaction } from '@google-cloud/spanner';
+import { PreciseDate } from '@google-cloud/precise-date';
+import { Database, Snapshot, Transaction } from '@google-cloud/spanner';
 import { jest } from '@jest/globals';
 import { grpc } from 'google-gax';
 import 'jest-extended';
 import { SpannerEntityManager } from './entity-manager.js';
-import { TemporarySpannerError, TransactionFinishedError } from './errors.js';
+import {
+  InvalidQueryError,
+  TemporarySpannerError,
+  TransactionFinishedError,
+} from './errors.js';
 import { createDatabase } from './testing.js';
 
 const TEST_SCHEMA = [
@@ -156,6 +161,79 @@ describe('SpannerEntityManager', () => {
       });
 
       await expect(actualPromise).rejects.toThrow(TransactionFinishedError);
+    });
+  });
+
+  describe('snapshot', () => {
+    it('should return a snapshot that can be used to perform reads', async () => {
+      await database.table('MyEntity').insert({ id: '5', value: '❄️' });
+
+      const result = await manager.snapshot(async (snapshot) => {
+        const [rows] = await snapshot.read('MyEntity', {
+          keys: ['5'],
+          columns: ['id', 'value'],
+          json: true,
+        });
+        return rows[0];
+      });
+
+      expect(result).toEqual({ id: '5', value: '❄️' });
+    });
+
+    it('should catch and rethrow Spanner errors', async () => {
+      let actualSnapshot!: Snapshot;
+      const actualPromise = manager.snapshot(async (snapshot) => {
+        actualSnapshot = snapshot;
+        await snapshot.read('nope', { columns: ['nope'], keys: ['nope'] });
+      });
+
+      await expect(actualPromise).rejects.toThrow(InvalidQueryError);
+      expect(actualSnapshot.ended).toBeTrue();
+    }, 10000);
+
+    it('should rethrow unknown errors', async () => {
+      let actualSnapshot!: Snapshot;
+      const actualPromise = manager.snapshot(async (snapshot) => {
+        actualSnapshot = snapshot;
+        throw new Error('💣');
+      });
+
+      await expect(actualPromise).rejects.toThrow('💣');
+      expect(actualSnapshot.ended).toBeTrue();
+    });
+
+    it('should catch and rethrow an error thrown by getSnapshot itself', async () => {
+      const error = new Error('💤');
+      (error as any).code = grpc.status.DEADLINE_EXCEEDED;
+      jest.spyOn(database as any, 'getSnapshot').mockRejectedValueOnce(error);
+
+      const actualPromise = manager.snapshot(async () => {
+        // No-op.
+      });
+
+      await expect(actualPromise).rejects.toThrow(TemporarySpannerError);
+    });
+
+    it('should accept the timestamp options', async () => {
+      await database.table('MyEntity').insert({ id: '6', value: '🔮' });
+      const getSnapshotSpy = jest.spyOn(database, 'getSnapshot');
+      // A timestamp in the future ensures the previous write/insert is read.
+      const readTimestamp = new PreciseDate(new Date().getTime() + 2000);
+
+      const result = await manager.snapshot(
+        { timestampBounds: { readTimestamp } },
+        async (snapshot) => {
+          const [rows] = await snapshot.read('MyEntity', {
+            keys: ['6'],
+            columns: ['id', 'value'],
+            json: true,
+          });
+          return rows[0];
+        },
+      );
+
+      expect(result).toEqual({ id: '6', value: '🔮' });
+      expect(getSnapshotSpy).toHaveBeenCalledExactlyOnceWith({ readTimestamp });
     });
   });
 });
