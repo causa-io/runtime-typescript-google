@@ -5,5 +5,7 @@ export {
   catchSpannerDatabaseErrors,
   getDefaultSpannerDatabaseForCloudFunction,
 } from './database.js';
+export { SpannerEntityManager } from './entity-manager.js';
+export * from './errors.js';
 export { SpannerTable } from './table.decorator.js';
 export * from './types.js';
