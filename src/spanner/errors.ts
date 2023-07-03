@@ -1,6 +1,18 @@
 import { RetryableError } from '@causa/runtime';
 
 /**
+ * Error raised when the class for a Spanner table is not correctly defined (e.g. a decorator is missing).
+ */
+export class InvalidEntityDefinitionError extends Error {
+  constructor(entityType: { new (): any }, message?: string) {
+    super(
+      message ??
+        `The definition of the Spanner entity class '${entityType.name}' is not valid.`,
+    );
+  }
+}
+
+/**
  * Error raised when something went wrong due to an incorrect use of Spanner.
  */
 export abstract class UnexpectedSpannerError extends Error {}
