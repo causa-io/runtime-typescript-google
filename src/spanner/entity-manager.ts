@@ -1,5 +1,7 @@
 import { Database, Snapshot, Transaction } from '@google-cloud/spanner';
+import { Type } from '@google-cloud/spanner/build/src/codec.js';
 import { TimestampBounds } from '@google-cloud/spanner/build/src/transaction.js';
+import { spannerObjectToInstance } from './conversion.js';
 import { convertSpannerToEntityError } from './error-converter.js';
 import { TransactionFinishedError } from './errors.js';
 import { SpannerTableCache } from './table-cache.js';
@@ -43,6 +45,36 @@ type SnapshotOptions = {
  * A function that can be passed to the {@link SpannerEntityManager.snapshot} method.
  */
 export type SnapshotFunction<T> = (snapshot: Snapshot) => Promise<T>;
+
+/**
+ * A SQL statement run using {@link SpannerEntityManager.query}.
+ */
+export type SqlStatement = {
+  /**
+   * The SQL statement to run.
+   */
+  sql: string;
+
+  /**
+   * The values for the parameters referenced in the statement.
+   */
+  params?: Record<string, any>;
+
+  /**
+   * The types of the parameters in the statement.
+   */
+  types?: Record<string, Type>;
+};
+
+/**
+ * Options for {@link SpannerEntityManager.query}.
+ */
+export type QueryOptions<T> = ReadOperationOptions & {
+  /**
+   * The type of entity to return in the list of results.
+   */
+  entityType?: { new (): T };
+};
 
 /**
  * A class that manages access to entities stored in a Cloud Spanner database.
@@ -158,6 +190,53 @@ export class SpannerEntityManager {
         transaction.runUpdate({
           sql: `DELETE FROM ${quotedTableName} WHERE TRUE`,
         }),
+    );
+  }
+
+  /**
+   * Runs the given SQL statement in the database.
+   * By default, the statement is run in a read-only transaction ({@link Snapshot}). To perform a write operation, pass
+   * a {@link Transaction} in the options.
+   *
+   * @param options Options for the operation.
+   * @param statement The SQL statement to run.
+   * @returns The rows returned by the query. If {@link QueryOptions.entityType} is set, the rows are converted to
+   *   instances of that class.
+   */
+  query<T>(options: QueryOptions<T>, statement: SqlStatement): Promise<T[]>;
+  /**
+   * Runs the given SQL statement in the database.
+   * The statement is run in a read-only transaction ({@link Snapshot}).
+   *
+   * @param statement The SQL statement to run.
+   * @returns The rows returned by the query.
+   */
+  query<T>(statement: SqlStatement): Promise<T[]>;
+  async query<T>(
+    optionsOrStatement: QueryOptions<T> | SqlStatement,
+    statement?: SqlStatement,
+  ): Promise<T[]> {
+    const options: QueryOptions<T> = statement
+      ? (optionsOrStatement as QueryOptions<T>)
+      : {};
+    const sqlStatement = statement ?? (optionsOrStatement as SqlStatement);
+    const { entityType } = options;
+
+    return await this.runInExistingOrNewReadOnlyTransaction(
+      options.transaction,
+      async (transaction) => {
+        const [rows] = await transaction.run({
+          ...sqlStatement,
+          json: true,
+          jsonOptions: { wrapNumbers: entityType != null },
+        });
+
+        if (entityType) {
+          return rows.map((row) => spannerObjectToInstance(row, entityType));
+        }
+
+        return rows as T[];
+      },
     );
   }
 

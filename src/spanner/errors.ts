@@ -39,6 +39,16 @@ export class TransactionFinishedError extends UnexpectedSpannerError {
 }
 
 /**
+ * An error thrown when an invalid argument is passed to a Spanner query.
+ * For example, this is raised when using a snapshot for a SQL query that attempts to write rows.
+ */
+export class InvalidArgumentError extends UnexpectedSpannerError {
+  constructor(message: string) {
+    super(message);
+  }
+}
+
+/**
  * Error raised when Spanner returns an error that makes the current operation fail, but can usually be retried.
  * For example, the call has been cancelled or timed out.
  */

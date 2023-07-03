@@ -1,7 +1,11 @@
 import { EntityAlreadyExistsError } from '@causa/runtime';
 import { SessionPoolExhaustedError } from '@google-cloud/spanner/build/src/session-pool.js';
 import { grpc } from 'google-gax';
-import { InvalidQueryError, TemporarySpannerError } from './errors.js';
+import {
+  InvalidArgumentError,
+  InvalidQueryError,
+  TemporarySpannerError,
+} from './errors.js';
 
 /**
  * Converts an error thrown by Spanner to an entity error or a Spanner error subclass.
@@ -19,6 +23,8 @@ export function convertSpannerToEntityError(error: any): Error | undefined {
   }
 
   switch (error.code) {
+    case grpc.status.INVALID_ARGUMENT:
+      return new InvalidArgumentError(error.message);
     case grpc.status.NOT_FOUND:
       // `NOT_FOUND` errors are often thrown when resources other than rows are missing (e.g. an index, a column, etc).
       // This means that they usually describe a developer error rather than a missing entity.
