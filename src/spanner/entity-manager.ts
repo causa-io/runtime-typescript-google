@@ -136,4 +136,27 @@ export class SpannerEntityManager {
       snapshot?.end();
     }
   }
+
+  /**
+   * Runs the given "read-write" function on a transaction. If a transaction is not passed, a new {@link Transaction} is
+   * created instead.
+   *
+   * @param transaction The transaction to use. If `undefined`, a new transaction is created.
+   * @param fn The function to run on the transaction.
+   * @returns The result of the function.
+   */
+  async runInExistingOrNewTransaction<T>(
+    transaction: Transaction | undefined,
+    fn: (transaction: Transaction) => Promise<T>,
+  ) {
+    if (transaction) {
+      try {
+        return await fn(transaction);
+      } catch (error) {
+        throw convertSpannerToEntityError(error) ?? error;
+      }
+    }
+
+    return this.transaction(fn);
+  }
 }

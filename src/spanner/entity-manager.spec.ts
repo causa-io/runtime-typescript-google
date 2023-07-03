@@ -236,4 +236,70 @@ describe('SpannerEntityManager', () => {
       expect(getSnapshotSpy).toHaveBeenCalledExactlyOnceWith({ readTimestamp });
     });
   });
+
+  describe('runInExistingOrNewTransaction', () => {
+    it('should run the provided function in the provided transaction', async () => {
+      const expectedReturnValue = { value: '✅' };
+
+      const actualReturnValue = await database.runTransactionAsync(
+        async (transaction) => {
+          const returnValue = await manager.runInExistingOrNewTransaction(
+            transaction,
+            async (transaction) => {
+              transaction.insert('MyEntity', { id: '1', value: '🎁' });
+              return expectedReturnValue;
+            },
+          );
+
+          transaction.end();
+
+          return returnValue;
+        },
+      );
+
+      expect(actualReturnValue).toEqual(expectedReturnValue);
+      const [actualRows] = await database
+        .table('MyEntity')
+        .read({ keys: ['1'], columns: ['id'] });
+      expect(actualRows).toBeEmpty();
+    });
+
+    it('should run the provided function in a new transaction if none is provided', async () => {
+      const expectedReturnValue = { value: '✅' };
+
+      const actualReturnValue = await manager.runInExistingOrNewTransaction(
+        undefined,
+        async (transaction) => {
+          transaction.insert('MyEntity', { id: '1', value: '🎁' });
+          return expectedReturnValue;
+        },
+      );
+
+      expect(actualReturnValue).toEqual(expectedReturnValue);
+      const [actualRows] = await database
+        .table('MyEntity')
+        .read({ keys: ['1'], columns: ['id'], json: true });
+      expect(actualRows).toEqual([{ id: '1' }]);
+    });
+
+    it('should convert a Spanner error', async () => {
+      let actualPromise!: Promise<void>;
+      await database.runTransactionAsync(async (transaction) => {
+        actualPromise = manager.runInExistingOrNewTransaction(
+          transaction,
+          async () => {
+            const error = new Error('⌛');
+            (error as any).code = grpc.status.DEADLINE_EXCEEDED;
+            throw error;
+          },
+        );
+
+        await actualPromise.catch(() => {
+          // Ignore the error, just to finish the transaction.
+        });
+      });
+
+      await expect(actualPromise).rejects.toThrow(TemporarySpannerError);
+    });
+  });
 });
