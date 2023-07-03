@@ -4,13 +4,28 @@ import { Database, Snapshot, Transaction } from '@google-cloud/spanner';
 import { jest } from '@jest/globals';
 import { grpc } from 'google-gax';
 import 'jest-extended';
+import { SpannerColumn } from './column.decorator.js';
 import { SpannerEntityManager } from './entity-manager.js';
 import {
   InvalidQueryError,
   TemporarySpannerError,
   TransactionFinishedError,
 } from './errors.js';
+import { SpannerTable } from './table.decorator.js';
 import { createDatabase } from './testing.js';
+
+@SpannerTable({ name: 'MyEntity', primaryKey: ['id'] })
+class SomeEntity {
+  constructor(data: Partial<SomeEntity> = {}) {
+    Object.assign(this, data);
+  }
+
+  @SpannerColumn()
+  id!: string;
+
+  @SpannerColumn()
+  value!: string;
+}
 
 const TEST_SCHEMA = [
   `CREATE TABLE MyEntity (
@@ -35,11 +50,7 @@ describe('SpannerEntityManager', () => {
   });
 
   afterEach(async () => {
-    // await manager.clear(MyEntity);
-    await database.runTransactionAsync(async (transaction) => {
-      await transaction.run({ sql: 'DELETE FROM MyEntity WHERE TRUE' });
-      await transaction.commit();
-    });
+    await manager.clear(SomeEntity);
   });
 
   afterAll(async () => {
@@ -300,6 +311,43 @@ describe('SpannerEntityManager', () => {
       });
 
       await expect(actualPromise).rejects.toThrow(TemporarySpannerError);
+    });
+  });
+
+  describe('clear', () => {
+    it('should remove all rows', async () => {
+      await database.table('MyEntity').insert([
+        { id: '1', value: '🎁' },
+        { id: '2', value: '🎉' },
+      ]);
+
+      await manager.clear(SomeEntity);
+
+      const [actualRows] = await database.table('MyEntity').read({
+        ranges: [{ startClosed: [], endClosed: [] }],
+        limit: 1,
+        columns: ['id'],
+      });
+      expect(actualRows).toBeEmpty();
+    });
+
+    it('should use the provided transaction', async () => {
+      await database.table('MyEntity').insert([
+        { id: '1', value: '🎁' },
+        { id: '2', value: '🎉' },
+      ]);
+
+      await database.runTransactionAsync(async (transaction) => {
+        await manager.clear(SomeEntity, { transaction });
+        await transaction.rollback();
+      });
+
+      const [actualRows] = await database.table('MyEntity').read({
+        ranges: [{ startClosed: [], endClosed: [] }],
+        limit: 3,
+        columns: ['id'],
+      });
+      expect(actualRows).toHaveLength(2);
     });
   });
 });

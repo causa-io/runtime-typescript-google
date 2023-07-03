@@ -2,6 +2,7 @@ import { Database, Snapshot, Transaction } from '@google-cloud/spanner';
 import { TimestampBounds } from '@google-cloud/spanner/build/src/transaction.js';
 import { convertSpannerToEntityError } from './error-converter.js';
 import { TransactionFinishedError } from './errors.js';
+import { SpannerTableCache } from './table-cache.js';
 
 /**
  * Any Spanner transaction that can be used for reading.
@@ -48,6 +49,11 @@ export type SnapshotFunction<T> = (snapshot: Snapshot) => Promise<T>;
  * Entities are defined by classes decorated with the `SpannerTable` and `SpannerColumn` decorators.
  */
 export class SpannerEntityManager {
+  /**
+   * A cache storing the `SpannerTableMetadata` for each entity type (class).
+   */
+  protected readonly tableCache = new SpannerTableCache();
+
   /**
    * Creates a new {@link SpannerEntityManager}.
    *
@@ -135,6 +141,27 @@ export class SpannerEntityManager {
     } finally {
       snapshot?.end();
     }
+  }
+
+  /**
+   * Deletes all rows from the table corresponding to the given entity type.
+   *
+   * @param entityType The type of entity for which the table should be cleared.
+   * @param options The options to use when running the operation.
+   */
+  async clear(
+    entityType: { new (): any },
+    options: WriteOperationOptions = {},
+  ): Promise<void> {
+    const { quotedTableName } = this.tableCache.getMetadata(entityType);
+
+    await this.runInExistingOrNewTransaction(
+      options.transaction,
+      (transaction) =>
+        transaction.runUpdate({
+          sql: `DELETE FROM ${quotedTableName} WHERE TRUE`,
+        }),
+    );
   }
 
   /**
