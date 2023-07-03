@@ -4,6 +4,7 @@ import { Database, Snapshot, Transaction } from '@google-cloud/spanner';
 import { jest } from '@jest/globals';
 import { grpc } from 'google-gax';
 import 'jest-extended';
+import * as uuid from 'uuid';
 import { SpannerColumn } from './column.decorator.js';
 import {
   SpannerEntityManager,
@@ -46,6 +47,27 @@ class IntEntity {
   value!: bigint;
 }
 
+@SpannerTable({ primaryKey: ['id'] })
+class IndexedEntity {
+  constructor(data: Partial<IndexedEntity> = {}) {
+    Object.assign(this, data);
+  }
+
+  @SpannerColumn()
+  id!: string;
+
+  @SpannerColumn({ isInt: true })
+  value!: number;
+
+  @SpannerColumn()
+  otherValue!: string;
+
+  @SpannerColumn()
+  notStored!: string | null;
+
+  static readonly ByValue = 'IndexedEntitiesByValue';
+}
+
 const TEST_SCHEMA = [
   `CREATE TABLE MyEntity (
     id STRING(MAX) NOT NULL,
@@ -55,6 +77,13 @@ const TEST_SCHEMA = [
     id STRING(MAX) NOT NULL,
     value INT64 NOT NULL
   ) PRIMARY KEY (id)`,
+  `CREATE TABLE IndexedEntity (
+    id STRING(MAX) NOT NULL,
+    value INT64 NOT NULL,
+    otherValue STRING(MAX) NOT NULL,
+    notStored STRING(MAX)
+  ) PRIMARY KEY (id)`,
+  `CREATE INDEX IndexedEntitiesByValue ON IndexedEntity(value) STORING (otherValue)`,
 ];
 
 describe('SpannerEntityManager', () => {
@@ -74,9 +103,9 @@ describe('SpannerEntityManager', () => {
 
   afterEach(async () => {
     await manager.transaction(async (transaction) => {
-      await Promise.all(
-        [SomeEntity, IntEntity].map((e) => manager.clear(e, { transaction })),
-      );
+      await manager.clear(SomeEntity, { transaction });
+      await manager.clear(IntEntity, { transaction });
+      await manager.clear(IndexedEntity, { transaction });
     });
   });
 
@@ -556,6 +585,82 @@ describe('SpannerEntityManager', () => {
       expect(() => manager.getPrimaryKey(obj)).toThrow(
         EntityMissingPrimaryKeyError,
       );
+    });
+  });
+
+  describe('findOneByKey', () => {
+    it('should return undefined when the entity does not exist', async () => {
+      const actualEntity = await manager.findOneByKey(SomeEntity, '1');
+
+      expect(actualEntity).toBeUndefined();
+    });
+
+    it('should return the entity when it exists', async () => {
+      await database.table('MyEntity').insert({ id: '1', value: '🎁' });
+
+      const actualEntity = await manager.findOneByKey(SomeEntity, '1');
+
+      expect(actualEntity).toEqual({ id: '1', value: '🎁' });
+      expect(actualEntity).toBeInstanceOf(SomeEntity);
+    });
+
+    it('should only return the specified columns', async () => {
+      await database.table('MyEntity').insert({ id: '1', value: '🎁' });
+
+      const actualEntity = await manager.findOneByKey(SomeEntity, '1', {
+        columns: ['value'],
+      });
+
+      expect(actualEntity).toEqual({ value: '🎁' });
+      expect(actualEntity).toBeInstanceOf(SomeEntity);
+    });
+
+    it('should look up the entity using the provided index', async () => {
+      await database
+        .table('IndexedEntity')
+        .insert({ id: '1', value: 10, otherValue: '🎁' });
+
+      const actualEntity = await manager.findOneByKey(IndexedEntity, ['10'], {
+        index: IndexedEntity.ByValue,
+        columns: ['id', 'otherValue'],
+      });
+
+      expect(actualEntity).toEqual({ id: '1', otherValue: '🎁' });
+      expect(actualEntity).toBeInstanceOf(IndexedEntity);
+    });
+
+    it('should use the provided transaction', async () => {
+      const id = uuid.v4();
+      await database
+        .table('IndexedEntity')
+        .insert({ id, value: 10, otherValue: '🎁' });
+
+      // Uses a snapshot reading at a past timestamp to make it look like the row does not exist.
+      const actualEntity = await manager.snapshot(
+        { timestampBounds: { exactStaleness: { seconds: 1 } } },
+        async (transaction) =>
+          manager.findOneByKey(IndexedEntity, id, { transaction }),
+      );
+
+      expect(actualEntity).toBeUndefined();
+    });
+
+    it('should fetch the entire entity when using an index and columns are not specified', async () => {
+      await database
+        .table('IndexedEntity')
+        .insert({ id: '1', value: 10, otherValue: '🎁', notStored: '🙈' });
+
+      const actualEntity = await manager.findOneByKey(IndexedEntity, ['10'], {
+        index: IndexedEntity.ByValue,
+      });
+
+      expect(actualEntity).toEqual({
+        id: '1',
+        value: 10,
+        otherValue: '🎁',
+        notStored: '🙈',
+      });
+      expect(actualEntity).toBeInstanceOf(IndexedEntity);
     });
   });
 });

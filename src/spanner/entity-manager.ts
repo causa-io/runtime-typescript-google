@@ -89,6 +89,21 @@ export type QueryOptions<T> = ReadOperationOptions & {
 };
 
 /**
+ * Options when reading entities.
+ */
+type FindOptions = ReadOperationOptions & {
+  /**
+   * The index to use to look up the entity.
+   */
+  index?: string;
+
+  /**
+   * The columns to fetch. If not provided, all columns will be fetched.
+   */
+  columns?: string[];
+};
+
+/**
  * A class that manages access to entities stored in a Cloud Spanner database.
  * Entities are defined by classes decorated with the `SpannerTable` and `SpannerColumn` decorators.
  */
@@ -153,6 +168,86 @@ export class SpannerEntityManager {
 
       return value;
     });
+  }
+
+  /**
+   * Fetches a single row from the database using its key (either primary or for a secondary index).
+   * If a secondary index is specified but not the columns to fetch, all the columns will be returned by performing an
+   * additional read. To avoid this, specify the columns to fetch. Those columns should be part of the primary key, the
+   * indexed columns, or the stored columns of the index.
+   *
+   * @param entityType The type of entity to fetch. Used to determine the table name and columns to fetch.
+   * @param key The key of the entity to fetch. This can be the primary key, or the key of a secondary index.
+   * @param options Options when reading the entity (e.g. the index to use and the columns to fetch).
+   * @returns The row returned by Spanner, or `undefined` if it was not found.
+   */
+  protected async findRowByKey(
+    entityType: { new (): any },
+    key: SpannerKey | SpannerKey[number],
+    options: FindOptions = {},
+  ): Promise<Record<string, any> | undefined> {
+    if (!Array.isArray(key)) {
+      key = [key];
+    }
+
+    const {
+      tableName,
+      columns: allColumns,
+      primaryKeyColumns,
+    } = this.tableCache.getMetadata(entityType);
+    const columns =
+      options.columns ?? (options.index ? primaryKeyColumns : allColumns);
+
+    return await this.runInExistingOrNewReadOnlyTransaction(
+      options.transaction,
+      async (transaction) => {
+        const [rows] = await transaction.read(tableName, {
+          keys: [key as any],
+          columns,
+          limit: 1,
+          json: true,
+          jsonOptions: { wrapNumbers: true },
+          index: options.index,
+        });
+        const row = rows[0];
+
+        if (row && options.index && !options.columns) {
+          const primaryKey = this.getPrimaryKeyForSpannerObject(
+            row,
+            entityType,
+          );
+          return await this.findRowByKey(entityType, primaryKey, {
+            transaction,
+          });
+        }
+
+        return row;
+      },
+    );
+  }
+
+  /**
+   * Fetches a single entity from the database using its key (either primary or for a secondary index).
+   * If a secondary index is specified but not the columns to fetch, all the columns will be returned by performing an
+   * additional read. To avoid this, specify the columns to fetch. Those columns should be part of the primary key, the
+   * indexed columns, or the stored columns of the index.
+   *
+   * @param entityType The type of entity to return.
+   * @param key The key of the entity to return. This can be the primary key, or the key of a secondary index.
+   * @param options Options when reading the entity (e.g. the index to use and the columns to fetch).
+   * @returns The entity, or `undefined` if it was not found.
+   */
+  async findOneByKey<T>(
+    entityType: { new (): T },
+    key: SpannerKey | SpannerKey[number],
+    options: FindOptions = {},
+  ): Promise<T | undefined> {
+    const row = await this.findRowByKey(entityType, key, options);
+    if (!row) {
+      return undefined;
+    }
+
+    return spannerObjectToInstance(row, entityType);
   }
 
   /**
