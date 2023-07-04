@@ -684,4 +684,65 @@ describe('SpannerEntityManager', () => {
       expect(actualEntity).toBeInstanceOf(SomeEntity);
     });
   });
+
+  describe('delete', () => {
+    it('should delete the entity', async () => {
+      await database.table('MyEntity').insert({ id: '1', value: '🎁' });
+
+      const actualEntity = await manager.delete(SomeEntity, '1');
+
+      expect(actualEntity).toEqual({ id: '1', value: '🎁' });
+      const [actualRows] = await database.table('MyEntity').read({
+        keys: ['1'],
+        columns: ['id'],
+        limit: 1,
+      });
+      expect(actualRows).toBeEmpty();
+    });
+
+    it('should throw if the entity does not exist', async () => {
+      const actualPromise = manager.delete(SomeEntity, '1');
+
+      await expect(actualPromise).rejects.toThrow(EntityNotFoundError);
+      await expect(actualPromise).rejects.toMatchObject({
+        entityType: SomeEntity,
+        key: ['1'],
+      });
+    });
+
+    it('should use the provided transaction', async () => {
+      await database.table('MyEntity').insert({ id: '1', value: '🎁' });
+
+      await database.runTransactionAsync(async (transaction) => {
+        await manager.delete(SomeEntity, '1', { transaction });
+        await transaction.rollback();
+      });
+
+      const [actualRows] = await database.table('MyEntity').read({
+        keys: ['1'],
+        columns: ['id'],
+        limit: 1,
+      });
+      expect(actualRows).not.toBeEmpty();
+    });
+
+    it('should throw an error thrown by the validation function', async () => {
+      await database.table('MyEntity').insert({ id: '1', value: '🎁' });
+      const fn = jest.fn(() => {
+        throw new Error('💥');
+      });
+
+      const actualPromise = manager.delete(SomeEntity, '1', { validateFn: fn });
+
+      await expect(actualPromise).rejects.toThrow('💥');
+      expect(fn).toHaveBeenCalledExactlyOnceWith({ id: '1', value: '🎁' });
+      const [actualRows] = await database.table('MyEntity').read({
+        keys: ['1'],
+        columns: ['id'],
+        limit: 1,
+        json: true,
+      });
+      expect(actualRows).toEqual([{ id: '1' }]);
+    });
+  });
 });

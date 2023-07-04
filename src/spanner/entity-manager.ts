@@ -422,6 +422,48 @@ export class SpannerEntityManager {
   }
 
   /**
+   * Deletes the given entity from the database, or throws an error if it does not exist.
+   *
+   * @param entityType The type of entity to delete.
+   * @param key The primary key of the entity to delete.
+   * @param options Options for the operation.
+   * @returns The deleted entity.
+   */
+  async delete<T>(
+    entityType: { new (): T },
+    key: SpannerKey | SpannerKey[number],
+    options: WriteOperationOptions & {
+      /**
+       * A function that will be called with the entity before it is deleted.
+       * This function can throw an error to prevent the deletion.
+       */
+      validateFn?: (entity: T) => void;
+    } = {},
+  ): Promise<T> {
+    if (!Array.isArray(key)) {
+      key = [key];
+    }
+    const { tableName } = this.tableCache.getMetadata(entityType);
+
+    return await this.runInExistingOrNewTransaction(
+      options.transaction,
+      async (transaction) => {
+        const existingEntity = await this.findOneByKeyOrFail(entityType, key, {
+          transaction,
+        });
+
+        if (options.validateFn) {
+          options.validateFn(existingEntity);
+        }
+
+        transaction.deleteRows(tableName, [key as any]);
+
+        return existingEntity;
+      },
+    );
+  }
+
+  /**
    * Runs the given "read-write" function on a transaction. If a transaction is not passed, a new {@link Transaction} is
    * created instead.
    *
