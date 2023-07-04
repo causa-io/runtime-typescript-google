@@ -3,8 +3,10 @@ import { Database, Snapshot, Transaction } from '@google-cloud/spanner';
 import { Int, Type } from '@google-cloud/spanner/build/src/codec.js';
 import { TimestampBounds } from '@google-cloud/spanner/build/src/transaction.js';
 import {
+  copyInstanceWithMissingColumnsToNull,
   instanceToSpannerObject,
   spannerObjectToInstance,
+  updateInstanceByColumn,
 } from './conversion.js';
 import { convertSpannerToEntityError } from './error-converter.js';
 import {
@@ -461,6 +463,66 @@ export class SpannerEntityManager {
     await this.runInExistingOrNewTransaction(
       options.transaction,
       async (transaction) => transaction.replace(tableName, obj),
+    );
+  }
+
+  /**
+   * Updates the given entity in the database.
+   * The update should also contain the primary key of the entity.
+   * Unless `upsert` is set to `true`, an error will be thrown if the entity does not exist.
+   * When `upsert` is `true`, all non-nullable columns must be present in the update.
+   *
+   * @param entityType The type of entity to update.
+   * @param update The columns to update, as well as the primary key.
+   * @param options Options for the operation.
+   * @returns The updated entity.
+   */
+  async update<T>(
+    entityType: { new (): T },
+    update: RecursivePartialEntity<T>,
+    options: WriteOperationOptions & {
+      /**
+       * A function that will be called with the entity before it is updated.
+       * This function can throw an error to prevent the update.
+       */
+      validateFn?: (entity: T) => void;
+
+      /**
+       * If `true`, the entity will be inserted if it does not exist.
+       */
+      upsert?: boolean;
+    } = {},
+  ): Promise<T> {
+    const primaryKey = this.getPrimaryKey(update, entityType);
+    const { tableName } = this.tableCache.getMetadata(entityType);
+
+    return await this.runInExistingOrNewTransaction(
+      options.transaction,
+      async (transaction) => {
+        const existingEntity = await this.findOneByKey(entityType, primaryKey, {
+          transaction,
+        });
+
+        let updatedInstance: T;
+        if (existingEntity) {
+          if (options.validateFn) {
+            options.validateFn(existingEntity);
+          }
+
+          updatedInstance = updateInstanceByColumn(existingEntity, update);
+        } else if (options.upsert) {
+          updatedInstance = copyInstanceWithMissingColumnsToNull(
+            update,
+            entityType,
+          );
+        } else {
+          throw new EntityNotFoundError(entityType, primaryKey);
+        }
+
+        const updateObj = instanceToSpannerObject(updatedInstance, entityType);
+        transaction.replace(tableName, updateObj);
+        return updatedInstance;
+      },
     );
   }
 

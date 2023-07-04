@@ -68,6 +68,31 @@ class IndexedEntity {
   static readonly ByValue = 'IndexedEntitiesByValue';
 }
 
+class ChildEntity {
+  constructor(data: Partial<ChildEntity> = {}) {
+    Object.assign(this, data);
+  }
+
+  @SpannerColumn({ isJson: true })
+  someJson!: any | null;
+
+  @SpannerColumn({ name: 'otherValue' })
+  other!: string | null;
+}
+
+@SpannerTable({ primaryKey: ['id'] })
+class ParentEntity {
+  constructor(data: Partial<ParentEntity> = {}) {
+    Object.assign(this, data);
+  }
+
+  @SpannerColumn()
+  id!: string;
+
+  @SpannerColumn({ nestedType: ChildEntity })
+  child!: ChildEntity | null;
+}
+
 const TEST_SCHEMA = [
   `CREATE TABLE MyEntity (
     id STRING(MAX) NOT NULL,
@@ -84,6 +109,11 @@ const TEST_SCHEMA = [
     notStored STRING(MAX)
   ) PRIMARY KEY (id)`,
   `CREATE INDEX IndexedEntitiesByValue ON IndexedEntity(value) STORING (otherValue)`,
+  `CREATE TABLE ParentEntity (
+    id STRING(MAX) NOT NULL,
+    child_someJson JSON,
+    child_otherValue STRING(MAX)
+  ) PRIMARY KEY (id)`,
 ];
 
 describe('SpannerEntityManager', () => {
@@ -782,6 +812,196 @@ describe('SpannerEntityManager', () => {
         json: true,
       });
       expect(actualRows).toEqual([expectedEntity]);
+    });
+  });
+
+  describe('update', () => {
+    it('should update the entity', async () => {
+      await database.table('IndexedEntity').insert({
+        id: '1',
+        value: 10,
+        otherValue: '🎁',
+        notStored: '🙈',
+      });
+
+      const actualEntity = await manager.update(IndexedEntity, {
+        id: '1',
+        otherValue: '🎉',
+      });
+
+      expect(actualEntity).toEqual({
+        id: '1',
+        value: 10,
+        otherValue: '🎉',
+        notStored: '🙈',
+      });
+      expect(actualEntity).toBeInstanceOf(IndexedEntity);
+      const [actualRows] = await database.table('IndexedEntity').read({
+        keys: ['1'],
+        columns: ['id', 'value', 'otherValue', 'notStored'],
+        json: true,
+      });
+      expect(actualRows).toEqual([actualEntity]);
+    });
+
+    it('should throw if the entity does not exist', async () => {
+      const actualPromise = manager.update(IndexedEntity, {
+        id: '1',
+        otherValue: '🎉',
+      });
+
+      await expect(actualPromise).rejects.toThrow(EntityNotFoundError);
+      await expect(actualPromise).rejects.toMatchObject({
+        entityType: IndexedEntity,
+        key: ['1'],
+      });
+    });
+
+    it('should use the provided transaction', async () => {
+      const expectedEntity = {
+        id: '1',
+        value: 10,
+        otherValue: '🎁',
+        notStored: '🙈',
+      };
+      await database.table('IndexedEntity').insert(expectedEntity);
+
+      await database.runTransactionAsync(async (transaction) => {
+        await manager.update(
+          IndexedEntity,
+          { id: '1', otherValue: '🎉' },
+          { transaction },
+        );
+        await transaction.rollback();
+      });
+
+      const [actualRows] = await database.table('IndexedEntity').read({
+        keys: ['1'],
+        columns: ['id', 'value', 'otherValue', 'notStored'],
+        json: true,
+      });
+      expect(actualRows).toEqual([expectedEntity]);
+    });
+
+    it('should throw an error thrown by the validation function', async () => {
+      const expectedEntity = {
+        id: '1',
+        value: 10,
+        otherValue: '🎁',
+        notStored: '🙈',
+      };
+      await database.table('IndexedEntity').insert(expectedEntity);
+      const fn: jest.Mock<(entity: IndexedEntity) => void> = jest.fn(() => {
+        throw new Error('💥');
+      });
+
+      const actualPromise = manager.update(
+        IndexedEntity,
+        { id: '1', otherValue: '🎉' },
+        { validateFn: fn },
+      );
+
+      await expect(actualPromise).rejects.toThrow('💥');
+      expect(fn).toHaveBeenCalledExactlyOnceWith({
+        id: '1',
+        value: 10,
+        otherValue: '🎁',
+        notStored: '🙈',
+      });
+      expect(fn.mock.calls[0][0]).toBeInstanceOf(IndexedEntity);
+      const [actualRows] = await database.table('IndexedEntity').read({
+        keys: ['1'],
+        columns: ['id', 'value', 'otherValue', 'notStored'],
+        json: true,
+      });
+      expect(actualRows).toEqual([expectedEntity]);
+    });
+
+    it('should throw an error when the update does not contain the primary key', async () => {
+      const actualPromise = manager.update(IndexedEntity, {
+        otherValue: '🎉',
+      });
+
+      await expect(actualPromise).rejects.toThrow(EntityMissingPrimaryKeyError);
+    });
+
+    it('should update the entity when using the upsert option', async () => {
+      await database.table('IndexedEntity').insert({
+        id: '1',
+        value: 10,
+        otherValue: '🎁',
+        notStored: '🙈',
+      });
+
+      const actualEntity = await manager.update(
+        IndexedEntity,
+        { id: '1', value: 11, otherValue: '🎉' },
+        { upsert: true },
+      );
+
+      expect(actualEntity).toEqual({
+        id: '1',
+        value: 11,
+        otherValue: '🎉',
+        notStored: '🙈',
+      });
+      expect(actualEntity).toBeInstanceOf(IndexedEntity);
+      const [actualRows] = await database.table('IndexedEntity').read({
+        keys: ['1'],
+        columns: ['id', 'value', 'otherValue', 'notStored'],
+        json: true,
+      });
+      expect(actualRows).toEqual([actualEntity]);
+    });
+
+    it('should insert the entity when using the upsert option and the entity does not exist', async () => {
+      const actualEntity = await manager.update(
+        IndexedEntity,
+        { id: '1', value: 11, otherValue: '🎉' },
+        { upsert: true },
+      );
+
+      expect(actualEntity).toEqual({
+        id: '1',
+        value: 11,
+        otherValue: '🎉',
+        notStored: null,
+      });
+      expect(actualEntity).toBeInstanceOf(IndexedEntity);
+      const [actualRows] = await database.table('IndexedEntity').read({
+        keys: ['1'],
+        columns: ['id', 'value', 'otherValue', 'notStored'],
+        json: true,
+      });
+      expect(actualRows).toEqual([actualEntity]);
+    });
+
+    it('should update a partial nested field', async () => {
+      await database.table('ParentEntity').insert({
+        id: '1',
+        child_someJson: JSON.stringify([{ value: '🎁' }, { other: '😍' }]),
+        child_otherValue: '🙈',
+      });
+
+      const actualEntity = await manager.update(ParentEntity, {
+        id: '1',
+        child: { someJson: [{ new: '🎉' }] },
+      });
+
+      expect(actualEntity).toEqual({
+        id: '1',
+        child: { someJson: [{ new: '🎉' }], other: '🙈' },
+      });
+      expect(actualEntity).toBeInstanceOf(ParentEntity);
+      expect(actualEntity.child).toBeInstanceOf(ChildEntity);
+      const [actualRows] = await database.table('ParentEntity').read({
+        keys: ['1'],
+        columns: ['id', 'child_someJson', 'child_otherValue'],
+        json: true,
+      });
+      expect(actualRows).toEqual([
+        { id: '1', child_someJson: [{ new: '🎉' }], child_otherValue: '🙈' },
+      ]);
     });
   });
 
