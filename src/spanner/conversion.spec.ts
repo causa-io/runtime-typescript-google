@@ -2,8 +2,10 @@ import { PreciseDate } from '@google-cloud/precise-date';
 import { Float, Int } from '@google-cloud/spanner';
 import { SpannerColumn } from './column.decorator.js';
 import {
+  copyInstanceWithMissingColumnsToNull,
   instanceToSpannerObject,
   spannerObjectToInstance,
+  updateInstanceByColumn,
 } from './conversion.js';
 
 const UNSAFE_INT = BigInt(Number.MAX_SAFE_INTEGER) + 10n;
@@ -79,6 +81,10 @@ describe('conversion', () => {
   type JsonType = { a: number; b: string };
 
   class JsonEntity {
+    constructor(data: Partial<JsonEntity> = {}) {
+      Object.assign(this, data);
+    }
+
     @SpannerColumn({ isJson: true })
     someJsonColumn!: JsonType;
 
@@ -422,6 +428,160 @@ describe('conversion', () => {
         floatArray: [new Float(3), new Float(7), new Float(9)],
         jsonArray: '[{"a":1},{"b":2}]',
       });
+    });
+  });
+
+  describe('copyInstanceWithMissingColumnsToNull', () => {
+    it('should set root-level missing columns to null', () => {
+      const actualInstance = copyInstanceWithMissingColumnsToNull(
+        { defaultName: 'value' },
+        ChildEntity,
+      );
+
+      expect(actualInstance).toEqual({
+        defaultName: 'value',
+        someName: null,
+      });
+      expect(actualInstance).toBeInstanceOf(ChildEntity);
+    });
+
+    it('should set nested missing columns to null', () => {
+      const actualInstance = copyInstanceWithMissingColumnsToNull(
+        { childEntity: { defaultName: 'value' }, otherProperty: true },
+        ParentEntity,
+      );
+
+      expect(actualInstance).toEqual({
+        childEntity: {
+          defaultName: 'value',
+          someName: null,
+        },
+        nullableChildEntity: null,
+        otherProperty: true,
+      });
+      expect(actualInstance).toBeInstanceOf(ParentEntity);
+      expect(actualInstance.childEntity).toBeInstanceOf(ChildEntity);
+    });
+
+    it('should set all nested missing columns to null', () => {
+      const actualInstance = copyInstanceWithMissingColumnsToNull(
+        { nullableChildEntity: { someName: 12 } as any, otherProperty: true },
+        ParentEntity,
+      );
+
+      expect(actualInstance).toEqual({
+        childEntity: { defaultName: null, someName: null },
+        nullableChildEntity: { someName: 12, defaultName: null },
+        otherProperty: true,
+      });
+      expect(actualInstance).toBeInstanceOf(ParentEntity);
+      expect(actualInstance.childEntity).toBeInstanceOf(ChildEntity);
+      expect(actualInstance.nullableChildEntity).toBeInstanceOf(ChildEntity);
+    });
+  });
+
+  describe('updateInstanceByColumn', () => {
+    it('should update a root-level column', () => {
+      const actualInstance = updateInstanceByColumn(
+        new ChildEntity({ defaultName: 'value', someName: 5 }),
+        { someName: 12 },
+      );
+
+      expect(actualInstance).toEqual({
+        defaultName: 'value',
+        someName: 12,
+      });
+      expect(actualInstance).toBeInstanceOf(ChildEntity);
+    });
+
+    it('should update JSON columns fully', () => {
+      const actualInstance = updateInstanceByColumn(
+        new JsonEntity({
+          someJsonColumn: { a: 12, b: '🧠' },
+          someJsonArrayColumn: [
+            { a: 12, b: '🧠' },
+            { a: 13, b: '🐶' },
+          ],
+        }),
+        { someJsonColumn: { b: '💮' } },
+      );
+
+      expect(actualInstance).toEqual({
+        someJsonColumn: { b: '💮' },
+        someJsonArrayColumn: [
+          { a: 12, b: '🧠' },
+          { a: 13, b: '🐶' },
+        ],
+      });
+      expect(actualInstance).toBeInstanceOf(JsonEntity);
+    });
+
+    it('should set nested entities to null', () => {
+      const actualInstance = updateInstanceByColumn(
+        new GrandParentEntity({
+          highLevelProperty: '🌻',
+          parentEntity: new ParentEntity({
+            childEntity: new ChildEntity({
+              defaultName: 'value',
+              someName: 5,
+            }),
+            nullableChildEntity: new ChildEntity({
+              defaultName: 'value',
+              someName: 5,
+            }),
+            otherProperty: true,
+          }),
+        }),
+        { parentEntity: { childEntity: null, nullableChildEntity: null } },
+      );
+
+      expect(actualInstance).toEqual({
+        highLevelProperty: '🌻',
+        parentEntity: {
+          childEntity: {
+            defaultName: null,
+            someName: null,
+          },
+          nullableChildEntity: null,
+          otherProperty: true,
+        },
+      });
+      expect(actualInstance).toBeInstanceOf(GrandParentEntity);
+      expect(actualInstance.parentEntity).toBeInstanceOf(ParentEntity);
+    });
+
+    it('should update a nested column previously set to null', () => {
+      const actualInstance = updateInstanceByColumn(
+        new GrandParentEntity({
+          highLevelProperty: '🌻',
+          parentEntity: new ParentEntity({
+            childEntity: null,
+            nullableChildEntity: null,
+            otherProperty: true,
+          }),
+        }),
+        {
+          highLevelProperty: '💮',
+          parentEntity: { childEntity: { defaultName: 'value' } },
+        },
+      );
+
+      expect(actualInstance).toEqual({
+        highLevelProperty: '💮',
+        parentEntity: {
+          childEntity: {
+            defaultName: 'value',
+            someName: null,
+          },
+          nullableChildEntity: null,
+          otherProperty: true,
+        },
+      });
+      expect(actualInstance).toBeInstanceOf(GrandParentEntity);
+      expect(actualInstance.parentEntity).toBeInstanceOf(ParentEntity);
+      expect(actualInstance.parentEntity?.childEntity).toBeInstanceOf(
+        ChildEntity,
+      );
     });
   });
 });

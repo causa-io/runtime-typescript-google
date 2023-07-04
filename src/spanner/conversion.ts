@@ -219,3 +219,88 @@ export function instanceToSpannerObject<T>(
 ): Record<string, any> {
   return instanceToSpannerObjectInternal(instance, type);
 }
+
+/**
+ * Copies an instance, recursively setting all columns that are not defined in the instance to `null`.
+ * Columns with the {@link SpannerColumnMetadata.nullifyNested} option set to `true` are also set to `null`.
+ *
+ * @param instance The instance to copy.
+ * @param type The type of the instance.
+ * @returns The copied instance.
+ */
+export function copyInstanceWithMissingColumnsToNull<T>(
+  instance: T | RecursivePartialEntity<T>,
+  type: { new (): T },
+): T {
+  const columnsMetadata = getSpannerColumnsMetadata(type);
+
+  const newInstance: any = new type();
+
+  Object.entries(columnsMetadata).forEach(([property, columnMetadata]) => {
+    const instanceValue = instance == null ? null : (instance as any)[property];
+
+    if (columnMetadata.nestedType) {
+      if (columnMetadata.nullifyNested && instanceValue == null) {
+        newInstance[property] = null;
+      } else {
+        newInstance[property] = copyInstanceWithMissingColumnsToNull(
+          instanceValue,
+          columnMetadata.nestedType,
+        );
+      }
+    } else if (instanceValue !== undefined) {
+      newInstance[property] = instanceValue;
+    } else {
+      newInstance[property] = null;
+    }
+  });
+
+  return newInstance;
+}
+
+/**
+ * Recursively updates an instance with the values from the update.
+ * Updates are applied "column-wise", which means that recursion stops at properties decorated as columns.
+ * For example, JSON values are not affected.
+ *
+ * @param instance The instance to update. It should be a full, typed, instance, unless `type` is passed as well.
+ * @param update The update to apply to the instance.
+ * @param type The type of the instance. If not provided, it will be inferred from the instance.
+ * @returns The updated instance.
+ */
+export function updateInstanceByColumn<T>(
+  instance: T,
+  update: RecursivePartialEntity<T>,
+  type?: { new (): T },
+): T {
+  type ??= (instance as any).constructor as { new (): T };
+  const columnsMetadata = getSpannerColumnsMetadata(type);
+
+  const newInstance: any = new type();
+
+  Object.entries(columnsMetadata).forEach(([property, columnMetadata]) => {
+    const instanceValue = instance == null ? null : (instance as any)[property];
+    const updateValue = update == null ? update : (update as any)[property];
+
+    if (updateValue === undefined) {
+      newInstance[property] = instanceValue;
+      return;
+    }
+
+    if (columnMetadata.nestedType) {
+      if (columnMetadata.nullifyNested && updateValue === null) {
+        newInstance[property] = null;
+      } else {
+        newInstance[property] = updateInstanceByColumn(
+          instanceValue,
+          updateValue,
+          columnMetadata.nestedType,
+        );
+      }
+    } else if (updateValue !== undefined) {
+      newInstance[property] = updateValue;
+    }
+  });
+
+  return newInstance;
+}
