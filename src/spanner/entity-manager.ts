@@ -2,6 +2,7 @@ import { EntityNotFoundError } from '@causa/runtime';
 import { Database, Snapshot, Transaction } from '@google-cloud/spanner';
 import { Int, Type } from '@google-cloud/spanner/build/src/codec.js';
 import { TimestampBounds } from '@google-cloud/spanner/build/src/transaction.js';
+import { Injectable } from '@nestjs/common';
 import {
   copyInstanceWithMissingColumnsToNull,
   instanceToSpannerObject,
@@ -110,6 +111,7 @@ type FindOptions = ReadOperationOptions & {
  * A class that manages access to entities stored in a Cloud Spanner database.
  * Entities are defined by classes decorated with the `SpannerTable` and `SpannerColumn` decorators.
  */
+@Injectable()
 export class SpannerEntityManager {
   /**
    * A cache storing the `SpannerTableMetadata` for each entity type (class).
