@@ -443,6 +443,28 @@ export class SpannerEntityManager {
   }
 
   /**
+   * Replaces the given entity in the database.
+   * If the entity already exists, all columns are overwritten, even if they are not present in the entity (in the case
+   * of nullable columns).
+   *
+   * @param entity The entity to write.
+   * @param options Options for the operation.
+   */
+  async replace(
+    entity: any,
+    options: WriteOperationOptions = {},
+  ): Promise<void> {
+    const entityType = entity.constructor;
+    const { tableName } = this.tableCache.getMetadata(entityType);
+    const obj = instanceToSpannerObject(entity, entityType);
+
+    await this.runInExistingOrNewTransaction(
+      options.transaction,
+      async (transaction) => transaction.replace(tableName, obj),
+    );
+  }
+
+  /**
    * Deletes the given entity from the database, or throws an error if it does not exist.
    *
    * @param entityType The type of entity to delete.

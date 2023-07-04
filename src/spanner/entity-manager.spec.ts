@@ -725,6 +725,66 @@ describe('SpannerEntityManager', () => {
     });
   });
 
+  describe('replace', () => {
+    it('should insert the entity', async () => {
+      const entityToInsert = new SomeEntity({ id: '1', value: '🎁' });
+
+      await manager.replace(entityToInsert);
+
+      const [actualRows] = await database.table('MyEntity').read({
+        keys: ['1'],
+        columns: ['id', 'value'],
+        json: true,
+      });
+      expect(actualRows).toEqual([{ id: '1', value: '🎁' }]);
+    });
+
+    it('should replace an existing entity', async () => {
+      const expectedEntity = new IndexedEntity({
+        id: '1',
+        value: 10,
+        otherValue: '🎁',
+      });
+      await database
+        .table('IndexedEntity')
+        .insert({ id: '1', value: 9, otherValue: '🎉', notStored: '🙈' });
+
+      await manager.replace(expectedEntity);
+
+      const [actualRows] = await database.table('IndexedEntity').read({
+        keys: ['1'],
+        columns: ['id', 'value', 'otherValue', 'notStored'],
+        json: true,
+      });
+      expect(actualRows).toEqual([{ ...expectedEntity, notStored: null }]);
+    });
+
+    it('should use the provided transaction', async () => {
+      const expectedEntity = {
+        id: '1',
+        value: 9,
+        otherValue: '🎉',
+        notStored: '🙈',
+      };
+      await database.table('IndexedEntity').insert(expectedEntity);
+
+      await database.runTransactionAsync(async (transaction) => {
+        await manager.replace(
+          new IndexedEntity({ id: '1', value: 10, otherValue: '📝' }),
+          { transaction },
+        );
+        transaction.end();
+      });
+
+      const [actualRows] = await database.table('IndexedEntity').read({
+        keys: ['1'],
+        columns: ['id', 'value', 'otherValue', 'notStored'],
+        json: true,
+      });
+      expect(actualRows).toEqual([expectedEntity]);
+    });
+  });
+
   describe('delete', () => {
     it('should delete the entity', async () => {
       await database.table('MyEntity').insert({ id: '1', value: '🎁' });
