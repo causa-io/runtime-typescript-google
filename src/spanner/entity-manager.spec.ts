@@ -1,4 +1,4 @@
-import { EntityAlreadyExistsError } from '@causa/runtime';
+import { EntityAlreadyExistsError, EntityNotFoundError } from '@causa/runtime';
 import { PreciseDate } from '@google-cloud/precise-date';
 import { Database, Snapshot, Transaction } from '@google-cloud/spanner';
 import { jest } from '@jest/globals';
@@ -661,6 +661,27 @@ describe('SpannerEntityManager', () => {
         notStored: '🙈',
       });
       expect(actualEntity).toBeInstanceOf(IndexedEntity);
+    });
+  });
+
+  describe('findOneByKeyOrFail', () => {
+    it('should throw when the entity does not exist', async () => {
+      const actualPromise = manager.findOneByKeyOrFail(SomeEntity, '1');
+
+      await expect(actualPromise).rejects.toThrow(EntityNotFoundError);
+      await expect(actualPromise).rejects.toMatchObject({
+        entityType: SomeEntity,
+        key: '1',
+      });
+    });
+
+    it('should return the entity when it exists', async () => {
+      await database.table('MyEntity').insert({ id: '1', value: '🎁' });
+
+      const actualEntity = await manager.findOneByKeyOrFail(SomeEntity, '1');
+
+      expect(actualEntity).toEqual({ id: '1', value: '🎁' });
+      expect(actualEntity).toBeInstanceOf(SomeEntity);
     });
   });
 });

@@ -1,3 +1,4 @@
+import { EntityNotFoundError } from '@causa/runtime';
 import { Database, Snapshot, Transaction } from '@google-cloud/spanner';
 import { Int, Type } from '@google-cloud/spanner/build/src/codec.js';
 import { TimestampBounds } from '@google-cloud/spanner/build/src/transaction.js';
@@ -248,6 +249,29 @@ export class SpannerEntityManager {
     }
 
     return spannerObjectToInstance(row, entityType);
+  }
+
+  /**
+   * Fetches a single entity from the database using its key (either primary or for a secondary index).
+   * See {@link SpannerEntityManager.findOneByKey} for more details.
+   * If the entity is not found, an {@link EntityNotFoundError} is thrown.
+   *
+   * @param entityType The type of entity to return.
+   * @param key The key of the entity to return. This can be the primary key, or the key of a secondary index.
+   * @param options Options when reading the entity (e.g. the index to use and the columns to fetch).
+   * @returns The fetched entity.
+   */
+  async findOneByKeyOrFail<T>(
+    entityType: { new (): T },
+    key: SpannerKey | SpannerKey[number],
+    options: FindOptions = {},
+  ): Promise<T> {
+    const entity = await this.findOneByKey(entityType, key, options);
+    if (!entity) {
+      throw new EntityNotFoundError(entityType, key);
+    }
+
+    return entity;
   }
 
   /**
