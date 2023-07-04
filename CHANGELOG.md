@@ -14,3 +14,4 @@ Features:
 - Implement the `PubSubHealthIndicator`.
 - Implement the `AppCheckGuard`.
 - Implement the Firestore utilities, including testing and dependency injection for NestJS.
+- Implement the `SpannerEntityManager` and related utilities.
