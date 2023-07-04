@@ -685,6 +685,46 @@ describe('SpannerEntityManager', () => {
     });
   });
 
+  describe('insert', () => {
+    it('should insert the entity', async () => {
+      const entityToInsert = new SomeEntity({ id: '1', value: '🎁' });
+
+      await manager.insert(entityToInsert);
+
+      const [actualRows] = await database.table('MyEntity').read({
+        keys: ['1'],
+        columns: ['id', 'value'],
+        json: true,
+      });
+      expect(actualRows).toEqual([{ id: '1', value: '🎁' }]);
+    });
+
+    it('should throw if the entity already exists', async () => {
+      await database.table('MyEntity').insert({ id: '1', value: '💥' });
+
+      const actualPromise = manager.insert(
+        new SomeEntity({ id: '1', value: '🙅' }),
+      );
+
+      await expect(actualPromise).rejects.toThrow(EntityAlreadyExistsError);
+    });
+
+    it('should use the provided transaction', async () => {
+      const entityToInsert = new SomeEntity({ id: '1', value: '🎁' });
+
+      await database.runTransactionAsync(async (transaction) => {
+        await manager.insert(entityToInsert, { transaction });
+        transaction.end();
+      });
+
+      const [actualRows] = await database.table('MyEntity').read({
+        keys: ['1'],
+        columns: ['id'],
+      });
+      expect(actualRows).toBeEmpty();
+    });
+  });
+
   describe('delete', () => {
     it('should delete the entity', async () => {
       await database.table('MyEntity').insert({ id: '1', value: '🎁' });

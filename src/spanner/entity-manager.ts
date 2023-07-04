@@ -422,6 +422,27 @@ export class SpannerEntityManager {
   }
 
   /**
+   * Inserts the given entity into the database.
+   * If the entity already exists, an error will be thrown.
+   *
+   * @param entity The entity to insert.
+   * @param options Options for the operation.
+   */
+  async insert(
+    entity: any,
+    options: WriteOperationOptions = {},
+  ): Promise<void> {
+    const entityType = entity.constructor;
+    const { tableName } = this.tableCache.getMetadata(entityType);
+    const obj = instanceToSpannerObject(entity, entityType);
+
+    await this.runInExistingOrNewTransaction(
+      options.transaction,
+      async (transaction) => transaction.insert(tableName, obj),
+    );
+  }
+
+  /**
    * Deletes the given entity from the database, or throws an error if it does not exist.
    *
    * @param entityType The type of entity to delete.
