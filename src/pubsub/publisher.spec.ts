@@ -137,6 +137,11 @@ describe('PubSubPublisher', () => {
       });
       // This creates the `my.awesome-topic.v1` `Topic` in the cache.
       await publisher.publish('my.awesome-topic.v1', new MyEvent());
+      await fixture.expectMessageInTopic(
+        'my.awesome-topic.v1',
+        expect.anything(),
+      );
+      fixture.clear();
       jest
         .spyOn(
           publisher['topicCache']['my.awesome-topic.v1'] as any,
