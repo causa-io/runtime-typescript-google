@@ -23,7 +23,7 @@ export class PubSubPublisherModule {
       providers: [
         { provide: PubSub, useValue: new PubSub() },
         {
-          provide: EVENT_PUBLISHER_INJECTION_NAME,
+          provide: PubSubPublisher,
           useFactory: (
             pubSub: PubSub,
             configService: ConfigService,
@@ -37,8 +37,12 @@ export class PubSubPublisherModule {
             }),
           inject: [PubSub, ConfigService, PinoLogger],
         },
+        {
+          provide: EVENT_PUBLISHER_INJECTION_NAME,
+          useExisting: PubSubPublisher,
+        },
       ],
-      exports: [PubSub, EVENT_PUBLISHER_INJECTION_NAME],
+      exports: [PubSub, PubSubPublisher, EVENT_PUBLISHER_INJECTION_NAME],
       global: true,
     };
   }
