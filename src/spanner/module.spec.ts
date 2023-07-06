@@ -47,11 +47,12 @@ describe('SpannerModule', () => {
 
     database.emit('error', new Error('💥'));
 
-    expect(getLoggedInfos()).toEqual([
+    expect(
+      getLoggedInfos({ predicate: (o) => o.error.includes('💥') }),
+    ).toEqual([
       expect.objectContaining({
         message:
           'Uncaught Spanner database error. This might be due to the background keep alive mechanism running in an idle Cloud Function.',
-        error: expect.stringContaining('💥'),
       }),
     ]);
   });
