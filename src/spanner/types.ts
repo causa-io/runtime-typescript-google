@@ -4,5 +4,5 @@
 export type RecursivePartialEntity<T> = T extends Date
   ? T
   : T extends object
-  ? { [P in keyof T]?: RecursivePartialEntity<T[P]> }
+  ? Partial<T> | { [P in keyof T]?: RecursivePartialEntity<T[P]> }
   : T;

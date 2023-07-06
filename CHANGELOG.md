@@ -16,3 +16,4 @@ Features:
 - Implement the Firestore utilities, including testing and dependency injection for NestJS.
 - Implement the `SpannerEntityManager` and related utilities.
 - Implement the `SpannerModule` and `SpannerHealthIndicator`.
+- Implement the `SpannerPubSubTransactionRunner` and the `SpannerPubSubTransactionModule`.

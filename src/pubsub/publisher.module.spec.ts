@@ -20,6 +20,7 @@ class MyController {
   constructor(
     @InjectEventPublisher()
     readonly publisher: EventPublisher,
+    readonly typedPubSubPublisher: PubSubPublisher,
   ) {}
 }
 
@@ -52,6 +53,21 @@ describe('PubSubPublisherModule', () => {
     expect((actualPublisher as any).logger).toBe(logger.logger);
     const actualTopic = (actualPublisher as any).getTopic('my.topic.v1');
     expect(actualTopic).toBeInstanceOf(Topic);
+  });
+
+  it('should expose the PubSubPublisher as is', async () => {
+    const testModule = await Test.createTestingModule({
+      controllers: [MyController],
+      imports: [
+        ConfigModule.forRoot({ isGlobal: true }),
+        LoggerModule,
+        PubSubPublisherModule.forRoot(),
+      ],
+    }).compile();
+
+    const { publisher, typedPubSubPublisher } = testModule.get(MyController);
+
+    expect(typedPubSubPublisher).toBe(publisher);
   });
 
   it('should customize the serializer and publish options', async () => {
