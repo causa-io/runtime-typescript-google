@@ -28,14 +28,12 @@ export function createFirestoreTemporaryCollection<T>(
 /**
  * Clears a Firestore collection of all its documents.
  *
- * @param firestore The {@link Firestore} instance to use.
  * @param collectionRef The reference to the collection that should be cleared.
  */
 export async function clearFirestoreCollection(
-  firestore: Firestore,
   collectionRef: CollectionReference,
 ): Promise<void> {
-  const batch = firestore.batch();
+  const batch = collectionRef.firestore.batch();
 
   const documents = await collectionRef.listDocuments();
 

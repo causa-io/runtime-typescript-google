@@ -36,7 +36,7 @@ describe('converter', () => {
     });
 
     afterEach(async () => {
-      await clearFirestoreCollection(firestore, collection);
+      await clearFirestoreCollection(collection);
     });
 
     it('should transform the class to a plain object and store it', async () => {
