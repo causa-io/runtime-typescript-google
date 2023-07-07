@@ -4,13 +4,13 @@ import {
   getFirestore,
 } from 'firebase-admin/firestore';
 import { getDefaultFirebaseApp } from '../firebase/index.js';
-import { FirestoreCollectionName } from './collection-name.decorator.js';
+import { FirestoreCollection } from './collection.decorator.js';
 import {
   clearFirestoreCollection,
   createFirestoreTemporaryCollection,
 } from './testing.js';
 
-@FirestoreCollectionName('someCollection')
+@FirestoreCollection({ name: 'someCollection', path: (doc) => doc.field1 })
 class SomeDocument {
   constructor(data: Partial<SomeDocument> = {}) {
     Object.assign(this, {

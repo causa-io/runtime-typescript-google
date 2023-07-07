@@ -2,7 +2,7 @@ import { INestApplicationContext } from '@nestjs/common';
 import { TestingModuleBuilder } from '@nestjs/testing';
 import { CollectionReference, Firestore } from 'firebase-admin/firestore';
 import * as uuid from 'uuid';
-import { getFirestoreCollectionNameForType } from './collection-name.decorator.js';
+import { getFirestoreCollectionMetadataForType } from './collection.decorator.js';
 import { makeFirestoreDataConverter } from './converter.js';
 import { getFirestoreCollectionInjectionName } from './inject-collection.decorator.js';
 
@@ -11,7 +11,7 @@ import { getFirestoreCollectionInjectionName } from './inject-collection.decorat
  *
  * @param firestore The {@link Firestore} instance to use.
  * @param documentType The type of the document stored in the collection.
- *   It should be decorated with `FirestoreCollectionName`.
+ *   It should be decorated with `FirestoreCollection`.
  * @returns The {@link CollectionReference} of the created collection.
  */
 export function createFirestoreTemporaryCollection<T>(
@@ -19,8 +19,9 @@ export function createFirestoreTemporaryCollection<T>(
   documentType: { new (): T },
 ): CollectionReference<T> {
   const prefix = `${uuid.v4().slice(-10)}-`;
+  const { name } = getFirestoreCollectionMetadataForType(documentType);
   return firestore
-    .collection(getFirestoreCollectionNameForType(documentType, prefix))
+    .collection(`${prefix}${name}`)
     .withConverter(makeFirestoreDataConverter(documentType));
 }
 
