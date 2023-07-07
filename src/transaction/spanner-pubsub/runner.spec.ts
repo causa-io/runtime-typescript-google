@@ -109,8 +109,8 @@ describe('SpannerPubSubTransactionRunner', () => {
   });
 
   afterEach(async () => {
-    entityManager.clear(MyEntity);
     pubSubFixture.clear();
+    await entityManager.clear(MyEntity);
   });
 
   afterAll(async () => {
