@@ -1,5 +1,6 @@
 import { BufferEventTransaction, TransactionRunner } from '@causa/runtime';
 import { Firestore } from '@google-cloud/firestore';
+import { Injectable } from '@nestjs/common';
 import { PubSubPublisher } from '../../pubsub/index.js';
 import {
   FirestoreCollectionResolver,
@@ -14,6 +15,7 @@ import { FirestorePubSubTransaction } from './transaction.js';
  * This runner and the transaction use the {@link FirestoreStateTransaction}, which handles soft-deleted documents. All
  * entities that are written to the state should be decorated with the `SoftDeletedFirestoreCollection` decorator.
  */
+@Injectable()
 export class FirestorePubSubTransactionRunner extends TransactionRunner<FirestorePubSubTransaction> {
   constructor(
     readonly firestore: Firestore,
