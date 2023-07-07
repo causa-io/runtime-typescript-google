@@ -1,3 +1,7 @@
+import {
+  CollectionReference,
+  DocumentReference,
+} from 'firebase-admin/firestore';
 import 'reflect-metadata';
 
 /**
@@ -59,4 +63,31 @@ export function getFirestoreCollectionMetadataForType<T>(documentType: {
   }
 
   return metadata;
+}
+
+/**
+ * Returns the reference for the Firestore document corresponding to the given object.
+ * If {@link FirestoreCollectionMetadata.path} returns `undefined` for the given object, an error is thrown.
+ *
+ * @param collection The base Firestore collection in which the document is stored.
+ * @param document The (partial) document for which the reference should be returned.
+ * @param documentType The type of the document. This can be omitted if the `document` is not a partial document.
+ * @returns The reference for the Firestore document corresponding to the given object.
+ */
+export function getReferenceForFirestoreDocument<T>(
+  collection: CollectionReference<T>,
+  document: T | Partial<T>,
+  documentType?: new () => T,
+): DocumentReference<T> {
+  documentType ??= (document as any).constructor as { new (): T };
+  const { path } = getFirestoreCollectionMetadataForType(documentType);
+
+  const relativePath = path(document);
+  if (!relativePath) {
+    throw new Error(
+      `The path of the '${documentType.name}' document cannot be obtained from the given object.`,
+    );
+  }
+
+  return collection.doc(relativePath);
 }
