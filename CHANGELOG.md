@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.1.0 (2023-07-10)
+
 Features:
 
 - Implement the `IsValidFirestoreId` decorator.
