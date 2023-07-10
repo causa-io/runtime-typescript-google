@@ -1,4 +1,7 @@
-export { FirestoreCollectionName } from './collection-name.decorator.js';
+export {
+  FirestoreCollection,
+  getReferenceForFirestoreDocument,
+} from './collection.decorator.js';
 export { FirestoreCollectionsModule } from './collections.module.js';
 export {
   convertFirestoreTimestampsToDates,

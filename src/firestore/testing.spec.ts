@@ -4,7 +4,7 @@ import { Injectable, Module } from '@nestjs/common';
 import { CollectionReference } from 'firebase-admin/firestore';
 import 'jest-extended';
 import { FirebaseModule } from '../index.js';
-import { FirestoreCollectionName } from './collection-name.decorator.js';
+import { FirestoreCollection } from './collection.decorator.js';
 import { FirestoreCollectionsModule } from './collections.module.js';
 import { InjectFirestoreCollection } from './inject-collection.decorator.js';
 import {
@@ -12,7 +12,7 @@ import {
   overrideFirestoreCollections,
 } from './testing.js';
 
-@FirestoreCollectionName('myCol')
+@FirestoreCollection({ name: 'myCol', path: (doc) => doc.id })
 class MyDocument {
   constructor(readonly id: string = '1234') {}
 }

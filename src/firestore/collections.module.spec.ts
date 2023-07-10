@@ -2,11 +2,11 @@ import { Injectable, Module } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { CollectionReference } from 'firebase-admin/firestore';
 import { FirebaseModule } from '../index.js';
-import { FirestoreCollectionName } from './collection-name.decorator.js';
+import { FirestoreCollection } from './collection.decorator.js';
 import { FirestoreCollectionsModule } from './collections.module.js';
 import { InjectFirestoreCollection } from './inject-collection.decorator.js';
 
-@FirestoreCollectionName('myCol')
+@FirestoreCollection({ name: 'myCol', path: (doc) => doc.id })
 class MyDocument {
   constructor(readonly id: string = '1234') {}
 }

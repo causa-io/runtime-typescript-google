@@ -17,3 +17,4 @@ Features:
 - Implement the `SpannerEntityManager` and related utilities.
 - Implement the `SpannerModule` and `SpannerHealthIndicator`.
 - Implement the `SpannerPubSubTransactionRunner` and the `SpannerPubSubTransactionModule`.
+- Implement the `FirestorePubSubTransactionRunner` and the `FirestorePubSubTransactionModule`.
