@@ -33,6 +33,7 @@ describe('PubSubFixture', () => {
         const actualPublisher = app.get(PubSubPublisher);
         const actualTopic = (actualPublisher as any).getTopic('my.event.v1');
         expect(actualTopic.name).toEqual(expectedTopicName);
+        expect(actualTopic.name).not.toContain('{{projectId}}');
       } finally {
         await app?.close();
         await fixture.deleteAll();

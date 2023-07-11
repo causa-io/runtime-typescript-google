@@ -124,6 +124,10 @@ export class PubSubFixture {
     const topicName = `${sourceTopicName}-${suffix}`;
     const subscriptionName = `fixture-${suffix}`;
 
+    // This ensures the project ID is populated in the Pub/Sub client.
+    // Because the configuration is cached, it should be okay to call this multiple times.
+    await this.pubSub.getClientConfig();
+
     const [topic] = await this.pubSub.createTopic(topicName);
     const [subscription] = await topic.createSubscription(subscriptionName);
 
