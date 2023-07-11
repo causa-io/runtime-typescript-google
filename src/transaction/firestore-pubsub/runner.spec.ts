@@ -1,11 +1,12 @@
 import {
   Event,
+  IsDateType,
   IsNullable,
+  ValidateNestedType,
   VersionedEntity,
   VersionedEntityManager,
 } from '@causa/runtime';
-import { Type } from 'class-transformer';
-import { IsDate, IsString, IsUUID, ValidateNested } from 'class-validator';
+import { IsString, IsUUID } from 'class-validator';
 import {
   CollectionReference,
   Firestore,
@@ -45,16 +46,13 @@ class MyDocument implements VersionedEntity {
   @IsString()
   readonly id!: string;
 
-  @Type(() => Date)
-  @IsDate()
+  @IsDateType()
   readonly createdAt!: Date;
 
-  @Type(() => Date)
-  @IsDate()
+  @IsDateType()
   readonly updatedAt!: Date;
 
-  @Type(() => Date)
-  @IsDate()
+  @IsDateType()
   @IsNullable()
   readonly deletedAt!: Date | null;
 
@@ -66,15 +64,13 @@ class MyEvent implements Event {
   @IsUUID()
   readonly id!: string;
 
-  @Type(() => Date)
-  @IsDate()
+  @IsDateType()
   readonly producedAt!: Date;
 
   @IsString()
   readonly name!: string;
 
-  @Type(() => MyDocument)
-  @ValidateNested()
+  @ValidateNestedType(() => MyDocument)
   readonly data!: MyDocument;
 }
 
