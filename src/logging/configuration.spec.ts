@@ -1,4 +1,4 @@
-import type { getLoggedObjects } from '@causa/runtime/logging/testing';
+import type { getLoggedObjects } from '@causa/runtime/testing';
 import { jest } from '@jest/globals';
 import { Logger } from 'pino';
 import { googlePinoConfiguration } from './configuration.js';
@@ -13,7 +13,7 @@ describe('configuration', () => {
       '@causa/runtime'
     );
     const { spyOnLogger, getLoggedObjects } = await import(
-      '@causa/runtime/logging/testing'
+      '@causa/runtime/testing'
     );
     getLogs = getLoggedObjects;
     updatePinoConfiguration({

@@ -1,4 +1,4 @@
-import { getLoggedInfos, spyOnLogger } from '@causa/runtime/logging/testing';
+import { getLoggedInfos, spyOnLogger } from '@causa/runtime/testing';
 import { Database } from '@google-cloud/spanner';
 import { getDefaultSpannerDatabaseForCloudFunction } from './database.js';
 import { createDatabase } from './testing.js';

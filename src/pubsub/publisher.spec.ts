@@ -1,5 +1,5 @@
 import { Event } from '@causa/runtime';
-import { getLoggedErrors, spyOnLogger } from '@causa/runtime/logging/testing';
+import { getLoggedErrors, spyOnLogger } from '@causa/runtime/testing';
 import { jest } from '@jest/globals';
 import { Transform, Type } from 'class-transformer';
 import 'jest-extended';

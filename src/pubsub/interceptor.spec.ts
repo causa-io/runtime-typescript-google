@@ -1,10 +1,10 @@
 import { Event } from '@causa/runtime';
+import { EventBody, createApp } from '@causa/runtime/nestjs';
 import {
   getLoggedErrors,
   getLoggedInfos,
   spyOnLogger,
-} from '@causa/runtime/logging/testing';
-import { EventBody, createApp } from '@causa/runtime/nestjs';
+} from '@causa/runtime/testing';
 import {
   Controller,
   HttpCode,
