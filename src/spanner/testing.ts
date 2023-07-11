@@ -1,3 +1,4 @@
+import { NestJsModuleOverrider } from '@causa/runtime/nestjs/testing';
 import { Database, Instance, Spanner } from '@google-cloud/spanner';
 import * as uuid from 'uuid';
 
@@ -55,4 +56,14 @@ export async function createDatabase(
   }
 
   return database;
+}
+
+/**
+ * Returns a {@link NestJsModuleOverrider} that overrides the {@link Database} provider with the provided database.
+ *
+ * @param database The temporary database to use.
+ * @returns The {@link NestJsModuleOverrider} to override the {@link Database} provider.
+ */
+export function overrideDatabase(database: Database): NestJsModuleOverrider {
+  return (builder) => builder.overrideProvider(Database).useValue(database);
 }

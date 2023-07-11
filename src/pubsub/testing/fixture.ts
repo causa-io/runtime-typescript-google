@@ -1,8 +1,10 @@
 import { JsonObjectSerializer, ObjectSerializer } from '@causa/runtime';
+import { NestJsModuleOverrider } from '@causa/runtime/nestjs/testing';
 import { Message, PubSub, Subscription, Topic } from '@google-cloud/pubsub';
 import { setTimeout } from 'timers/promises';
 import * as uuid from 'uuid';
 import { getConfigurationKeyForTopic } from '../configuration.js';
+import { PUBSUB_PUBLISHER_CONFIGURATION_GETTER_INJECTION_NAME } from '../publisher.module.js';
 
 /**
  * The default duration (in milliseconds) after which `expectMessageInTopic` times out.
@@ -35,24 +37,35 @@ export type ReceivedPubSubEvent = {
 };
 
 /**
+ * Options for the {@link PubSubFixture.expectMessageInTopic} method.
+ */
+type ExpectMessageInTopicOptions = {
+  /**
+   * The maximum time (in milliseconds) to wait for a message before giving up.
+   * Defaults to `2000`.
+   */
+  timeout?: number;
+};
+
+/**
  * A utility class managing temporary Pub/Sub topics and listening to messages published to them.
  */
 export class PubSubFixture {
   /**
    * The Pub/Sub client to use.
    */
-  private readonly pubSub: PubSub;
+  readonly pubSub: PubSub;
 
   /**
    * The (de)serializer to use for Pub/Sub messages.
    */
-  private readonly serializer: ObjectSerializer;
+  readonly serializer: ObjectSerializer;
 
   /**
    * The dictionary of monitored temporary topics.
    * The key is the name of the event topic (not broker-specific).
    */
-  private fixtures: Record<
+  readonly fixtures: Record<
     string,
     {
       /**
@@ -111,6 +124,10 @@ export class PubSubFixture {
     const topicName = `${sourceTopicName}-${suffix}`;
     const subscriptionName = `fixture-${suffix}`;
 
+    // This ensures the project ID is populated in the Pub/Sub client.
+    // Because the configuration is cached, it should be okay to call this multiple times.
+    await this.pubSub.getClientConfig();
+
     const [topic] = await this.pubSub.createTopic(topicName);
     const [subscription] = await topic.createSubscription(subscriptionName);
 
@@ -138,6 +155,7 @@ export class PubSubFixture {
   /**
    * Creates several temporary topics and returns the configuration (environment variables) for the
    *
+   * @param topicsAndTypes A dictionary of topics and their corresponding event types.
    * @returns The configuration for Pub/Sub topics, with the IDs of the created topics.
    */
   async createMany(
@@ -153,6 +171,23 @@ export class PubSubFixture {
   }
 
   /**
+   * Uses {@link PubSubFixture.createMany} to create temporary topics and returns a {@link NestJsModuleOverrider} to
+   * override the Pub/Sub publisher configuration.
+   *
+   * @param topicsAndTypes A dictionary of topics and their corresponding event types.
+   * @returns The {@link NestJsModuleOverrider} to use to override the Pub/Sub publisher configuration.
+   */
+  async createWithOverrider(
+    topicsAndTypes: Record<string, { new (): any }>,
+  ): Promise<NestJsModuleOverrider> {
+    const configuration = await this.createMany(topicsAndTypes);
+    return (builder) =>
+      builder
+        .overrideProvider(PUBSUB_PUBLISHER_CONFIGURATION_GETTER_INJECTION_NAME)
+        .useValue((key: string) => configuration[key]);
+  }
+
+  /**
    * Checks that the given message has been published to the specified topic.
    *
    * @param sourceTopicName The original name of the event topic.
@@ -163,13 +198,7 @@ export class PubSubFixture {
   async expectMessageInTopic(
     sourceTopicName: string,
     expectedMessage: any,
-    options: {
-      /**
-       * The maximum time (in milliseconds) to wait for a message before giving up.
-       * Defaults to `2000`.
-       */
-      timeout?: number;
-    } = {},
+    options: ExpectMessageInTopicOptions = {},
   ): Promise<void> {
     const fixture = this.fixtures[sourceTopicName];
     if (!fixture) {
@@ -191,6 +220,26 @@ export class PubSubFixture {
         await setTimeout(DURATION_BETWEEN_EXPECT_ATTEMPTS);
       }
     }
+  }
+
+  /**
+   * Uses {@link PubSubFixture.expectMessageInTopic} to check that the given event has been published to the specified
+   * topic. The `expectedEvent` is the payload of the message, i.e. the `event` property.
+   *
+   * @param sourceTopicName The original name of the event topic.
+   * @param expectedEvent The event expected to have been published.
+   * @param options Options for the expectation.
+   */
+  async expectEventInTopic(
+    sourceTopicName: string,
+    expectedEvent: any,
+    options: ExpectMessageInTopicOptions = {},
+  ): Promise<void> {
+    await this.expectMessageInTopic(
+      sourceTopicName,
+      expect.objectContaining({ event: expectedEvent }),
+      options,
+    );
   }
 
   /**

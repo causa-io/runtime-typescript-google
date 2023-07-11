@@ -2,9 +2,15 @@
 
 ## Unreleased
 
+Features:
+
+- Implement the `overrideFirebaseApp`, `PubSubFixture`, `overrideDatabase` overrider utilities for testing.
+- Implement the `PubSubFixture.expectEventInTopic` testing utility.
+
 Fixes:
 
 - Export the `FirestorePubSubTransactionModule`.
+- Ensure the project ID is populated in the `PubSubFixture`.
 
 ## v0.1.0 (2023-07-10)
 

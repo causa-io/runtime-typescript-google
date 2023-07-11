@@ -1,6 +1,9 @@
+import { createApp } from '@causa/runtime/nestjs';
+import { makeTestAppFactory } from '@causa/runtime/nestjs/testing';
 import { Database, Instance, Spanner } from '@google-cloud/spanner';
+import { INestApplication, Module } from '@nestjs/common';
 import 'jest-extended';
-import { createDatabase } from './testing.js';
+import { createDatabase, overrideDatabase } from './testing.js';
 
 describe('testing', () => {
   describe('createDatabase', () => {
@@ -157,6 +160,31 @@ describe('testing', () => {
       } finally {
         await existingDatabase.delete();
         await actualDatabase.delete();
+      }
+    });
+  });
+
+  describe('overrideDatabase', () => {
+    it('should return an overrider that overrides the database', async () => {
+      const existingDatabase = { db: '🗃️' };
+      @Module({
+        providers: [{ provide: Database, useValue: existingDatabase }],
+      })
+      class MyModule {}
+      const expectedDatabase = { db: '🤡' } as any;
+
+      let app: INestApplication | undefined;
+      try {
+        app = await createApp(MyModule, {
+          appFactory: makeTestAppFactory({
+            overrides: overrideDatabase(expectedDatabase),
+          }),
+        });
+
+        const actualDatabase = app.get(Database);
+        expect(actualDatabase).toEqual(expectedDatabase);
+      } finally {
+        await app?.close();
       }
     });
   });

@@ -96,6 +96,13 @@ describe('PubSubPublisher', () => {
           data: { someProp: 'HELLO' },
         },
       });
+      // Tests the same thing using the simpler `expectEventInTopic`.
+      await fixture.expectEventInTopic('my.awesome-topic.v1', {
+        id: '1234',
+        producedAt: event.producedAt,
+        name: 'my-event',
+        data: { someProp: 'HELLO' },
+      });
     });
 
     it('should publish an event with custom attributes and key', async () => {
