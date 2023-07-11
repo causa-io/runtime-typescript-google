@@ -1,8 +1,10 @@
 import { JsonObjectSerializer, ObjectSerializer } from '@causa/runtime';
+import { NestJsModuleOverrider } from '@causa/runtime/nestjs/testing';
 import { Message, PubSub, Subscription, Topic } from '@google-cloud/pubsub';
 import { setTimeout } from 'timers/promises';
 import * as uuid from 'uuid';
 import { getConfigurationKeyForTopic } from '../configuration.js';
+import { PUBSUB_PUBLISHER_CONFIGURATION_GETTER_INJECTION_NAME } from '../publisher.module.js';
 
 /**
  * The default duration (in milliseconds) after which `expectMessageInTopic` times out.
@@ -52,18 +54,18 @@ export class PubSubFixture {
   /**
    * The Pub/Sub client to use.
    */
-  private readonly pubSub: PubSub;
+  readonly pubSub: PubSub;
 
   /**
    * The (de)serializer to use for Pub/Sub messages.
    */
-  private readonly serializer: ObjectSerializer;
+  readonly serializer: ObjectSerializer;
 
   /**
    * The dictionary of monitored temporary topics.
    * The key is the name of the event topic (not broker-specific).
    */
-  private fixtures: Record<
+  readonly fixtures: Record<
     string,
     {
       /**
@@ -149,6 +151,7 @@ export class PubSubFixture {
   /**
    * Creates several temporary topics and returns the configuration (environment variables) for the
    *
+   * @param topicsAndTypes A dictionary of topics and their corresponding event types.
    * @returns The configuration for Pub/Sub topics, with the IDs of the created topics.
    */
   async createMany(
@@ -161,6 +164,23 @@ export class PubSubFixture {
     );
 
     return Object.assign({}, ...configurations);
+  }
+
+  /**
+   * Uses {@link PubSubFixture.createMany} to create temporary topics and returns a {@link NestJsModuleOverrider} to
+   * override the Pub/Sub publisher configuration.
+   *
+   * @param topicsAndTypes A dictionary of topics and their corresponding event types.
+   * @returns The {@link NestJsModuleOverrider} to use to override the Pub/Sub publisher configuration.
+   */
+  async createWithOverrider(
+    topicsAndTypes: Record<string, { new (): any }>,
+  ): Promise<NestJsModuleOverrider> {
+    const configuration = await this.createMany(topicsAndTypes);
+    return (builder) =>
+      builder
+        .overrideProvider(PUBSUB_PUBLISHER_CONFIGURATION_GETTER_INJECTION_NAME)
+        .useValue((key: string) => configuration[key]);
   }
 
   /**

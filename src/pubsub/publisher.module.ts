@@ -6,6 +6,12 @@ import { PinoLogger } from 'nestjs-pino';
 import { PubSubPublisher, PubSubPublisherOptions } from './publisher.js';
 
 /**
+ * The name of the injection key used to provide the {@link PubSubPublisherOptions.configurationGetter}.
+ */
+export const PUBSUB_PUBLISHER_CONFIGURATION_GETTER_INJECTION_NAME =
+  'CAUSA_PUBSUB_PUBLISHER_CONFIGURATION_GETTER';
+
+/**
  * A NestJS module that provides a {@link PubSubPublisher} as the event publisher.
  */
 export class PubSubPublisherModule {
@@ -23,19 +29,29 @@ export class PubSubPublisherModule {
       providers: [
         { provide: PubSub, useValue: new PubSub() },
         {
+          provide: PUBSUB_PUBLISHER_CONFIGURATION_GETTER_INJECTION_NAME,
+          useFactory: (configService: ConfigService) => (key: string) =>
+            configService.get(key),
+          inject: [ConfigService],
+        },
+        {
           provide: PubSubPublisher,
           useFactory: (
             pubSub: PubSub,
-            configService: ConfigService,
-            logger: PinoLogger,
+            configurationGetter: (key: string) => string | undefined,
+            { logger }: PinoLogger,
           ) =>
             new PubSubPublisher({
               ...options,
               pubSub,
-              configurationGetter: (key) => configService.get(key),
-              logger: logger.logger,
+              configurationGetter,
+              logger,
             }),
-          inject: [PubSub, ConfigService, PinoLogger],
+          inject: [
+            PubSub,
+            PUBSUB_PUBLISHER_CONFIGURATION_GETTER_INJECTION_NAME,
+            PinoLogger,
+          ],
         },
         {
           provide: EVENT_PUBLISHER_INJECTION_NAME,

@@ -53,6 +53,7 @@ describe('PubSubPublisherModule', () => {
     expect((actualPublisher as any).logger).toBe(logger.logger);
     const actualTopic = (actualPublisher as any).getTopic('my.topic.v1');
     expect(actualTopic).toBeInstanceOf(Topic);
+    expect(actualTopic.name).toEqual('projects/my-project/topics/my-topic');
   });
 
   it('should expose the PubSubPublisher as is', async () => {

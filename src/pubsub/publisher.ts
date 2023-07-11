@@ -59,12 +59,12 @@ export class PubSubPublisher implements EventPublisher, OnApplicationShutdown {
   /**
    * The {@link PubSub} client to use.
    */
-  private readonly pubSub: PubSub;
+  readonly pubSub: PubSub;
 
   /**
    * The serializer to use to convert events to buffers.
    */
-  private readonly serializer: ObjectSerializer;
+  readonly serializer: ObjectSerializer;
 
   /**
    * A function to get the configuration value for a given key.
@@ -80,13 +80,13 @@ export class PubSubPublisher implements EventPublisher, OnApplicationShutdown {
   /**
    * The logger to use.
    */
-  private readonly logger: Logger;
+  readonly logger: Logger;
 
   /**
    * The options to use when publishing messages.
    * This is used to instantiate the Pub/Sub {@link Topic}s.
    */
-  private readonly publishOptions: TopicPublishOptions | undefined;
+  readonly publishOptions: TopicPublishOptions | undefined;
 
   /**
    * Creates a new {@link PubSubPublisher}.
