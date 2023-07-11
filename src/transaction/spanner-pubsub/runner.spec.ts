@@ -1,13 +1,14 @@
 import {
   Event,
+  IsDateType,
   IsNullable,
   TransactionOldTimestampError,
+  ValidateNestedType,
   VersionedEntity,
   VersionedEntityManager,
 } from '@causa/runtime';
 import { Database } from '@google-cloud/spanner';
-import { Type } from 'class-transformer';
-import { IsDate, IsString, IsUUID, ValidateNested } from 'class-validator';
+import { IsString, IsUUID } from 'class-validator';
 import { PubSubPublisher } from '../../pubsub/index.js';
 import {
   SpannerColumn,
@@ -29,18 +30,15 @@ class MyEntity implements VersionedEntity {
   readonly id!: string;
 
   @SpannerColumn()
-  @Type(() => Date)
-  @IsDate()
+  @IsDateType()
   readonly createdAt!: Date;
 
   @SpannerColumn()
-  @Type(() => Date)
-  @IsDate()
+  @IsDateType()
   readonly updatedAt!: Date;
 
   @SpannerColumn()
-  @Type(() => Date)
-  @IsDate()
+  @IsDateType()
   @IsNullable()
   readonly deletedAt!: Date | null;
 
@@ -63,15 +61,13 @@ class MyEvent implements Event {
   @IsUUID()
   readonly id!: string;
 
-  @Type(() => Date)
-  @IsDate()
+  @IsDateType()
   readonly producedAt!: Date;
 
   @IsString()
   readonly name!: string;
 
-  @Type(() => MyEntity)
-  @ValidateNested()
+  @ValidateNestedType(() => MyEntity)
   readonly data!: MyEntity;
 }
 

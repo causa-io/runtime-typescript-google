@@ -1,4 +1,4 @@
-import { Event } from '@causa/runtime';
+import { Event, IsDateType, ValidateNestedType } from '@causa/runtime';
 import { EventBody, createApp } from '@causa/runtime/nestjs';
 import {
   getLoggedErrors,
@@ -13,8 +13,7 @@ import {
   Module,
   Post,
 } from '@nestjs/common';
-import { Type } from 'class-transformer';
-import { IsDate, IsString, ValidateNested } from 'class-validator';
+import { IsString } from 'class-validator';
 import { PinoLogger } from 'nestjs-pino';
 import supertest from 'supertest';
 import { PubSubEventHandlerModule } from './interceptor.module.js';
@@ -43,15 +42,13 @@ class MyEvent implements Event {
   @IsString()
   id!: string;
 
-  @IsDate()
-  @Type(() => Date)
+  @IsDateType()
   producedAt!: Date;
 
   @IsString()
   name!: string;
 
-  @ValidateNested()
-  @Type(() => MyData)
+  @ValidateNestedType(() => MyData)
   data!: MyData;
 }
 

@@ -1,19 +1,17 @@
-import { AllowMissing, ValidationError, parseObject } from '@causa/runtime';
+import {
+  AllowMissing,
+  IsDateType,
+  ValidateNestedType,
+  ValidationError,
+  parseObject,
+} from '@causa/runtime';
 import {
   BadRequestError,
   BaseEventHandlerInterceptor,
   ParsedEventRequest,
 } from '@causa/runtime/nestjs';
 import { ExecutionContext, Injectable } from '@nestjs/common';
-import { Type } from 'class-transformer';
-import {
-  IsBase64,
-  IsDate,
-  IsDefined,
-  IsObject,
-  IsString,
-  ValidateNested,
-} from 'class-validator';
+import { IsBase64, IsObject, IsString } from 'class-validator';
 
 /**
  * A Pub/Sub message.
@@ -29,8 +27,7 @@ class PubSubMessage {
   /**
    * The date at which Pub/Sub received and published the message.
    */
-  @IsDate()
-  @Type(() => Date)
+  @IsDateType()
   readonly publishTime!: Date;
 
   /**
@@ -54,9 +51,7 @@ class PubSubMessagePayload {
   /**
    * The pushed message.
    */
-  @Type(() => PubSubMessage)
-  @ValidateNested()
-  @IsDefined()
+  @ValidateNestedType(() => PubSubMessage)
   readonly message!: PubSubMessage;
 
   /**
