@@ -35,6 +35,17 @@ export type ReceivedPubSubEvent = {
 };
 
 /**
+ * Options for the {@link PubSubFixture.expectMessageInTopic} method.
+ */
+type ExpectMessageInTopicOptions = {
+  /**
+   * The maximum time (in milliseconds) to wait for a message before giving up.
+   * Defaults to `2000`.
+   */
+  timeout?: number;
+};
+
+/**
  * A utility class managing temporary Pub/Sub topics and listening to messages published to them.
  */
 export class PubSubFixture {
@@ -163,13 +174,7 @@ export class PubSubFixture {
   async expectMessageInTopic(
     sourceTopicName: string,
     expectedMessage: any,
-    options: {
-      /**
-       * The maximum time (in milliseconds) to wait for a message before giving up.
-       * Defaults to `2000`.
-       */
-      timeout?: number;
-    } = {},
+    options: ExpectMessageInTopicOptions = {},
   ): Promise<void> {
     const fixture = this.fixtures[sourceTopicName];
     if (!fixture) {
@@ -191,6 +196,26 @@ export class PubSubFixture {
         await setTimeout(DURATION_BETWEEN_EXPECT_ATTEMPTS);
       }
     }
+  }
+
+  /**
+   * Uses {@link PubSubFixture.expectMessageInTopic} to check that the given event has been published to the specified
+   * topic. The `expectedEvent` is the payload of the message, i.e. the `event` property.
+   *
+   * @param sourceTopicName The original name of the event topic.
+   * @param expectedEvent The event expected to have been published.
+   * @param options Options for the expectation.
+   */
+  async expectEventInTopic(
+    sourceTopicName: string,
+    expectedEvent: any,
+    options: ExpectMessageInTopicOptions = {},
+  ): Promise<void> {
+    await this.expectMessageInTopic(
+      sourceTopicName,
+      expect.objectContaining({ event: expectedEvent }),
+      options,
+    );
   }
 
   /**
