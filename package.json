@@ -29,7 +29,7 @@
     "test:cov": "npm run test -- --coverage"
   },
   "dependencies": {
-    "@causa/runtime": ">= 0.3.0 < 1.0.0",
+    "@causa/runtime": ">= 0.3.1 < 1.0.0",
     "@google-cloud/precise-date": "^3.0.1",
     "@google-cloud/pubsub": "^3.7.1",
     "@google-cloud/spanner": "^6.12.0",
