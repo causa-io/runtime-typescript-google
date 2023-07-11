@@ -1,7 +1,7 @@
 import { User } from '@causa/runtime';
-import { getLoggedWarnings, spyOnLogger } from '@causa/runtime/logging/testing';
 import { AuthModule, AuthUser, createApp } from '@causa/runtime/nestjs';
 import { makeTestAppFactory } from '@causa/runtime/nestjs/testing';
+import { getLoggedWarnings, spyOnLogger } from '@causa/runtime/testing';
 import { Controller, Get, INestApplication, Module } from '@nestjs/common';
 import supertest from 'supertest';
 import { setTimeout } from 'timers/promises';

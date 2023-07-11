@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+Fixes:
+
+- Export the `FirestorePubSubTransactionModule`.
+
 ## v0.1.0 (2023-07-10)
 
 Features:

@@ -1,5 +1,5 @@
-import { getLoggedWarnings, spyOnLogger } from '@causa/runtime/logging/testing';
 import { createApp } from '@causa/runtime/nestjs';
+import { getLoggedWarnings, spyOnLogger } from '@causa/runtime/testing';
 import { jest } from '@jest/globals';
 import { Controller, Get, INestApplication, Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';

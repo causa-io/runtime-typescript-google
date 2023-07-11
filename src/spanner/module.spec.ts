@@ -1,6 +1,6 @@
-import { getLoggedInfos, spyOnLogger } from '@causa/runtime/logging/testing';
 import { LoggerModule } from '@causa/runtime/nestjs';
 import { createMockConfigService } from '@causa/runtime/nestjs/testing';
+import { getLoggedInfos, spyOnLogger } from '@causa/runtime/testing';
 import { Database } from '@google-cloud/spanner';
 import { Injectable } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
