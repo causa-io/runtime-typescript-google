@@ -22,6 +22,9 @@ class MyEntity {
 
   @SpannerColumn()
   readonly value!: string | null;
+
+  @SpannerColumn({ softDelete: true })
+  readonly deletedAt!: Date | null;
 }
 
 const SPANNER_SCHEMA = [
@@ -29,6 +32,7 @@ const SPANNER_SCHEMA = [
   id1 STRING(36) NOT NULL,
   id2 STRING(36) NOT NULL,
   value STRING(MAX),
+  deletedAt TIMESTAMP,
 ) PRIMARY KEY (id1, id2)`,
 ];
 
@@ -54,7 +58,12 @@ describe('SpannerStateTransaction', () => {
 
   describe('replace', () => {
     it('should replace the entity', async () => {
-      const entity = new MyEntity({ id1: 'id1', id2: 'id2', value: '🌠' });
+      const entity = new MyEntity({
+        id1: 'id1',
+        id2: 'id2',
+        value: '🌠',
+        deletedAt: new Date(),
+      });
       await entityManager.insert(entity);
 
       await entityManager.transaction(async (spannerTransaction) => {
@@ -69,11 +78,21 @@ describe('SpannerStateTransaction', () => {
         'id1',
         'id2',
       ]);
-      expect(actualEntity).toEqual({ id1: 'id1', id2: 'id2', value: null });
+      expect(actualEntity).toEqual({
+        id1: 'id1',
+        id2: 'id2',
+        value: null,
+        deletedAt: null,
+      });
     });
 
     it('should use the transaction', async () => {
-      const entity = new MyEntity({ id1: 'id1', id2: 'id2', value: '🌠' });
+      const entity = new MyEntity({
+        id1: 'id1',
+        id2: 'id2',
+        value: '🌠',
+        deletedAt: null,
+      });
       await entityManager.insert(entity);
 
       await database.runTransactionAsync(async (spannerTransaction) => {
@@ -133,8 +152,40 @@ describe('SpannerStateTransaction', () => {
       expect(actualPromise).rejects.toThrow(EntityNotFoundError);
     });
 
+    it('should delete a soft deleted entity', async () => {
+      const entity = new MyEntity({
+        id1: 'id1',
+        id2: 'id2',
+        value: '🌠',
+        deletedAt: new Date(),
+      });
+      await entityManager.insert(entity);
+
+      await entityManager.transaction(async (spannerTransaction) => {
+        const transaction = new SpannerStateTransaction(
+          entityManager,
+          spannerTransaction,
+        );
+        await transaction.deleteWithSameKeyAs(MyEntity, {
+          id1: 'id1',
+          id2: 'id2',
+        });
+      });
+
+      const actualEntity = await entityManager.findOneByKey(MyEntity, [
+        'id1',
+        'id2',
+      ]);
+      expect(actualEntity).toBeUndefined();
+    });
+
     it('should use the transaction', async () => {
-      const entity = new MyEntity({ id1: 'id1', id2: 'id2', value: '🌠' });
+      const entity = new MyEntity({
+        id1: 'id1',
+        id2: 'id2',
+        value: '🌠',
+        deletedAt: null,
+      });
       await entityManager.insert(entity);
 
       await database.runTransactionAsync(async (spannerTransaction) => {
@@ -159,7 +210,12 @@ describe('SpannerStateTransaction', () => {
 
   describe('findOneWithSameKeyAs', () => {
     it('should find the entity', async () => {
-      const entity = new MyEntity({ id1: 'id1', id2: 'id2', value: '🌠' });
+      const entity = new MyEntity({
+        id1: 'id1',
+        id2: 'id2',
+        value: '🌠',
+        deletedAt: null,
+      });
       await entityManager.insert(entity);
 
       const actualEntity = await entityManager.transaction(
@@ -193,6 +249,31 @@ describe('SpannerStateTransaction', () => {
       );
 
       expect(actualEntity).toBeUndefined();
+    });
+
+    it('should return a soft deleted entity', async () => {
+      const entity = new MyEntity({
+        id1: 'id1',
+        id2: 'id2',
+        value: '🌠',
+        deletedAt: new Date(),
+      });
+      await entityManager.insert(entity);
+
+      const actualEntity = await entityManager.transaction(
+        async (spannerTransaction) => {
+          const transaction = new SpannerStateTransaction(
+            entityManager,
+            spannerTransaction,
+          );
+          return await transaction.findOneWithSameKeyAs(MyEntity, {
+            id1: 'id1',
+            id2: 'id2',
+          });
+        },
+      );
+
+      expect(actualEntity).toEqual(entity);
     });
 
     it('should use the transaction', async () => {

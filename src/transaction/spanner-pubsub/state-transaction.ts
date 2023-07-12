@@ -29,6 +29,7 @@ export class SpannerStateTransaction implements FindReplaceStateTransaction {
 
     await this.entityManager.delete(type, primaryKey, {
       transaction: this.transaction,
+      includeSoftDeletes: true,
     });
   }
 
@@ -40,6 +41,7 @@ export class SpannerStateTransaction implements FindReplaceStateTransaction {
 
     return await this.entityManager.findOneByKey(type, primaryKey, {
       transaction: this.transaction,
+      includeSoftDeletes: true,
     });
   }
 }
