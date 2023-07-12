@@ -63,7 +63,7 @@ describe('NestJsFirestoreCollectionResolver', () => {
     let builder = Test.createTestingModule({
       imports: [GlobalModule, MyModule],
     });
-    builder = overrideFirestoreCollections(builder, MyDocument);
+    builder = overrideFirestoreCollections(MyDocument)(builder);
     testModule = await builder.compile();
     firestore = testModule.get(Firestore);
     activeCollection = testModule.get(
