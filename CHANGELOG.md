@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.2.0 (2023-07-12)
+
 Features:
 
 - Implement the `overrideFirebaseApp`, `PubSubFixture`, `overrideDatabase` overrider utilities for testing.
