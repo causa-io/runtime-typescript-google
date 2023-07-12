@@ -12,6 +12,7 @@ import {
 import { convertSpannerToEntityError } from './error-converter.js';
 import {
   EntityMissingPrimaryKeyError,
+  InvalidArgumentError,
   TransactionFinishedError,
 } from './errors.js';
 import { SpannerTableCache } from './table-cache.js';
@@ -105,6 +106,12 @@ type FindOptions = ReadOperationOptions & {
    * The columns to fetch. If not provided, all columns will be fetched.
    */
   columns?: string[];
+
+  /**
+   * If `true`, soft-deleted entities will be included in the results.
+   * Defaults to `false`.
+   */
+  includeSoftDeletes?: boolean;
 };
 
 /**
@@ -176,10 +183,46 @@ export class SpannerEntityManager {
   }
 
   /**
+   * Returns the (quoted) name of the table for the given entity type.
+   *
+   * @param entityTypeOrTable The type of entity, or the unquoted table name.
+   * @returns The name of the table, quoted with backticks.
+   */
+  sqlTableName(entityTypeOrTable: { new (): any } | string): string {
+    if (typeof entityTypeOrTable === 'string') {
+      return `\`${entityTypeOrTable}\``;
+    }
+
+    return this.tableCache.getMetadata(entityTypeOrTable).quotedTableName;
+  }
+
+  /**
+   * Returns the (quoted) list of columns for the given entity type or list of columns.
+   *
+   * If a type is provided, all columns are included.
+   * If a list of columns is provided, they are assumed to be unquoted.
+   *
+   * @param entityTypeOrColumns The type of entity, or the unquoted list of columns.
+   * @returns The list of columns, quoted with backticks and joined.
+   */
+  sqlColumns(entityTypeOrColumns: { new (): any } | string[]): string {
+    if (Array.isArray(entityTypeOrColumns)) {
+      return entityTypeOrColumns.map((c) => `\`${c}\``).join(', ');
+    }
+
+    return this.tableCache.getMetadata(entityTypeOrColumns).quotedColumns;
+  }
+
+  /**
    * Fetches a single row from the database using its key (either primary or for a secondary index).
+   *
    * If a secondary index is specified but not the columns to fetch, all the columns will be returned by performing an
    * additional read. To avoid this, specify the columns to fetch. Those columns should be part of the primary key, the
    * indexed columns, or the stored columns of the index.
+   *
+   * By default, soft-deleted entities will not be returned. To include them, set `includeSoftDeletes` to `true`. This
+   * also means that the soft delete column should be included in the columns to fetch unless `includeSoftDeletes` is
+   * set to `true`.
    *
    * @param entityType The type of entity to fetch. Used to determine the table name and columns to fetch.
    * @param key The key of the entity to fetch. This can be the primary key, or the key of a secondary index.
@@ -199,6 +242,7 @@ export class SpannerEntityManager {
       tableName,
       columns: allColumns,
       primaryKeyColumns,
+      softDeleteColumn,
     } = this.tableCache.getMetadata(entityType);
     const columns =
       options.columns ?? (options.index ? primaryKeyColumns : allColumns);
@@ -214,7 +258,7 @@ export class SpannerEntityManager {
           jsonOptions: { wrapNumbers: true },
           index: options.index,
         });
-        const row = rows[0];
+        const row: Record<string, any> = rows[0];
 
         if (row && options.index && !options.columns) {
           const primaryKey = this.getPrimaryKeyForSpannerObject(
@@ -226,6 +270,17 @@ export class SpannerEntityManager {
           });
         }
 
+        if (row && softDeleteColumn && !options.includeSoftDeletes) {
+          const value = row[softDeleteColumn];
+          if (value) {
+            return undefined;
+          } else if (value === undefined) {
+            throw new InvalidArgumentError(
+              `The soft delete column should be included in the columns to fetch, or 'includeSoftDeletes' should be set to true.`,
+            );
+          }
+        }
+
         return row;
       },
     );
@@ -233,9 +288,14 @@ export class SpannerEntityManager {
 
   /**
    * Fetches a single entity from the database using its key (either primary or for a secondary index).
+   *
    * If a secondary index is specified but not the columns to fetch, all the columns will be returned by performing an
    * additional read. To avoid this, specify the columns to fetch. Those columns should be part of the primary key, the
    * indexed columns, or the stored columns of the index.
+   *
+   * By default, soft-deleted entities will not be returned. To include them, set `includeSoftDeletes` to `true`. This
+   * also means that the soft delete column should be included in the columns to fetch unless `includeSoftDeletes` is
+   * set to `true`.
    *
    * @param entityType The type of entity to return.
    * @param key The key of the entity to return. This can be the primary key, or the key of a secondary index.
@@ -427,7 +487,7 @@ export class SpannerEntityManager {
 
   /**
    * Inserts the given entity into the database.
-   * If the entity already exists, an error will be thrown.
+   * If the entity already exists (including if it is soft-deleted), an error will be thrown.
    *
    * @param entity The entity to insert.
    * @param options Options for the operation.
@@ -470,9 +530,15 @@ export class SpannerEntityManager {
 
   /**
    * Updates the given entity in the database.
+   *
    * The update should also contain the primary key of the entity.
+   *
    * Unless `upsert` is set to `true`, an error will be thrown if the entity does not exist.
    * When `upsert` is `true`, all non-nullable columns must be present in the update.
+   *
+   * `includeSoftDeletes` can be set to `true` to update soft-deleted entities. If `includeSoftDeletes` is `false` (the
+   * default), soft-deleted entities will not be updated, resulting in either an error or an insert, depending on the
+   * value of `upsert`.
    *
    * @param entityType The type of entity to update.
    * @param update The columns to update, as well as the primary key.
@@ -482,18 +548,19 @@ export class SpannerEntityManager {
   async update<T>(
     entityType: { new (): T },
     update: RecursivePartialEntity<T>,
-    options: WriteOperationOptions & {
-      /**
-       * A function that will be called with the entity before it is updated.
-       * This function can throw an error to prevent the update.
-       */
-      validateFn?: (entity: T) => void;
+    options: WriteOperationOptions &
+      Pick<FindOptions, 'includeSoftDeletes'> & {
+        /**
+         * A function that will be called with the entity before it is updated.
+         * This function can throw an error to prevent the update.
+         */
+        validateFn?: (entity: T) => void;
 
-      /**
-       * If `true`, the entity will be inserted if it does not exist.
-       */
-      upsert?: boolean;
-    } = {},
+        /**
+         * If `true`, the entity will be inserted if it does not exist.
+         */
+        upsert?: boolean;
+      } = {},
   ): Promise<T> {
     const primaryKey = this.getPrimaryKey(update, entityType);
     const { tableName } = this.tableCache.getMetadata(entityType);
@@ -503,6 +570,7 @@ export class SpannerEntityManager {
       async (transaction) => {
         const existingEntity = await this.findOneByKey(entityType, primaryKey, {
           transaction,
+          includeSoftDeletes: options.includeSoftDeletes,
         });
 
         let updatedInstance: T;
@@ -531,6 +599,8 @@ export class SpannerEntityManager {
   /**
    * Deletes the given entity from the database, or throws an error if it does not exist.
    *
+   * To "hard-delete" an already soft-deleted entity, set `includeSoftDeletes` to `true`.
+   *
    * @param entityType The type of entity to delete.
    * @param key The primary key of the entity to delete.
    * @param options Options for the operation.
@@ -539,13 +609,14 @@ export class SpannerEntityManager {
   async delete<T>(
     entityType: { new (): T },
     key: SpannerKey | SpannerKey[number],
-    options: WriteOperationOptions & {
-      /**
-       * A function that will be called with the entity before it is deleted.
-       * This function can throw an error to prevent the deletion.
-       */
-      validateFn?: (entity: T) => void;
-    } = {},
+    options: WriteOperationOptions &
+      Pick<FindOptions, 'includeSoftDeletes'> & {
+        /**
+         * A function that will be called with the entity before it is deleted.
+         * This function can throw an error to prevent the deletion.
+         */
+        validateFn?: (entity: T) => void;
+      } = {},
   ): Promise<T> {
     if (!Array.isArray(key)) {
       key = [key];
@@ -557,6 +628,7 @@ export class SpannerEntityManager {
       async (transaction) => {
         const existingEntity = await this.findOneByKeyOrFail(entityType, key, {
           transaction,
+          includeSoftDeletes: options.includeSoftDeletes,
         });
 
         if (options.validateFn) {

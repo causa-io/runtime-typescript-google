@@ -40,7 +40,7 @@ describe('SpannerColumn', () => {
     @SpannerColumn({ isInt: true })
     smallIntNumberColumn!: number;
 
-    @SpannerColumn()
+    @SpannerColumn({ softDelete: true })
     regularDateColumn!: Date;
 
     @SpannerColumn({ isPreciseDate: true })
@@ -80,7 +80,7 @@ describe('SpannerColumn', () => {
         regularNumberColumn: { isBigInt: false, isInt: false },
         smallIntNumberColumn: { isInt: true },
         preciseDateColumn: { isPreciseDate: true },
-        regularDateColumn: { isPreciseDate: false },
+        regularDateColumn: { isPreciseDate: false, softDelete: true },
         jsonColumn: { isJson: true },
         jsonArrayColumn: { isJson: true },
       });

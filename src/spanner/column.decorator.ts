@@ -8,7 +8,7 @@ const SPANNER_COLUMN_METADATA_KEY = 'CAUSA_SPANNER_COLUMNS';
 /**
  * Metadata for a single column/property of a Spanner table.
  */
-export interface SpannerColumnMetadata {
+export type SpannerColumnMetadata = {
   /**
    * The name of the Spanner column for this property.
    */
@@ -44,7 +44,13 @@ export interface SpannerColumnMetadata {
    * When `true`, the column is of JSON type and will be stringified before being sent to Spanner.
    */
   isJson: boolean;
-}
+
+  /**
+   * If `true`, declares this column as a soft delete column, which has a truthy value when the row is (soft) deleted.
+   * It cannot be a column in a nested object.
+   */
+  softDelete: boolean;
+};
 
 /**
  * A dictionary of column metadata, where keys are class property names and values are the metadata.
@@ -71,6 +77,7 @@ export function SpannerColumn(options: Partial<SpannerColumnMetadata> = {}) {
       isBigInt: options.isBigInt ?? false,
       isPreciseDate: options.isPreciseDate ?? false,
       isJson: options.isJson ?? false,
+      softDelete: options.softDelete ?? false,
     };
 
     Reflect.defineMetadata(

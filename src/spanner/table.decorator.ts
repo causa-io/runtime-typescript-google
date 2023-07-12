@@ -8,7 +8,7 @@ const SPANNER_TABLE_METADATA_KEY = 'CAUSA_SPANNER_TABLE';
 /**
  * Metadata for a Spanner table.
  */
-export interface SpannerTableMetadata {
+export type SpannerTableMetadata = {
   /**
    * The name of the Spanner table.
    */
@@ -18,7 +18,7 @@ export interface SpannerTableMetadata {
    * The (ordered) list of columns in the class defining the primary key.
    */
   primaryKey: string[];
-}
+};
 
 /**
  * Defines the decorated class as a Spanner table.
