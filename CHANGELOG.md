@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.3.0 (2023-07-12)
+
 Breaking changes:
 
 - Make the `overrideFirestoreCollections` testing utility return a `NestJsModuleOverrider`, for consistency with other overrides.
