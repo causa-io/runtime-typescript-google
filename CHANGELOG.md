@@ -8,6 +8,7 @@ Features:
 - Implement the `PubSubFixture.expectEventInTopic` testing utility.
 - Support a soft delete column in the `SpannerColumn` decorator and `SpannerEntityManager`.
 - Implement `sqlTableName` and `sqlColumns` utilities in the `SpannerEntityManager`.
+- Implement the `GoogleHealthcheckModule`.
 
 Fixes:
 
