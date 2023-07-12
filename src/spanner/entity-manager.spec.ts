@@ -93,6 +93,19 @@ class ParentEntity {
   child!: ChildEntity | null;
 }
 
+@SpannerTable({ primaryKey: ['id'] })
+class SoftDeleteEntity {
+  constructor(data: Partial<SoftDeleteEntity> = {}) {
+    Object.assign(this, data);
+  }
+
+  @SpannerColumn()
+  id!: string;
+
+  @SpannerColumn({ softDelete: true })
+  deletedAt!: Date | null;
+}
+
 const TEST_SCHEMA = [
   `CREATE TABLE MyEntity (
     id STRING(MAX) NOT NULL,
@@ -113,6 +126,10 @@ const TEST_SCHEMA = [
     id STRING(MAX) NOT NULL,
     child_someJson JSON,
     child_otherValue STRING(MAX)
+  ) PRIMARY KEY (id)`,
+  `CREATE TABLE SoftDeleteEntity (
+    id STRING(MAX) NOT NULL,
+    deletedAt TIMESTAMP
   ) PRIMARY KEY (id)`,
 ];
 
@@ -136,6 +153,8 @@ describe('SpannerEntityManager', () => {
       await manager.clear(SomeEntity, { transaction });
       await manager.clear(IntEntity, { transaction });
       await manager.clear(IndexedEntity, { transaction });
+      await manager.clear(ParentEntity, { transaction });
+      await manager.clear(SoftDeleteEntity, { transaction });
     });
   });
 
@@ -634,6 +653,31 @@ describe('SpannerEntityManager', () => {
       expect(actualEntity).toBeInstanceOf(SomeEntity);
     });
 
+    it('should return undefined when the entity is soft deleted', async () => {
+      await database
+        .table('SoftDeleteEntity')
+        .insert({ id: '1', deletedAt: new Date() });
+
+      const actualEntity = await manager.findOneByKey(SoftDeleteEntity, '1');
+
+      expect(actualEntity).toBeUndefined();
+    });
+
+    it('should return the entity when the entity is soft deleted and soft deletes are included', async () => {
+      const expectedEntity = new SoftDeleteEntity({
+        id: '1',
+        deletedAt: new Date(),
+      });
+      await database.table('SoftDeleteEntity').insert(expectedEntity);
+
+      const actualEntity = await manager.findOneByKey(SoftDeleteEntity, '1', {
+        includeSoftDeletes: true,
+      });
+
+      expect(actualEntity).toEqual(expectedEntity);
+      expect(actualEntity).toBeInstanceOf(SoftDeleteEntity);
+    });
+
     it('should only return the specified columns', async () => {
       await database.table('MyEntity').insert({ id: '1', value: '🎁' });
 
@@ -643,6 +687,33 @@ describe('SpannerEntityManager', () => {
 
       expect(actualEntity).toEqual({ value: '🎁' });
       expect(actualEntity).toBeInstanceOf(SomeEntity);
+    });
+
+    it('should throw the the specified columns do not include the soft delete column', async () => {
+      await database
+        .table('SoftDeleteEntity')
+        .insert({ id: '1', deletedAt: new Date() });
+
+      const actualPromise = manager.findOneByKey(SoftDeleteEntity, '1', {
+        columns: ['id'],
+      });
+
+      await expect(actualPromise).rejects.toThrow(InvalidArgumentError);
+    });
+
+    it('should return the columns for the entity when it is soft deleted and soft deletes are included', async () => {
+      await database.table('SoftDeleteEntity').insert({
+        id: '1',
+        deletedAt: new Date(),
+      });
+
+      const actualEntity = await manager.findOneByKey(SoftDeleteEntity, '1', {
+        includeSoftDeletes: true,
+        columns: ['id'],
+      });
+
+      expect(actualEntity).toEqual({ id: '1' });
+      expect(actualEntity).toBeInstanceOf(SoftDeleteEntity);
     });
 
     it('should look up the entity using the provided index', async () => {
@@ -857,6 +928,42 @@ describe('SpannerEntityManager', () => {
       });
     });
 
+    it('should throw if the entity is soft deleted', async () => {
+      await database
+        .table('SoftDeleteEntity')
+        .insert({ id: '1', deletedAt: new Date() });
+
+      const actualPromise = manager.update(SoftDeleteEntity, {
+        id: '1',
+        deletedAt: new Date(),
+      });
+
+      await expect(actualPromise).rejects.toThrow(EntityNotFoundError);
+    });
+
+    it('should update the entity when the entity is soft deleted and soft deletes are included', async () => {
+      await database.table('SoftDeleteEntity').insert({
+        id: '1',
+        deletedAt: new Date('2000-01-01'),
+      });
+      const expectedDeletedAt = new Date('2999-01-01');
+
+      const actualEntity = await manager.update(
+        SoftDeleteEntity,
+        { id: '1', deletedAt: expectedDeletedAt },
+        { includeSoftDeletes: true },
+      );
+
+      expect(actualEntity).toEqual({ id: '1', deletedAt: expectedDeletedAt });
+      expect(actualEntity).toBeInstanceOf(SoftDeleteEntity);
+      const [actualRows] = await database.table('SoftDeleteEntity').read({
+        keys: ['1'],
+        columns: ['id', 'deletedAt'],
+        json: true,
+      });
+      expect(actualRows).toEqual([actualEntity]);
+    });
+
     it('should use the provided transaction', async () => {
       const expectedEntity = {
         id: '1',
@@ -1028,6 +1135,37 @@ describe('SpannerEntityManager', () => {
         entityType: SomeEntity,
         key: ['1'],
       });
+    });
+
+    it('should throw if the entity is soft deleted', async () => {
+      await database
+        .table('SoftDeleteEntity')
+        .insert({ id: '1', deletedAt: new Date() });
+
+      const actualPromise = manager.delete(SoftDeleteEntity, '1');
+
+      await expect(actualPromise).rejects.toThrow(EntityNotFoundError);
+    });
+
+    it('should delete the entity when the entity is soft deleted and soft deletes are included', async () => {
+      const expectedEntity = {
+        id: '1',
+        deletedAt: new Date(),
+      };
+      await database.table('SoftDeleteEntity').insert(expectedEntity);
+
+      const actualEntity = await manager.delete(SoftDeleteEntity, '1', {
+        includeSoftDeletes: true,
+      });
+
+      expect(actualEntity).toEqual(expectedEntity);
+      expect(actualEntity).toBeInstanceOf(SoftDeleteEntity);
+      const [actualRows] = await database.table('SoftDeleteEntity').read({
+        keys: ['1'],
+        columns: ['id'],
+        json: true,
+      });
+      expect(actualRows).toBeEmpty();
     });
 
     it('should use the provided transaction', async () => {
