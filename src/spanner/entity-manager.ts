@@ -183,6 +183,37 @@ export class SpannerEntityManager {
   }
 
   /**
+   * Returns the (quoted) name of the table for the given entity type.
+   *
+   * @param entityTypeOrTable The type of entity, or the unquoted table name.
+   * @returns The name of the table, quoted with backticks.
+   */
+  sqlTableName(entityTypeOrTable: { new (): any } | string): string {
+    if (typeof entityTypeOrTable === 'string') {
+      return `\`${entityTypeOrTable}\``;
+    }
+
+    return this.tableCache.getMetadata(entityTypeOrTable).quotedTableName;
+  }
+
+  /**
+   * Returns the (quoted) list of columns for the given entity type or list of columns.
+   *
+   * If a type is provided, all columns are included.
+   * If a list of columns is provided, they are assumed to be unquoted.
+   *
+   * @param entityTypeOrColumns The type of entity, or the unquoted list of columns.
+   * @returns The list of columns, quoted with backticks and joined.
+   */
+  sqlColumns(entityTypeOrColumns: { new (): any } | string[]): string {
+    if (Array.isArray(entityTypeOrColumns)) {
+      return entityTypeOrColumns.map((c) => `\`${c}\``).join(', ');
+    }
+
+    return this.tableCache.getMetadata(entityTypeOrColumns).quotedColumns;
+  }
+
+  /**
    * Fetches a single row from the database using its key (either primary or for a secondary index).
    *
    * If a secondary index is specified but not the columns to fetch, all the columns will be returned by performing an

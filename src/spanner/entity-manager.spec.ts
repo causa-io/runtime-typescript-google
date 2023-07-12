@@ -1203,4 +1203,52 @@ describe('SpannerEntityManager', () => {
       expect(actualRows).toEqual([{ id: '1' }]);
     });
   });
+
+  describe('sqlTableName', () => {
+    it('should return the quoted table name for the entity type', () => {
+      const actualTableName = manager.sqlTableName(SomeEntity);
+
+      expect(actualTableName).toEqual('`MyEntity`');
+    });
+
+    it('should return the quoted table name for a string', () => {
+      const actualTableName = manager.sqlTableName('MyTable');
+
+      expect(actualTableName).toEqual('`MyTable`');
+    });
+
+    it('should throw when the type is not a valid entity type', () => {
+      expect(() => manager.sqlTableName({} as any)).toThrow(
+        InvalidEntityDefinitionError,
+      );
+    });
+  });
+
+  describe('sqlColumns', () => {
+    it('should return the quoted column names for the entity type', () => {
+      const actualColumns = manager.sqlColumns(SomeEntity);
+
+      expect(actualColumns).toEqual('`id`, `value`');
+    });
+
+    it('should return all columns for a table with a nested type', () => {
+      const actualColumns = manager.sqlColumns(ParentEntity);
+
+      expect(actualColumns).toEqual(
+        '`id`, `child_someJson`, `child_otherValue`',
+      );
+    });
+
+    it('should return the quoted column names for a list of columns', () => {
+      const actualColumns = manager.sqlColumns(['id', 'value']);
+
+      expect(actualColumns).toEqual('`id`, `value`');
+    });
+
+    it('should throw when the type is not a valid entity type', () => {
+      expect(() => manager.sqlColumns({} as any)).toThrow(
+        InvalidEntityDefinitionError,
+      );
+    });
+  });
 });
