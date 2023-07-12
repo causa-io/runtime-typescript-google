@@ -44,6 +44,12 @@ export interface SpannerColumnMetadata {
    * When `true`, the column is of JSON type and will be stringified before being sent to Spanner.
    */
   isJson: boolean;
+
+  /**
+   * If `true`, declares this column as a soft delete column, which has a truthy value when the row is (soft) deleted.
+   * It cannot be a column in a nested object.
+   */
+  softDelete: boolean;
 }
 
 /**
@@ -71,6 +77,7 @@ export function SpannerColumn(options: Partial<SpannerColumnMetadata> = {}) {
       isBigInt: options.isBigInt ?? false,
       isPreciseDate: options.isPreciseDate ?? false,
       isJson: options.isJson ?? false,
+      softDelete: options.softDelete ?? false,
     };
 
     Reflect.defineMetadata(
