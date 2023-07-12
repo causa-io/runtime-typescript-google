@@ -62,7 +62,7 @@ describe('FirestorePubSubTransactionModule', () => {
         FirestorePubSubTransactionModule.forRoot(),
       ],
     });
-    builder = overrideFirestoreCollections(builder, MyDocument);
+    builder = overrideFirestoreCollections(MyDocument)(builder);
     testModule = await builder.compile();
   });
 

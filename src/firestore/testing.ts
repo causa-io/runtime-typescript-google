@@ -1,5 +1,5 @@
+import { NestJsModuleOverrider } from '@causa/runtime/nestjs/testing';
 import { INestApplicationContext } from '@nestjs/common';
-import { TestingModuleBuilder } from '@nestjs/testing';
 import { CollectionReference, Firestore } from 'firebase-admin/firestore';
 import * as uuid from 'uuid';
 import { getFirestoreCollectionMetadataForType } from './collection.decorator.js';
@@ -45,26 +45,26 @@ export async function clearFirestoreCollection(
 /**
  * Overrides the providers for Firestore collections with temporary collections.
  *
- * @param builder The {@link TestingModuleBuilder} used to override providers.
  * @param documentTypes The types of documents corresponding to Firestore collections, for which collections should be
  *   overridden.
- * @returns The {@link TestingModuleBuilder} with the overridden providers.
+ * @returns The {@link NestJsModuleOverrider} that can be used to override the Firestore collections.
  */
 export function overrideFirestoreCollections(
-  builder: TestingModuleBuilder,
   ...documentTypes: { new (): any }[]
-): TestingModuleBuilder {
-  documentTypes.forEach((documentType) => {
-    builder = builder
-      .overrideProvider(getFirestoreCollectionInjectionName(documentType))
-      .useFactory({
-        factory: (firestore: Firestore) =>
-          createFirestoreTemporaryCollection(firestore, documentType),
-        inject: [Firestore],
-      });
-  });
+): NestJsModuleOverrider {
+  return (builder) => {
+    documentTypes.forEach((documentType) => {
+      builder = builder
+        .overrideProvider(getFirestoreCollectionInjectionName(documentType))
+        .useFactory({
+          factory: (firestore: Firestore) =>
+            createFirestoreTemporaryCollection(firestore, documentType),
+          inject: [Firestore],
+        });
+    });
 
-  return builder;
+    return builder;
+  };
 }
 
 /**

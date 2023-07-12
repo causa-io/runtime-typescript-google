@@ -39,8 +39,7 @@ describe('testing', () => {
     it('should override the collection name with a prefix during tests', async () => {
       const testApp = await createApp(MyModule, {
         appFactory: makeTestAppFactory({
-          overrides: (builder) =>
-            overrideFirestoreCollections(builder, MyDocument),
+          overrides: overrideFirestoreCollections(MyDocument),
         }),
       });
       const testService = testApp.get(TestService);
@@ -64,8 +63,7 @@ describe('testing', () => {
     it('should retrieve the collection from the test module', async () => {
       const testApp = await createApp(MyModule, {
         appFactory: makeTestAppFactory({
-          overrides: (builder) =>
-            overrideFirestoreCollections(builder, MyDocument),
+          overrides: overrideFirestoreCollections(MyDocument),
         }),
       });
       const testService = testApp.get(TestService);
