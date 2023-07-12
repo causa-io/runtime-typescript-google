@@ -6,6 +6,8 @@ Features:
 
 - Implement the `overrideFirebaseApp`, `PubSubFixture`, `overrideDatabase` overrider utilities for testing.
 - Implement the `PubSubFixture.expectEventInTopic` testing utility.
+- Support a soft delete column in the `SpannerColumn` decorator and `SpannerEntityManager`.
+- Implement `sqlTableName` and `sqlColumns` utilities in the `SpannerEntityManager`.
 
 Fixes:
 
