@@ -1,11 +1,14 @@
-import { getSpannerColumns } from './column.decorator.js';
+import {
+  getSpannerColumns,
+  getSpannerColumnsMetadata,
+} from './column.decorator.js';
 import { InvalidEntityDefinitionError } from './errors.js';
 import { getSpannerTableMetadataFromType } from './table.decorator.js';
 
 /**
  * An object providing metadata about a Spanner table and its columns.
  */
-export type SpannerTableMetadata = {
+export type CachedSpannerTableMetadata = {
   /**
    * The name of the table.
    */
@@ -25,47 +28,84 @@ export type SpannerTableMetadata = {
    * The list of all columns in the table.
    */
   columns: string[];
+
+  /**
+   * The list of all columns in the table, quoted with backticks and joined for use in queries.
+   */
+  quotedColumns: string;
+
+  /**
+   * The name of the column used to mark soft deletes, if any.
+   */
+  softDeleteColumn: string | null;
 };
 
 /**
- * A cache storing the {@link SpannerTableMetadata} for each entity type (class).
+ * A cache storing the {@link CachedSpannerTableMetadata} for each entity type (class).
  */
 export class SpannerTableCache {
   /**
-   * The cache of {@link SpannerTableMetadata} objects, where keys are entity types (class constructors).
+   * The cache of {@link CachedSpannerTableMetadata} objects, where keys are entity types (class constructors).
    */
-  private readonly cache: Map<{ new (): any }, SpannerTableMetadata> =
+  private readonly cache: Map<{ new (): any }, CachedSpannerTableMetadata> =
     new Map();
 
   /**
-   * Builds the {@link SpannerTableMetadata} for the given entity type, by reading decorator metadata.
+   * Builds the {@link CachedSpannerTableMetadata} for the given entity type, by reading decorator metadata.
    *
    * @param entityType The entity type for which to build the metadata.
    * @returns The metadata.
    */
-  private buildMetadata(entityType: { new (): any }): SpannerTableMetadata {
+  private buildMetadata(entityType: {
+    new (): any;
+  }): CachedSpannerTableMetadata {
     const tableMetadata = getSpannerTableMetadataFromType(entityType);
     if (!tableMetadata) {
       throw new InvalidEntityDefinitionError(entityType);
     }
 
+    const tableName = tableMetadata.name;
+    const quotedTableName = `\`${tableName}\``;
+    const primaryKeyColumns = tableMetadata.primaryKey;
+
+    const columnsMetadata = getSpannerColumnsMetadata(entityType);
+    const softDeleteColumns = Object.values(columnsMetadata).filter(
+      (metadata) => metadata.softDelete,
+    );
+    if (softDeleteColumns.length > 1) {
+      throw new InvalidEntityDefinitionError(
+        entityType,
+        `Only one column can be marked as soft delete.`,
+      );
+    }
+    if (softDeleteColumns[0]?.nestedType) {
+      throw new InvalidEntityDefinitionError(
+        entityType,
+        `Soft delete columns cannot be nested.`,
+      );
+    }
+    const softDeleteColumn = softDeleteColumns[0]?.name ?? null;
+
     const columns = getSpannerColumns(entityType);
+    const quotedColumns = columns.map((c) => `\`${c}\``).join(', ');
 
     return {
-      tableName: tableMetadata.name,
-      quotedTableName: `\`${tableMetadata.name}\``,
-      primaryKeyColumns: tableMetadata.primaryKey as string[],
+      tableName,
+      quotedTableName,
+      primaryKeyColumns,
       columns,
+      quotedColumns,
+      softDeleteColumn,
     };
   }
 
   /**
-   * Returns the {@link SpannerTableMetadata} for the given entity type, either from the cache or by building it.
+   * Returns the {@link CachedSpannerTableMetadata} for the given entity type, either from the cache or by building it.
    *
    * @param entityType The entity type for which to get the metadata.
    * @returns The metadata.
    */
-  getMetadata<T>(entityType: { new (): T }): SpannerTableMetadata {
+  getMetadata<T>(entityType: { new (): T }): CachedSpannerTableMetadata {
     let metadata = this.cache.get(entityType);
 
     if (!metadata) {

@@ -8,7 +8,7 @@ const SPANNER_COLUMN_METADATA_KEY = 'CAUSA_SPANNER_COLUMNS';
 /**
  * Metadata for a single column/property of a Spanner table.
  */
-export interface SpannerColumnMetadata {
+export type SpannerColumnMetadata = {
   /**
    * The name of the Spanner column for this property.
    */
@@ -50,7 +50,7 @@ export interface SpannerColumnMetadata {
    * It cannot be a column in a nested object.
    */
   softDelete: boolean;
-}
+};
 
 /**
  * A dictionary of column metadata, where keys are class property names and values are the metadata.
