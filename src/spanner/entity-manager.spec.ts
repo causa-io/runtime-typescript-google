@@ -1217,6 +1217,25 @@ describe('SpannerEntityManager', () => {
       expect(actualTableName).toEqual('`MyTable`');
     });
 
+    it('should add the index to the table name', () => {
+      const actualTableName = manager.sqlTableName('MyTable', {
+        index: 'MyIndex',
+      });
+
+      expect(actualTableName).toEqual('`MyTable`@{FORCE_INDEX=`MyIndex`}');
+    });
+
+    it('should add the index and the Spanner emulator hint', () => {
+      const actualTableName = manager.sqlTableName('MyTable', {
+        index: 'MyIndex',
+        disableQueryNullFilteredIndexEmulatorCheck: true,
+      });
+
+      expect(actualTableName).toEqual(
+        '`MyTable`@{FORCE_INDEX=`MyIndex`,spanner_emulator.disable_query_null_filtered_index_check=true}',
+      );
+    });
+
     it('should throw when the type is not a valid entity type', () => {
       expect(() => manager.sqlTableName({} as any)).toThrow(
         InvalidEntityDefinitionError,

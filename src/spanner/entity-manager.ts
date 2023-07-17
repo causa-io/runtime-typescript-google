@@ -186,14 +186,45 @@ export class SpannerEntityManager {
    * Returns the (quoted) name of the table for the given entity type.
    *
    * @param entityTypeOrTable The type of entity, or the unquoted table name.
+   * @param options Options when constructing the table name (e.g. the index to use).
    * @returns The name of the table, quoted with backticks.
    */
-  sqlTableName(entityTypeOrTable: { new (): any } | string): string {
-    if (typeof entityTypeOrTable === 'string') {
-      return `\`${entityTypeOrTable}\``;
-    }
+  sqlTableName(
+    entityTypeOrTable: { new (): any } | string,
+    options: {
+      /**
+       * Sets a table hint to indicate which index to use when querying the table.
+       * The value will be quoted with backticks.
+       */
+      index?: string;
 
-    return this.tableCache.getMetadata(entityTypeOrTable).quotedTableName;
+      /**
+       * Sets a table hint to disable the check that prevents queries from using null-filtered indexes.
+       * This is useful when using the emulator, which does not support null-filtered indexes.
+       */
+      disableQueryNullFilteredIndexEmulatorCheck?: boolean;
+    } = {},
+  ): string {
+    const tableHints: Record<string, string> = {};
+    if (options.index) {
+      tableHints.FORCE_INDEX = `\`${options.index}\``;
+    }
+    if (options.disableQueryNullFilteredIndexEmulatorCheck) {
+      tableHints['spanner_emulator.disable_query_null_filtered_index_check'] =
+        'true';
+    }
+    const tableHintsString = Object.entries(tableHints)
+      .map(([k, v]) => `${k}=${v}`)
+      .join(',');
+
+    const quotedTableName =
+      typeof entityTypeOrTable === 'string'
+        ? `\`${entityTypeOrTable}\``
+        : this.tableCache.getMetadata(entityTypeOrTable).quotedTableName;
+
+    return tableHintsString.length > 0
+      ? `${quotedTableName}@{${tableHintsString}}`
+      : quotedTableName;
   }
 
   /**
