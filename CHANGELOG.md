@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+Features:
+
+- Support `index` and `disableQueryNullFilteredIndexEmulatorCheck` options in `SpannerEntityManager.sqlTableName`.
+
 ## v0.3.0 (2023-07-12)
 
 Breaking changes:
