@@ -1,7 +1,7 @@
 import { JsonObjectSerializer, ObjectSerializer } from '@causa/runtime';
+import { Logger } from '@causa/runtime/nestjs';
 import { DynamicModule } from '@nestjs/common';
 import { APP_INTERCEPTOR, Reflector } from '@nestjs/core';
-import { PinoLogger } from 'nestjs-pino';
 import { PubSubEventHandlerInterceptor } from './interceptor.js';
 
 /**
@@ -30,9 +30,9 @@ export class PubSubEventHandlerModule {
       providers: [
         {
           provide: APP_INTERCEPTOR,
-          useFactory: (reflector, logger) =>
+          useFactory: (reflector: Reflector, logger: Logger) =>
             new PubSubEventHandlerInterceptor(serializer, reflector, logger),
-          inject: [Reflector, PinoLogger],
+          inject: [Reflector, Logger],
         },
       ],
     };

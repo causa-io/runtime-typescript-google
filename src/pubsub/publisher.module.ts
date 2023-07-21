@@ -1,8 +1,7 @@
-import { EVENT_PUBLISHER_INJECTION_NAME } from '@causa/runtime/nestjs';
+import { EVENT_PUBLISHER_INJECTION_NAME, Logger } from '@causa/runtime/nestjs';
 import { PubSub } from '@google-cloud/pubsub';
 import { DynamicModule } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { PinoLogger } from 'nestjs-pino';
 import { PubSubPublisher, PubSubPublisherOptions } from './publisher.js';
 
 /**
@@ -39,7 +38,7 @@ export class PubSubPublisherModule {
           useFactory: (
             pubSub: PubSub,
             configurationGetter: (key: string) => string | undefined,
-            { logger }: PinoLogger,
+            { logger }: Logger,
           ) =>
             new PubSubPublisher({
               ...options,
@@ -50,7 +49,7 @@ export class PubSubPublisherModule {
           inject: [
             PubSub,
             PUBSUB_PUBLISHER_CONFIGURATION_GETTER_INJECTION_NAME,
-            PinoLogger,
+            Logger,
           ],
         },
         {

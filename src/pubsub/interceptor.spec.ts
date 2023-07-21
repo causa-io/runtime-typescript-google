@@ -1,5 +1,5 @@
 import { Event, IsDateType, ValidateNestedType } from '@causa/runtime';
-import { EventBody, createApp } from '@causa/runtime/nestjs';
+import { EventBody, Logger, createApp } from '@causa/runtime/nestjs';
 import {
   getLoggedErrors,
   getLoggedInfos,
@@ -14,7 +14,6 @@ import {
   Post,
 } from '@nestjs/common';
 import { IsString } from 'class-validator';
-import { PinoLogger } from 'nestjs-pino';
 import supertest from 'supertest';
 import { PubSubEventHandlerModule } from './interceptor.module.js';
 import { EventRequester, makePubSubRequester } from './testing/index.js';
@@ -54,7 +53,7 @@ class MyEvent implements Event {
 
 @Controller()
 class MyController {
-  constructor(private readonly logger: PinoLogger) {}
+  constructor(private readonly logger: Logger) {}
 
   @Post()
   @HttpCode(HttpStatus.OK)

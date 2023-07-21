@@ -1,9 +1,8 @@
-import { UnauthenticatedError } from '@causa/runtime/nestjs';
+import { Logger, UnauthenticatedError } from '@causa/runtime/nestjs';
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { Request } from 'express';
 import { AppCheck } from 'firebase-admin/app-check';
-import { PinoLogger } from 'nestjs-pino';
 import { APP_CHECK_DISABLED_METADATA_KEY } from './app-check-disabled.decorator.js';
 
 /**
@@ -15,7 +14,7 @@ export class AppCheckGuard implements CanActivate {
   constructor(
     private readonly appCheck: AppCheck,
     private readonly reflector: Reflector,
-    private readonly logger: PinoLogger,
+    private readonly logger: Logger,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {

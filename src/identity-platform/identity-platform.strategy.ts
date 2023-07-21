@@ -1,10 +1,9 @@
 import { User } from '@causa/runtime';
-import { UnauthenticatedError } from '@causa/runtime/nestjs';
+import { Logger, UnauthenticatedError } from '@causa/runtime/nestjs';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { Auth, DecodedIdToken } from 'firebase-admin/auth';
-import { PinoLogger } from 'nestjs-pino';
 import { Strategy } from 'passport-http-bearer';
 
 /**
@@ -23,7 +22,7 @@ export class IdentityPlatformStrategy extends PassportStrategy(Strategy) {
   constructor(
     private readonly auth: Auth,
     private readonly configService: ConfigService,
-    private readonly logger: PinoLogger,
+    private readonly logger: Logger,
   ) {
     super();
 
