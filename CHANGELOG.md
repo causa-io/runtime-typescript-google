@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.5.0 (2023-07-21)
+
 Features:
 
 - Handle multiple inserts and replacements at once in `SpannerEntityManager.insert` and `SpannerEntityManager.replace`.
