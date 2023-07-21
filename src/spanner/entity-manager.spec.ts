@@ -41,7 +41,7 @@ class IntEntity {
   }
 
   @SpannerColumn()
-  id!: number;
+  id!: string;
 
   @SpannerColumn({ isBigInt: true })
   value!: bigint;
@@ -824,6 +824,32 @@ describe('SpannerEntityManager', () => {
       });
       expect(actualRows).toBeEmpty();
     });
+
+    it('should insert several entities', async () => {
+      const entitiesToInsert = [
+        new SomeEntity({ id: '1', value: '🎁' }),
+        new SomeEntity({ id: '2', value: '🎉' }),
+        new IntEntity({ id: '3', value: 10n }),
+      ];
+
+      await manager.insert(entitiesToInsert);
+
+      const [actualMyEntityRows] = await database.table('MyEntity').read({
+        keys: [['1'], ['2']],
+        columns: ['id', 'value'],
+        json: true,
+      });
+      expect(actualMyEntityRows).toEqual([
+        { id: '1', value: '🎁' },
+        { id: '2', value: '🎉' },
+      ]);
+      const [actualIntEntityRows] = await database.table('IntEntity').read({
+        keys: ['3'],
+        columns: ['id', 'value'],
+        json: true,
+      });
+      expect(actualIntEntityRows).toEqual([{ id: '3', value: 10 }]);
+    });
   });
 
   describe('replace', () => {
@@ -883,6 +909,46 @@ describe('SpannerEntityManager', () => {
         json: true,
       });
       expect(actualRows).toEqual([expectedEntity]);
+    });
+
+    it('should replace several entities', async () => {
+      await database
+        .table('IndexedEntity')
+        .insert({ id: '1', value: 9, otherValue: '🎉', notStored: '🙈' });
+
+      await manager.replace([
+        new IndexedEntity({
+          id: '1',
+          value: 10,
+          otherValue: '📝',
+          notStored: null,
+        }),
+        new IndexedEntity({
+          id: '2',
+          value: 11,
+          otherValue: '📝',
+          notStored: '😇',
+        }),
+        new IntEntity({ id: '3', value: 10n }),
+      ]);
+
+      const [actualIndexedEntityRows] = await database
+        .table('IndexedEntity')
+        .read({
+          keys: [['1'], ['2']],
+          columns: ['id', 'value', 'otherValue', 'notStored'],
+          json: true,
+        });
+      expect(actualIndexedEntityRows).toEqual([
+        { id: '1', value: 10, otherValue: '📝', notStored: null },
+        { id: '2', value: 11, otherValue: '📝', notStored: '😇' },
+      ]);
+      const [actualIntEntityRows] = await database.table('IntEntity').read({
+        keys: ['3'],
+        columns: ['id', 'value'],
+        json: true,
+      });
+      expect(actualIntEntityRows).toEqual([{ id: '3', value: 10 }]);
     });
   });
 

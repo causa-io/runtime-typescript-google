@@ -517,45 +517,73 @@ export class SpannerEntityManager {
   }
 
   /**
-   * Inserts the given entity into the database.
-   * If the entity already exists (including if it is soft-deleted), an error will be thrown.
+   * Converts the given entity or array of entities to Spanner objects, grouping them by table name.
    *
-   * @param entity The entity to insert.
+   * @param entity The entity or array of entities to convert.
+   * @returns A map where the keys are the table names and the values are the Spanner objects.
+   */
+  private entitiesToSpannerObjects(
+    entity: object | object[],
+  ): Record<string, object[]> {
+    const entities = Array.isArray(entity) ? entity : [entity];
+
+    return entities.reduce<Record<string, object[]>>((map, entity) => {
+      const entityType = entity.constructor;
+      const { tableName } = this.tableCache.getMetadata(entityType);
+      const obj = instanceToSpannerObject(entity, entityType);
+      map[tableName] = map[tableName] ?? [];
+      map[tableName].push(obj);
+      return map;
+    }, {});
+  }
+
+  /**
+   * Inserts the given entities into the database.
+   * If the entities already exist (including if it is soft-deleted), an error will be thrown.
+   *
+   * Either a single entity or an array of entities can be provided.
+   *
+   * @param entity The entity or array of entities to insert.
    * @param options Options for the operation.
    */
   async insert(
-    entity: any,
+    entity: object | object[],
     options: WriteOperationOptions = {},
   ): Promise<void> {
-    const entityType = entity.constructor;
-    const { tableName } = this.tableCache.getMetadata(entityType);
-    const obj = instanceToSpannerObject(entity, entityType);
+    const objs = this.entitiesToSpannerObjects(entity);
 
     await this.runInExistingOrNewTransaction(
       options.transaction,
-      async (transaction) => transaction.insert(tableName, obj),
+      async (transaction) =>
+        Object.entries(objs).forEach(([tableName, objs]) =>
+          transaction.insert(tableName, objs),
+        ),
     );
   }
 
   /**
-   * Replaces the given entity in the database.
+   * Replaces the given entities in the database.
    * If the entity already exists, all columns are overwritten, even if they are not present in the entity (in the case
    * of nullable columns).
+   *
+   * Either a single entity or an array of entities can be provided. If an array is provided, all entities should
+   * specify the same set of columns.
    *
    * @param entity The entity to write.
    * @param options Options for the operation.
    */
   async replace(
-    entity: any,
+    entity: object | object[],
     options: WriteOperationOptions = {},
   ): Promise<void> {
-    const entityType = entity.constructor;
-    const { tableName } = this.tableCache.getMetadata(entityType);
-    const obj = instanceToSpannerObject(entity, entityType);
+    const objs = this.entitiesToSpannerObjects(entity);
 
     await this.runInExistingOrNewTransaction(
       options.transaction,
-      async (transaction) => transaction.replace(tableName, obj),
+      async (transaction) =>
+        Object.entries(objs).forEach(([tableName, objs]) =>
+          transaction.replace(tableName, objs),
+        ),
     );
   }
 
