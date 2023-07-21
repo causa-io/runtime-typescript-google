@@ -2,6 +2,7 @@ import { EventPublisher, JsonObjectSerializer } from '@causa/runtime';
 import {
   EVENT_PUBLISHER_INJECTION_NAME,
   InjectEventPublisher,
+  Logger,
   LoggerModule,
 } from '@causa/runtime/nestjs';
 import { createMockConfigService } from '@causa/runtime/nestjs/testing';
@@ -11,7 +12,6 @@ import { Controller } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import 'jest-extended';
-import { PinoLogger } from 'nestjs-pino';
 import { PubSubPublisher } from './publisher.js';
 import { PubSubPublisherModule } from './publisher.module.js';
 
@@ -41,7 +41,7 @@ describe('PubSubPublisherModule', () => {
         }),
       )
       .compile();
-    const logger = await testModule.resolve(PinoLogger);
+    const logger = await testModule.resolve(Logger);
 
     const actualPublisher = testModule.get(MyController).publisher;
 

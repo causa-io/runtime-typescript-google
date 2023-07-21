@@ -1,8 +1,8 @@
+import { Logger } from '@causa/runtime/nestjs';
 import { Database, Spanner } from '@google-cloud/spanner';
 import { SessionPoolOptions } from '@google-cloud/spanner/build/src/session-pool.js';
 import { DynamicModule, FactoryProvider } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { PinoLogger } from 'nestjs-pino';
 import {
   SPANNER_SESSION_POOL_OPTIONS_FOR_SERVICE,
   catchSpannerDatabaseErrors,
@@ -31,7 +31,7 @@ function makeDatabaseProvider(
 ): FactoryProvider<Database> {
   return {
     provide: Database,
-    useFactory: (configService: ConfigService, logger: PinoLogger) => {
+    useFactory: (configService: ConfigService, logger: Logger) => {
       const instanceName = configService.getOrThrow<string>('SPANNER_INSTANCE');
       const databaseName = configService.getOrThrow<string>('SPANNER_DATABASE');
 
@@ -46,18 +46,18 @@ function makeDatabaseProvider(
 
       return database;
     },
-    inject: [ConfigService, PinoLogger],
+    inject: [ConfigService, Logger],
   };
 }
 
 /**
  * A global module that provides the Spanner {@link Database} and the {@link SpannerEntityManager}.
- * The {@link ConfigService} and {@link PinoLogger} should be globally available for this module to work.
+ * The {@link ConfigService} and {@link Logger} should be globally available for this module to work.
  */
 export class SpannerModule {
   /**
    * Create a global module that provides the Spanner {@link Database} and the {@link SpannerEntityManager}.
-   * The {@link ConfigService} and {@link PinoLogger} should be globally available for this module to work.
+   * The {@link ConfigService} and {@link Logger} should be globally available for this module to work.
    *
    * @param options Options for Spanner services.
    * @returns The module.
