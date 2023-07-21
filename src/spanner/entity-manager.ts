@@ -516,6 +516,44 @@ export class SpannerEntityManager {
     );
   }
 
+  // Types that can be used as hints to disambiguate query parameter array types.
+  static readonly ParamTypeFloat64Array: Type = {
+    type: 'array',
+    child: { type: 'float64' },
+  };
+  static readonly ParamTypeInt64Array: Type = {
+    type: 'array',
+    child: { type: 'int64' },
+  };
+  static readonly ParamTypeNumericArray: Type = {
+    type: 'array',
+    child: { type: 'numeric' },
+  };
+  static readonly ParamTypeBoolArray: Type = {
+    type: 'array',
+    child: { type: 'bool' },
+  };
+  static readonly ParamTypeStringArray: Type = {
+    type: 'array',
+    child: { type: 'string' },
+  };
+  static readonly ParamTypeBytesArray: Type = {
+    type: 'array',
+    child: { type: 'bytes' },
+  };
+  static readonly ParamTypeJsonArray: Type = {
+    type: 'array',
+    child: { type: 'json' },
+  };
+  static readonly ParamTypeTimestampArray: Type = {
+    type: 'array',
+    child: { type: 'timestamp' },
+  };
+  static readonly ParamTypeDateArray: Type = {
+    type: 'array',
+    child: { type: 'date' },
+  };
+
   /**
    * Converts the given entity or array of entities to Spanner objects, grouping them by table name.
    *
