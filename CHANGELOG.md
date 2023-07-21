@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+Features:
+
+- Handle multiple inserts and replacements at once in `SpannerEntityManager.insert` and `SpannerEntityManager.replace`.
+- Define query parameters type hints for the Spanner client `SpannerEntityManager.ParamType*Array`.
+
 ## v0.4.0 (2023-07-17)
 
 Features:
