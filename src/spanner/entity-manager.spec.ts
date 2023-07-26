@@ -1,8 +1,8 @@
 import { EntityAlreadyExistsError, EntityNotFoundError } from '@causa/runtime';
 import { PreciseDate } from '@google-cloud/precise-date';
 import { Database, Snapshot, Transaction } from '@google-cloud/spanner';
+import { status } from '@grpc/grpc-js';
 import { jest } from '@jest/globals';
-import { grpc } from 'google-gax';
 import 'jest-extended';
 import * as uuid from 'uuid';
 import { SpannerColumn } from './column.decorator.js';
@@ -199,7 +199,7 @@ describe('SpannerEntityManager', () => {
     it('should catch and rethrow a temporary Spanner error due to a deadline exceeded gRPC status', async () => {
       const actualPromise = manager.transaction(async () => {
         const error = new Error('⌛');
-        (error as any).code = grpc.status.DEADLINE_EXCEEDED;
+        (error as any).code = status.DEADLINE_EXCEEDED;
         throw error;
       });
 
@@ -208,7 +208,7 @@ describe('SpannerEntityManager', () => {
 
     it('should catch and rethrow a temporary Spanner error thrown by runTransactionAsync itself', async () => {
       const error = new Error('⌛');
-      (error as any).code = grpc.status.DEADLINE_EXCEEDED;
+      (error as any).code = status.DEADLINE_EXCEEDED;
       jest.spyOn(database, 'runTransactionAsync').mockRejectedValueOnce(error);
 
       const actualPromise = manager.transaction(async () => {
@@ -320,7 +320,7 @@ describe('SpannerEntityManager', () => {
 
     it('should catch and rethrow an error thrown by getSnapshot itself', async () => {
       const error = new Error('💤');
-      (error as any).code = grpc.status.DEADLINE_EXCEEDED;
+      (error as any).code = status.DEADLINE_EXCEEDED;
       jest.spyOn(database as any, 'getSnapshot').mockRejectedValueOnce(error);
 
       const actualPromise = manager.snapshot(async () => {
@@ -405,7 +405,7 @@ describe('SpannerEntityManager', () => {
           transaction,
           async () => {
             const error = new Error('⌛');
-            (error as any).code = grpc.status.DEADLINE_EXCEEDED;
+            (error as any).code = status.DEADLINE_EXCEEDED;
             throw error;
           },
         );
@@ -470,7 +470,7 @@ describe('SpannerEntityManager', () => {
         snapshot,
         async () => {
           const error = new Error('⌛');
-          (error as any).code = grpc.status.DEADLINE_EXCEEDED;
+          (error as any).code = status.DEADLINE_EXCEEDED;
           throw error;
         },
       );
