@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.6.0 (2023-07-26)
+
 Breaking changes:
 
 - Accept a permission denied error as a healthy check for Pub/Sub.
