@@ -1,6 +1,6 @@
 import { EntityAlreadyExistsError } from '@causa/runtime';
 import { SessionPoolExhaustedError } from '@google-cloud/spanner/build/src/session-pool.js';
-import { grpc } from 'google-gax';
+import { status } from '@grpc/grpc-js';
 import {
   InvalidArgumentError,
   InvalidQueryError,
@@ -23,20 +23,20 @@ export function convertSpannerToEntityError(error: any): Error | undefined {
   }
 
   switch (error.code) {
-    case grpc.status.INVALID_ARGUMENT:
+    case status.INVALID_ARGUMENT:
       return new InvalidArgumentError(error.message);
-    case grpc.status.NOT_FOUND:
+    case status.NOT_FOUND:
       // `NOT_FOUND` errors are often thrown when resources other than rows are missing (e.g. an index, a column, etc).
       // This means that they usually describe a developer error rather than a missing entity.
       // A "real" `NOT_FOUND` can only happen for a row during an update. However in this case the repository uses a
       //  transaction to retrieve the entire entity first. During this phase, a proper not found error can be thrown.
       return new InvalidQueryError(error.message);
-    case grpc.status.ALREADY_EXISTS:
+    case status.ALREADY_EXISTS:
       return new EntityAlreadyExistsError(null, null);
-    case grpc.status.CANCELLED:
-    case grpc.status.DEADLINE_EXCEEDED:
-    case grpc.status.INTERNAL:
-    case grpc.status.UNAVAILABLE:
+    case status.CANCELLED:
+    case status.DEADLINE_EXCEEDED:
+    case status.INTERNAL:
+    case status.UNAVAILABLE:
       return new TemporarySpannerError(error.message);
     default:
       return;
