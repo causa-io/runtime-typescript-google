@@ -1,5 +1,6 @@
 import { createApp } from '@causa/runtime/nestjs';
 import { PubSub } from '@google-cloud/pubsub';
+import { status } from '@grpc/grpc-js';
 import { jest } from '@jest/globals';
 import { Controller, Get, INestApplication, Module } from '@nestjs/common';
 import { HealthCheckService, TerminusModule } from '@nestjs/terminus';
@@ -43,6 +44,21 @@ describe('PubSubHealthIndicator', () => {
   });
 
   it('should return 200 if the Pub/Sub client is healthy', async () => {
+    await request.get('/').expect(200, {
+      status: 'ok',
+      info: { pubSub: { status: 'up' } },
+      error: {},
+      details: { pubSub: { status: 'up' } },
+    });
+  });
+
+  it('should treat permission errors as healthy', async () => {
+    const pubSub = app.get(PubSub);
+    jest.spyOn(pubSub as any, 'getTopics').mockRejectedValue({
+      code: status.PERMISSION_DENIED,
+      message: 'Permission denied',
+    });
+
     await request.get('/').expect(200, {
       status: 'ok',
       info: { pubSub: { status: 'up' } },
