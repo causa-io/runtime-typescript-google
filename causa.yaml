@@ -5,15 +5,23 @@ workspace:
 
 causa:
   modules:
-    '@causa/workspace-core': '>= 0.7.0'
-    '@causa/workspace-google': '>= 0.3.1'
-    '@causa/workspace-typescript': '>= 0.3.0'
+    '@causa/workspace-core': '>= 0.14.1'
+    '@causa/workspace-google': '>= 0.5.0'
+    '@causa/workspace-typescript': '>= 0.4.0'
 
 project:
   name: runtime-typescript-google
   description: An extension to the Causa runtime SDK (`@causa/runtime`), providing Google-specific features.
   language: typescript
   type: package
+
+javascript:
+  dependencies:
+    update:
+      packageTargets:
+        '@types/node': minor
+        # `@google-cloud/spanner` still references version 3.
+        '@google-cloud/precise-date': minor
 
 google:
   firestore:
