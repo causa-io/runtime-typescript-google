@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.7.0 (2023-08-31)
+
 Breaking changes:
 
 - Upgrade `@google-cloud` dependencies (e.g. Pub/Sub, Spanner) to latest major versions.
