@@ -1,3 +1,4 @@
+export { CloudTasksModule } from './module.js';
 export {
   CloudTasksScheduler,
   HttpMethod,
