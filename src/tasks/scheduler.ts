@@ -130,14 +130,14 @@ export class CloudTasksScheduler {
     const seconds = Math.floor(scheduleTime / 1000);
     const nanos = (scheduleTime - seconds * 1000) * 1e6;
 
+    const name = options.taskName
+      ? `${queue}/tasks/${options.taskName}`
+      : undefined;
+
     const [task] = await this.client.createTask(
       {
         parent: queue,
-        task: {
-          name: options.taskName,
-          httpRequest,
-          scheduleTime: { seconds, nanos },
-        },
+        task: { name, httpRequest, scheduleTime: { seconds, nanos } },
       },
       retry ? { retry: retry === true ? RETRY_CONFIG : retry } : {},
     );
