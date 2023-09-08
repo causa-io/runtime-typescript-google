@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.8.1 (2023-09-08)
+
 Fix:
 
 - Correctly format Cloud Tasks tasks names.
