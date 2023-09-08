@@ -1,4 +1,5 @@
 import { EntityNotFoundError } from '@causa/runtime';
+import { PreciseDate } from '@google-cloud/precise-date';
 import { Database } from '@google-cloud/spanner';
 import {
   SpannerColumn,
@@ -277,12 +278,14 @@ describe('SpannerStateTransaction', () => {
     });
 
     it('should use the transaction', async () => {
+      const beforeInsertDate = new PreciseDate();
+
       const entity = new MyEntity({ id1: '🕰️', id2: '🔮', value: '🌠' });
       await entityManager.insert(entity);
 
       const actualEntity = await entityManager.snapshot(
         // Making it look like the entity does not exist.
-        { timestampBounds: { exactStaleness: { seconds: 1 } } },
+        { timestampBounds: { readTimestamp: beforeInsertDate } },
         async (snapshot) => {
           const transaction = new SpannerStateTransaction(
             entityManager,

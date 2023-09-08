@@ -6,5 +6,6 @@ export * from './identity-platform/index.js';
 export * from './logging/index.js';
 export * from './pubsub/index.js';
 export * from './spanner/index.js';
+export * from './tasks/index.js';
 export * from './transaction/index.js';
 export * from './validation/index.js';
