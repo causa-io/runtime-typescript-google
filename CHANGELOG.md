@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.8.0 (2023-09-08)
+
 Features:
 
 - Implement the `CloudTasksScheduler` and `CloudTasksModule`.
