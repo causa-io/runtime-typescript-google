@@ -33,6 +33,7 @@
     "@google-cloud/precise-date": "^3.0.1",
     "@google-cloud/pubsub": "^4.0.5",
     "@google-cloud/spanner": "^7.0.0",
+    "@google-cloud/tasks": "^4.0.1",
     "@grpc/grpc-js": "^1.9.2",
     "@nestjs/common": "^10.2.4",
     "@nestjs/config": "^3.0.1",
