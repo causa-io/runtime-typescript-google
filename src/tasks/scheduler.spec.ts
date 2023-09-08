@@ -75,7 +75,7 @@ describe('CloudTasksScheduler', () => {
       {
         parent: 'MY_QUEUE',
         task: {
-          name: 'MY_TASK',
+          name: `MY_QUEUE/tasks/MY_TASK`,
           scheduleTime: {
             seconds: Math.floor(scheduleDate.getTime() / 1000),
             nanos: (scheduleDate.getTime() % 1000) * 1e6,
