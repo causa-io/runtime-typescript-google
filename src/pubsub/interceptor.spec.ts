@@ -70,7 +70,7 @@ class MyModule {}
 
 describe('PubSubEventHandlerInterceptor', () => {
   let app: INestApplication;
-  let request: EventRequester<MyEvent>;
+  let request: EventRequester;
 
   beforeAll(async () => {
     app = await createApp(MyModule, {});

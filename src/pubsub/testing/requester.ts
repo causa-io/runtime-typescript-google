@@ -7,9 +7,9 @@ import * as uuid from 'uuid';
  * A function that makes a query to an endpoint handling Pub/Sub events and tests the response.
  * By default, the `expectedStatus` is `200`, or the value provided to {@link makePubSubRequester}.
  */
-export type EventRequester<T extends Event> = (
+export type EventRequester = (
   endpoint: string,
-  event: T,
+  event: Event,
   expectedStatus?: number,
 ) => Promise<void>;
 
@@ -20,7 +20,7 @@ export type EventRequester<T extends Event> = (
  * @param options Options when creating the requester.
  * @returns The {@link EventRequester}.
  */
-export function makePubSubRequester<T extends Event>(
+export function makePubSubRequester(
   app: INestApplication,
   options: {
     /**
@@ -39,7 +39,7 @@ export function makePubSubRequester<T extends Event>(
      */
     expectedStatus?: number;
   } = {},
-): EventRequester<T> {
+): EventRequester {
   const request = supertest(app.getHttpServer());
   const routePrefix = options.routePrefix ?? '';
   const serializer = options.serializer ?? new JsonObjectSerializer();
