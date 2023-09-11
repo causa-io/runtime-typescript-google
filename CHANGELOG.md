@@ -2,9 +2,22 @@
 
 ## Unreleased
 
+Breaking changes:
+
+- Remove unnecessary generic for the `EventRequester`.
+
+Features:
+
+- Implement the `GoogleAppFixture`.
+- Export the `SpannerKey` type.
+
+Fixes:
+
+- Remove users from the `AuthUsersFixture` when calling `deleteAll`.
+
 ## v0.8.1 (2023-09-08)
 
-Fix:
+Fixes:
 
 - Correctly format Cloud Tasks tasks names.
 

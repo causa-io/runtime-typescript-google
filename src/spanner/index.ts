@@ -7,6 +7,7 @@ export {
 } from './database.js';
 export {
   SpannerEntityManager,
+  SpannerKey,
   SpannerReadOnlyTransaction,
 } from './entity-manager.js';
 export * from './errors.js';

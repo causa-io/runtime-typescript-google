@@ -76,5 +76,6 @@ export class AuthUsersFixture {
    */
   async deleteAll(): Promise<void> {
     await this.auth.deleteUsers(this.users.map((user) => user.id));
+    this.users.length = 0;
   }
 }

@@ -111,3 +111,7 @@ One feature sets the `FirestorePubSubTransactionRunner` and its `FirestoreStateT
 ### Validation
 
 The `@IsValidFirestoreId` validation decorator checks that a property is a string which is not `.` or `..`, and does not contain forward slashes. This ensures the property's value can be used as a Firestore document ID.
+
+### More testing utilities
+
+Additionally to the testing utilities provided alongside many features in this package, the `GoogleAppFixture` ties many of those together to provide a smooth experience when testing a full NestJS application using Google services (Spanner, Pub/Sub, Firestore, Identity Platform) together. It manages the setup and tear down of all these services locally and provides a single entrypoint to interact with GCP-related fixtures in tests.
