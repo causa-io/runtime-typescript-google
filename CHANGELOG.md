@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.9.0 (2023-09-11)
+
 Breaking changes:
 
 - Remove unnecessary generic for the `EventRequester`.
