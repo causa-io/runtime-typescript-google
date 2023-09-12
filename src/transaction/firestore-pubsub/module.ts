@@ -1,3 +1,4 @@
+import { Logger } from '@causa/runtime/nestjs';
 import { DynamicModule } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
 import { Firestore } from 'firebase-admin/firestore';
@@ -29,15 +30,17 @@ export class FirestorePubSubTransactionModule {
             firestore: Firestore,
             publisher: PubSubPublisher,
             moduleRef: ModuleRef,
+            logger: Logger,
           ) => {
             const resolver = new NestJsFirestoreCollectionResolver(moduleRef);
             return new FirestorePubSubTransactionRunner(
               firestore,
               publisher,
               resolver,
+              logger,
             );
           },
-          inject: [Firestore, PubSubPublisher, ModuleRef],
+          inject: [Firestore, PubSubPublisher, ModuleRef, Logger],
         },
       ],
       exports: [FirestorePubSubTransactionRunner],

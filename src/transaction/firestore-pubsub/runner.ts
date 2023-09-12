@@ -1,4 +1,5 @@
 import { BufferEventTransaction, TransactionRunner } from '@causa/runtime';
+import { Logger } from '@causa/runtime/nestjs';
 import { Firestore } from '@google-cloud/firestore';
 import { Injectable } from '@nestjs/common';
 import { PubSubPublisher } from '../../pubsub/index.js';
@@ -21,6 +22,7 @@ export class FirestorePubSubTransactionRunner extends TransactionRunner<Firestor
     readonly firestore: Firestore,
     readonly pubSubPublisher: PubSubPublisher,
     readonly collectionResolver: FirestoreCollectionResolver,
+    private readonly logger: Logger,
   ) {
     super();
   }
@@ -28,6 +30,8 @@ export class FirestorePubSubTransactionRunner extends TransactionRunner<Firestor
   async run<T>(
     runFn: (transaction: FirestorePubSubTransaction) => Promise<T>,
   ): Promise<[T]> {
+    this.logger.info('Creating a Firestore Pub/Sub transaction.');
+
     const { result, eventTransaction } = await this.firestore.runTransaction(
       async (firestoreTransaction) => {
         const stateTransaction = new FirestoreStateTransaction(
@@ -44,10 +48,12 @@ export class FirestorePubSubTransactionRunner extends TransactionRunner<Firestor
 
         const result = await runFn(transaction);
 
+        this.logger.info('Committing the Firestore transaction.');
         return { result, eventTransaction };
       },
     );
 
+    this.logger.info('Publishing Pub/Sub events.');
     await eventTransaction.commit();
 
     return [result];
