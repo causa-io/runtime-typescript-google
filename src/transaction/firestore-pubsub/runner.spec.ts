@@ -6,6 +6,7 @@ import {
   VersionedEntity,
   VersionedEntityManager,
 } from '@causa/runtime';
+import { Logger } from '@causa/runtime/nestjs';
 import { IsString, IsUUID } from 'class-validator';
 import {
   CollectionReference,
@@ -75,6 +76,7 @@ class MyEvent implements Event {
 }
 
 describe('FirestorePubSubTransactionRunner', () => {
+  let logger: Logger;
   let pubSubFixture: PubSubFixture;
   let firestore: Firestore;
   let activeCollection: CollectionReference<MyDocument>;
@@ -88,6 +90,7 @@ describe('FirestorePubSubTransactionRunner', () => {
   >;
 
   beforeAll(async () => {
+    logger = new Logger({});
     firestore = getFirestore(getDefaultFirebaseApp());
     pubSubFixture = new PubSubFixture();
     const pubSubConf = await pubSubFixture.create('my.entity.v1', MyEvent);
@@ -118,6 +121,7 @@ describe('FirestorePubSubTransactionRunner', () => {
       firestore,
       publisher,
       resolver,
+      logger,
     );
     myEntityManager = new VersionedEntityManager(
       'my.entity.v1',
