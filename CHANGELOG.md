@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+Features:
+
+- Log main steps of Spanner Pub/Sub and Firestore Pub/Sub transactions.
+
 ## v0.9.0 (2023-09-11)
 
 Breaking changes:
