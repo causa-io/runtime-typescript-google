@@ -7,6 +7,7 @@ import {
   VersionedEntity,
   VersionedEntityManager,
 } from '@causa/runtime';
+import { Logger } from '@causa/runtime/nestjs';
 import { Database } from '@google-cloud/spanner';
 import { IsString, IsUUID } from 'class-validator';
 import { PubSubPublisher } from '../../pubsub/index.js';
@@ -72,6 +73,7 @@ class MyEvent implements Event {
 }
 
 describe('SpannerPubSubTransactionRunner', () => {
+  let logger: Logger;
   let database: Database;
   let pubSubFixture: PubSubFixture;
   let entityManager: SpannerEntityManager;
@@ -83,6 +85,7 @@ describe('SpannerPubSubTransactionRunner', () => {
   >;
 
   beforeAll(async () => {
+    logger = new Logger({});
     database = await createDatabase();
     const [operation] = await database.updateSchema(SPANNER_SCHEMA);
     await operation.promise();
@@ -95,7 +98,11 @@ describe('SpannerPubSubTransactionRunner', () => {
   });
 
   beforeEach(() => {
-    runner = new SpannerPubSubTransactionRunner(entityManager, publisher);
+    runner = new SpannerPubSubTransactionRunner(
+      entityManager,
+      publisher,
+      logger,
+    );
     myEntityManager = new VersionedEntityManager(
       'my.entity.v1',
       MyEvent,

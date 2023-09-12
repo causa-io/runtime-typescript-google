@@ -3,6 +3,7 @@ import {
   TransactionOldTimestampError,
   TransactionRunner,
 } from '@causa/runtime';
+import { Logger } from '@causa/runtime/nestjs';
 import { Injectable } from '@nestjs/common';
 import { setTimeout } from 'timers/promises';
 import { PubSubPublisher } from '../../pubsub/index.js';
@@ -27,10 +28,12 @@ export class SpannerPubSubTransactionRunner extends TransactionRunner<SpannerPub
    *
    * @param entityManager The {@link SpannerEntityManager} to use for the transaction.
    * @param publisher The {@link PubSubPublisher} to use for the transaction.
+   * @param logger The {@link Logger} to use.
    */
   constructor(
     readonly entityManager: SpannerEntityManager,
     readonly publisher: PubSubPublisher,
+    private readonly logger: Logger,
   ) {
     super();
   }
@@ -38,6 +41,8 @@ export class SpannerPubSubTransactionRunner extends TransactionRunner<SpannerPub
   async run<T>(
     runFn: (transaction: SpannerPubSubTransaction) => Promise<T>,
   ): Promise<[T]> {
+    this.logger.info('Creating a Spanner Pub/Sub transaction.');
+
     const { result, eventTransaction } = await this.entityManager.transaction(
       async (dbTransaction) => {
         const stateTransaction = new SpannerStateTransaction(
@@ -54,6 +59,7 @@ export class SpannerPubSubTransactionRunner extends TransactionRunner<SpannerPub
         try {
           const result = await runFn(transaction);
 
+          this.logger.info('Committing the Spanner transaction.');
           return { result, eventTransaction };
         } catch (error) {
           // `TransactionOldTimestampError`s indicate that the transaction is using a timestamp older than what is
@@ -77,6 +83,7 @@ export class SpannerPubSubTransactionRunner extends TransactionRunner<SpannerPub
       },
     );
 
+    this.logger.info('Publishing Pub/Sub events.');
     await eventTransaction.commit();
 
     return [result];
