@@ -1,5 +1,6 @@
 import { HEALTHCHECK_ENDPOINT, Public } from '@causa/runtime/nestjs';
 import { Controller, Get } from '@nestjs/common';
+import { ApiExcludeController } from '@nestjs/swagger';
 import { HealthCheckResult, HealthCheckService } from '@nestjs/terminus';
 import { PubSubHealthIndicator } from '../pubsub/index.js';
 import { SpannerHealthIndicator } from '../spanner/index.js';
@@ -11,6 +12,7 @@ import { SpannerHealthIndicator } from '../spanner/index.js';
  * - Spanner
  */
 @Controller(HEALTHCHECK_ENDPOINT)
+@ApiExcludeController()
 export class GoogleHealthcheckController {
   constructor(
     private health: HealthCheckService,
