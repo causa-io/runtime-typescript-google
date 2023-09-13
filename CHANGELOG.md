@@ -5,6 +5,7 @@
 Features:
 
 - Disable batching in the `PubSubPublisher` by default, and allow per topic configuration.
+- Support `MakeTestAppFactoryOptions` when creating a `GoogleAppFixture`.
 
 Fixes:
 

@@ -1,6 +1,9 @@
 import { VersionedEntity } from '@causa/runtime';
 import { createApp } from '@causa/runtime/nestjs';
-import { makeTestAppFactory } from '@causa/runtime/nestjs/testing';
+import {
+  MakeTestAppFactoryOptions,
+  makeTestAppFactory,
+} from '@causa/runtime/nestjs/testing';
 import { serializeAsJavaScriptObject } from '@causa/runtime/testing';
 import { Database } from '@google-cloud/spanner';
 import { INestApplication } from '@nestjs/common';
@@ -86,6 +89,19 @@ type VersionedEntityTests<T extends VersionedEntity> = {
  * entities.
  */
 export class GoogleAppFixture {
+  /**
+   * Creates a new {@link GoogleAppFixture} instance.
+   *
+   * @param app The NestJS application.
+   * @param database The temporary Spanner database.
+   * @param entityManager The {@link SpannerEntityManager} for the temporary database.
+   * @param pubSub The {@link PubSubFixture} managing temporary topics.
+   * @param users The {@link AuthUsersFixture}.
+   * @param request The {@link SuperTest} instance for the NestJS application.
+   * @param pubSubRequest The {@link EventRequester} to make requests to Pub/Sub push endpoints in the application.
+   * @param entities The entities to clear from the database when calling {@link GoogleAppFixture.clear}.
+   * @param firestoreDocuments The Firestore documents to clear when calling {@link GoogleAppFixture.clear}.
+   */
   private constructor(
     readonly app: INestApplication,
     readonly database: Database,
@@ -250,9 +266,25 @@ export class GoogleAppFixture {
   static async create(
     appModule: any,
     options: {
+      /**
+       * Temporary Pub/Sub topics to create using the {@link PubSubFixture}.
+       */
       pubSubTopics?: Record<string, { new (): any }>;
+
+      /**
+       * Temporary Firestore collections to create and to clear during teardown.
+       */
       firestoreDocuments?: { new (): any }[];
+
+      /**
+       * Spanner entities to clear during teardown.
+       */
       entities?: { new (): any }[];
+
+      /**
+       * Options for the {@link makeTestAppFactory} function.
+       */
+      appFactoryOptions?: MakeTestAppFactoryOptions;
     } = {},
   ): Promise<GoogleAppFixture> {
     const entities = options.entities ?? [];
@@ -268,13 +300,20 @@ export class GoogleAppFixture {
 
     const usersFixture = new AuthUsersFixture();
 
+    const appFactoryOptions = options.appFactoryOptions ?? {};
+    const additionalOverrides =
+      appFactoryOptions.overrides && !Array.isArray(appFactoryOptions.overrides)
+        ? [appFactoryOptions.overrides]
+        : appFactoryOptions.overrides ?? [];
     const app = await createApp(appModule, {
       appFactory: makeTestAppFactory({
+        ...appFactoryOptions,
         overrides: [
           overrideDatabase(database),
           overridePubSub,
           overrideFirebaseApp,
           overrideFirestoreCollections(...firestoreDocuments),
+          ...additionalOverrides,
         ],
       }),
     });

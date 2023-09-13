@@ -10,7 +10,7 @@ import { EVENT_PUBLISHER_INJECTION_NAME } from '@causa/runtime/nestjs';
 import { serializeAsJavaScriptObject } from '@causa/runtime/testing';
 import { Database, Spanner } from '@google-cloud/spanner';
 import { jest } from '@jest/globals';
-import { Module } from '@nestjs/common';
+import { Injectable, Module } from '@nestjs/common';
 import { IsString, IsUUID } from 'class-validator';
 import 'jest-extended';
 import * as uuid from 'uuid';
@@ -121,6 +121,21 @@ class MyEvent implements Event {
   readonly data!: MyEntity;
 }
 
+@Injectable()
+class MyService {
+  readonly id = '❌';
+}
+
+@Injectable()
+class MyTestService {
+  readonly id = '✅';
+}
+
+@Injectable()
+class MyServiceWithDependency {
+  constructor(readonly dependency: MyService) {}
+}
+
 @Module({
   imports: [
     FirebaseModule.forRoot(),
@@ -128,6 +143,7 @@ class MyEvent implements Event {
     PubSubPublisherModule.forRoot(),
     FirestoreCollectionsModule.forRoot([MyDocument]),
   ],
+  providers: [MyService, MyServiceWithDependency],
 })
 class MyModule {}
 
@@ -164,6 +180,10 @@ describe('GoogleAppFixture', () => {
       entities: [MyEntity],
       pubSubTopics: { 'my.event.v1': MyEvent },
       firestoreDocuments: [MyDocument],
+      appFactoryOptions: {
+        overrides: (builder) =>
+          builder.overrideProvider(MyService).useClass(MyTestService),
+      },
     });
     publisher = fixture.app.get(EVENT_PUBLISHER_INJECTION_NAME);
   });
@@ -190,6 +210,12 @@ describe('GoogleAppFixture', () => {
 
       // The temporary collection includes a suffix.
       expect(actualCollection.path).not.toStartWith('myCollection');
+    });
+
+    it('should set appFactoryOptions', () => {
+      const actualService = fixture.app.get(MyServiceWithDependency);
+
+      expect(actualService.dependency.id).toEqual('✅');
     });
   });
 
