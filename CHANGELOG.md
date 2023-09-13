@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.11.0 (2023-09-13)
+
 Features:
 
 - Disable batching in the `PubSubPublisher` by default, and allow per topic configuration.
