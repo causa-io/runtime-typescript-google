@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+Features:
+
+- Disable batching in the `PubSubPublisher` by default, and allow per topic configuration.
+
 Fixes:
 
 - Exclude the Google healthcheck endpoint from the OpenAPI documentation.
