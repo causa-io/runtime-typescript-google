@@ -1,6 +1,6 @@
 {
   "name": "@causa/runtime-google",
-  "version": "0.10.0",
+  "version": "0.11.0",
   "description": "An extension to the Causa runtime SDK (`@causa/runtime`), providing Google-specific features.",
   "repository": "github:causa-io/runtime-typescript-google",
   "license": "ISC",
