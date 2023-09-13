@@ -49,7 +49,6 @@ describe('PubSubPublisherModule', () => {
     expect((actualPublisher as any).serializer).toBeInstanceOf(
       JsonObjectSerializer,
     );
-    expect((actualPublisher as any).publishOptions).toBeUndefined();
     expect((actualPublisher as any).logger).toBe(logger.logger);
     const actualTopic = (actualPublisher as any).getTopic('my.topic.v1');
     expect(actualTopic).toBeInstanceOf(Topic);
@@ -80,7 +79,7 @@ describe('PubSubPublisherModule', () => {
         LoggerModule,
         PubSubPublisherModule.forRoot({
           serializer: expectedSerializer,
-          publishOptions: { batching: { maxMessages: 1 } },
+          publishOptions: { batching: { maxMessages: 5 } },
         }),
       ],
     }).compile();
@@ -90,7 +89,7 @@ describe('PubSubPublisherModule', () => {
     expect(actualPublisher).toBeInstanceOf(PubSubPublisher);
     expect((actualPublisher as any).serializer).toBe(expectedSerializer);
     expect((actualPublisher as any).publishOptions).toEqual({
-      batching: { maxMessages: 1 },
+      batching: { maxMessages: 5 },
     });
   });
 

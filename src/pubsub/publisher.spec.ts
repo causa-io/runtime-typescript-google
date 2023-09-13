@@ -1,5 +1,6 @@
 import { Event } from '@causa/runtime';
 import { getLoggedErrors, spyOnLogger } from '@causa/runtime/testing';
+import { Topic } from '@google-cloud/pubsub';
 import { jest } from '@jest/globals';
 import { Transform, Type } from 'class-transformer';
 import 'jest-extended';
@@ -45,13 +46,21 @@ describe('PubSubPublisher', () => {
 
   beforeAll(async () => {
     fixture = new PubSubFixture();
-    configuration = await fixture.create('my.awesome-topic.v1', MyEvent);
+    configuration = await fixture.createMany({
+      'my.awesome-topic.v1': MyEvent,
+      'my.other-topic.v1': MyEvent,
+    });
     spyOnLogger();
   });
 
   beforeEach(async () => {
     publisher = new PubSubPublisher({
       configurationGetter: (key) => configuration[key],
+      topicPublishOptions: {
+        'my.other-topic.v1': {
+          batching: { maxMessages: 100, maxBytes: 1000 },
+        },
+      },
     });
   });
 
@@ -61,6 +70,30 @@ describe('PubSubPublisher', () => {
 
   afterAll(async () => {
     await fixture.deleteAll();
+  });
+
+  describe('constructor', () => {
+    it('should default to disable batching', () => {
+      expect(publisher.publishOptions).toMatchObject({
+        batching: { maxMessages: 1 },
+      });
+    });
+
+    it('should customize publish options per topic', () => {
+      const actualMyAwesomeTopic: Topic = (publisher as any).getTopic(
+        'my.awesome-topic.v1',
+      );
+      const actualMyOtherTopic: Topic = (publisher as any).getTopic(
+        'my.other-topic.v1',
+      );
+
+      expect(actualMyAwesomeTopic.publisher.settings).toMatchObject({
+        batching: { maxMessages: 1 },
+      });
+      expect(actualMyOtherTopic.publisher.settings).toMatchObject({
+        batching: { maxMessages: 100, maxBytes: 1000 },
+      });
+    });
   });
 
   describe('publish', () => {
