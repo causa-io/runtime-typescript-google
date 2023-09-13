@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+Fixes:
+
+- Exclude the Google healthcheck endpoint from the OpenAPI documentation.
+
 ## v0.10.0 (2023-09-12)
 
 Features:
