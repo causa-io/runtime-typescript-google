@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.12.0 (2023-09-19)
+
 Breaking changes:
 
 - Entities returned by the `SpannerEntityManager` are now created by `class-transformer`. This means `@Transform` and `@Type` decorators can be used (e.g. to process the objects JSON columns, like dates).
