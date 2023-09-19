@@ -1,5 +1,6 @@
 import { PreciseDate } from '@google-cloud/precise-date';
 import { Float, Int } from '@google-cloud/spanner';
+import { plainToInstance } from 'class-transformer';
 import {
   SpannerColumnMetadata,
   getSpannerColumnsMetadata,
@@ -32,14 +33,14 @@ function spannerObjectToInstanceWithOptions<T>(
 ): T | null {
   const columnsMetadata = getSpannerColumnsMetadata(type);
   const columnNamePrefix = options.columnNamePrefix ?? '';
-  const instance: any = new type();
+  const plain: any = {};
 
   let hasAtLeastOneNonNullValue = false;
   Object.entries(columnsMetadata).forEach(([property, columnMetadata]) => {
     const columnName = `${columnNamePrefix}${columnMetadata.name}`;
 
     if (columnMetadata.nestedType) {
-      instance[property] = spannerObjectToInstanceWithOptions(
+      plain[property] = spannerObjectToInstanceWithOptions(
         spannerObject,
         columnMetadata.nestedType,
         {
@@ -48,25 +49,25 @@ function spannerObjectToInstanceWithOptions<T>(
         },
       );
     } else if (columnMetadata.isJson) {
-      instance[property] = spannerObject[columnName];
+      plain[property] = spannerObject[columnName];
     } else if (Array.isArray(spannerObject[columnName])) {
-      instance[property] = spannerObject[columnName].map((v: any) =>
+      plain[property] = spannerObject[columnName].map((v: any) =>
         spannerValueToJavaScript(v, columnMetadata),
       );
     } else {
-      instance[property] = spannerValueToJavaScript(
+      plain[property] = spannerValueToJavaScript(
         spannerObject[columnName],
         columnMetadata,
       );
     }
 
-    if (instance[property] != null) {
+    if (plain[property] != null) {
       hasAtLeastOneNonNullValue = true;
     }
   });
 
   return hasAtLeastOneNonNullValue || !options.nullifyInstance
-    ? instance
+    ? plainToInstance(type, plain)
     : null;
 }
 
@@ -96,7 +97,7 @@ function spannerValueToJavaScript(
     }
   } else if (
     value instanceof Date &&
-    // `PreciseDate` extends `Date`. This was previously used to handle conflicting versions of `PreciseDate.
+    // `PreciseDate` extends `Date`. This was previously used to handle conflicting versions of `PreciseDate`.
     value.constructor.name === PreciseDate.name &&
     !columnMetadata.isPreciseDate
   ) {
@@ -234,28 +235,28 @@ export function copyInstanceWithMissingColumnsToNull<T>(
 ): T {
   const columnsMetadata = getSpannerColumnsMetadata(type);
 
-  const newInstance: any = new type();
+  const plain: any = {};
 
   Object.entries(columnsMetadata).forEach(([property, columnMetadata]) => {
     const instanceValue = instance == null ? null : (instance as any)[property];
 
     if (columnMetadata.nestedType) {
       if (columnMetadata.nullifyNested && instanceValue == null) {
-        newInstance[property] = null;
+        plain[property] = null;
       } else {
-        newInstance[property] = copyInstanceWithMissingColumnsToNull(
+        plain[property] = copyInstanceWithMissingColumnsToNull(
           instanceValue,
           columnMetadata.nestedType,
         );
       }
     } else if (instanceValue !== undefined) {
-      newInstance[property] = instanceValue;
+      plain[property] = instanceValue;
     } else {
-      newInstance[property] = null;
+      plain[property] = null;
     }
   });
 
-  return newInstance;
+  return plainToInstance(type, plain);
 }
 
 /**
@@ -276,31 +277,31 @@ export function updateInstanceByColumn<T>(
   type ??= (instance as any).constructor as { new (): T };
   const columnsMetadata = getSpannerColumnsMetadata(type);
 
-  const newInstance: any = new type();
+  const plain: any = {};
 
   Object.entries(columnsMetadata).forEach(([property, columnMetadata]) => {
     const instanceValue = instance == null ? null : (instance as any)[property];
     const updateValue = update == null ? update : (update as any)[property];
 
     if (updateValue === undefined) {
-      newInstance[property] = instanceValue;
+      plain[property] = instanceValue;
       return;
     }
 
     if (columnMetadata.nestedType) {
       if (columnMetadata.nullifyNested && updateValue === null) {
-        newInstance[property] = null;
+        plain[property] = null;
       } else {
-        newInstance[property] = updateInstanceByColumn(
+        plain[property] = updateInstanceByColumn(
           instanceValue,
           updateValue,
           columnMetadata.nestedType,
         );
       }
     } else if (updateValue !== undefined) {
-      newInstance[property] = updateValue;
+      plain[property] = updateValue;
     }
   });
 
-  return newInstance;
+  return plainToInstance(type, plain);
 }

@@ -1,5 +1,7 @@
+import { IsDateType } from '@causa/runtime';
 import { PreciseDate } from '@google-cloud/precise-date';
 import { Float, Int } from '@google-cloud/spanner';
+import { Type } from 'class-transformer';
 import { SpannerColumn } from './column.decorator.js';
 import {
   copyInstanceWithMissingColumnsToNull,
@@ -78,7 +80,18 @@ describe('conversion', () => {
     someOtherDate!: Date;
   }
 
-  type JsonType = { a: number; b: string };
+  class JsonType {
+    constructor(data: Partial<JsonType> = {}) {
+      Object.assign(this, data);
+    }
+
+    a!: number;
+
+    b!: string;
+
+    @IsDateType()
+    c!: Date;
+  }
 
   class JsonEntity {
     constructor(data: Partial<JsonEntity> = {}) {
@@ -86,9 +99,11 @@ describe('conversion', () => {
     }
 
     @SpannerColumn({ isJson: true })
+    @Type(() => JsonType)
     someJsonColumn!: JsonType;
 
     @SpannerColumn({ isJson: true })
+    @Type(() => JsonType)
     someJsonArrayColumn!: JsonType[];
   }
 
@@ -215,15 +230,22 @@ describe('conversion', () => {
         someOtherDate: new Date(2021, 1, 1),
       });
       expect(actualInstance.somePreciseDate).toBeInstanceOf(PreciseDate);
+      expect(actualInstance.somePreciseDate.getNanoseconds()).toEqual(
+        spannerObject.somePreciseDate.getNanoseconds(),
+      );
       expect(actualInstance.someOtherDate).not.toBeInstanceOf(PreciseDate);
     });
 
     it('should forward JSON columns', () => {
       const spannerObject = {
-        someJsonColumn: { a: 12, b: '🧠' },
+        someJsonColumn: {
+          a: 12,
+          b: '🧠',
+          c: new Date('2023-01-01').toISOString(),
+        },
         someJsonArrayColumn: [
-          { a: 12, b: '🧠' },
-          { a: 13, b: '🐶' },
+          { a: 12, b: '🧠', c: new Date('2024-01-01').toISOString() },
+          { a: 13, b: '🐶', c: new Date('2025-01-01').toISOString() },
         ],
       };
 
@@ -231,12 +253,14 @@ describe('conversion', () => {
 
       expect(actualInstance).toBeInstanceOf(JsonEntity);
       expect(actualInstance).toEqual({
-        someJsonColumn: { a: 12, b: '🧠' },
+        someJsonColumn: { a: 12, b: '🧠', c: new Date('2023-01-01') },
         someJsonArrayColumn: [
-          { a: 12, b: '🧠' },
-          { a: 13, b: '🐶' },
+          { a: 12, b: '🧠', c: new Date('2024-01-01') },
+          { a: 13, b: '🐶', c: new Date('2025-01-01') },
         ],
       });
+      expect(actualInstance.someJsonColumn).toBeInstanceOf(JsonType);
+      expect(actualInstance.someJsonArrayColumn[0]).toBeInstanceOf(JsonType);
     });
 
     it('should convert arrays to JavaScript values', () => {
@@ -497,10 +521,14 @@ describe('conversion', () => {
     it('should update JSON columns fully', () => {
       const actualInstance = updateInstanceByColumn(
         new JsonEntity({
-          someJsonColumn: { a: 12, b: '🧠' },
+          someJsonColumn: new JsonType({
+            a: 12,
+            b: '🧠',
+            c: new Date('2023-01-01'),
+          }),
           someJsonArrayColumn: [
-            { a: 12, b: '🧠' },
-            { a: 13, b: '🐶' },
+            new JsonType({ a: 12, b: '🧠', c: new Date('2024-01-01') }),
+            new JsonType({ a: 13, b: '🐶', c: new Date('2025-01-01') }),
           ],
         }),
         { someJsonColumn: { b: '💮' } },
@@ -509,11 +537,13 @@ describe('conversion', () => {
       expect(actualInstance).toEqual({
         someJsonColumn: { b: '💮' },
         someJsonArrayColumn: [
-          { a: 12, b: '🧠' },
-          { a: 13, b: '🐶' },
+          { a: 12, b: '🧠', c: new Date('2024-01-01') },
+          { a: 13, b: '🐶', c: new Date('2025-01-01') },
         ],
       });
       expect(actualInstance).toBeInstanceOf(JsonEntity);
+      expect(actualInstance.someJsonColumn).toBeInstanceOf(JsonType);
+      expect(actualInstance.someJsonArrayColumn[0]).toBeInstanceOf(JsonType);
     });
 
     it('should set nested entities to null', () => {

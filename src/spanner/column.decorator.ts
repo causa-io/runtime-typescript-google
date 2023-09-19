@@ -1,3 +1,5 @@
+import { PreciseDate } from '@google-cloud/precise-date';
+import { Transform } from 'class-transformer';
 import 'reflect-metadata';
 
 /**
@@ -69,13 +71,15 @@ export function SpannerColumn(options: Partial<SpannerColumnMetadata> = {}) {
   return (target: any, propertyKey: string) => {
     const metadata = getSpannerColumnsMetadata(target.constructor);
 
+    const isPreciseDate = options.isPreciseDate ?? false;
+
     metadata[propertyKey] = {
       name: options.name ?? propertyKey,
       nestedType: options.nestedType,
       nullifyNested: options.nullifyNested ?? false,
       isInt: options.isInt ?? false,
       isBigInt: options.isBigInt ?? false,
-      isPreciseDate: options.isPreciseDate ?? false,
+      isPreciseDate,
       isJson: options.isJson ?? false,
       softDelete: options.softDelete ?? false,
     };
@@ -85,6 +89,21 @@ export function SpannerColumn(options: Partial<SpannerColumnMetadata> = {}) {
       metadata,
       target.constructor,
     );
+
+    if (isPreciseDate) {
+      // `class-transformer` interferes with the `Date` type by copying the value to a new `Date` object if it is an
+      // instance of `Date`. Unfortunately, `PreciseDate` inherits from `Date` therefore precision is lost during the
+      // copy. `obj` must be used to retrieve the original value for the property. It is then copied manually. (Note
+      // that the `PreciseDate` constructor itself also loses precision if passed a `Date` or `PreciseDate` object.)
+      Transform(({ obj }) => {
+        const value = obj[propertyKey];
+        if (!value) {
+          return value;
+        }
+
+        return new PreciseDate((value as PreciseDate).getFullTime());
+      })(target, propertyKey);
+    }
   };
 }
 
