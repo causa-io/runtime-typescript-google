@@ -28,12 +28,18 @@ export async function createDatabase(
      * By default, a new Spanner client will be created using the `SPANNER_INSTANCE` environment variable.
      */
     instance?: Instance;
+
+    /**
+     * The Spanner client to use to create the database.
+     * If `instance` is provided, this will be ignored.
+     */
+    spanner?: Spanner;
   } = {},
 ): Promise<Database> {
   const name = options.name ?? `test-${uuid.v4().slice(-10)}`;
+  const spanner = options.spanner ?? new Spanner();
   const instance =
-    options.instance ??
-    new Spanner().instance(process.env.SPANNER_INSTANCE ?? '');
+    options.instance ?? spanner.instance(process.env.SPANNER_INSTANCE ?? '');
   const sourceDatabaseName =
     options.sourceDatabaseName ?? process.env.SPANNER_DATABASE;
 
