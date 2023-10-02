@@ -1,10 +1,10 @@
 import { LoggerModule } from '@causa/runtime/nestjs';
 import { createMockConfigService } from '@causa/runtime/nestjs/testing';
 import { getLoggedInfos, spyOnLogger } from '@causa/runtime/testing';
-import { Database } from '@google-cloud/spanner';
+import { Database, Spanner } from '@google-cloud/spanner';
 import { Injectable } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { Test } from '@nestjs/testing';
+import { Test, TestingModule } from '@nestjs/testing';
 import { SPANNER_SESSION_POOL_OPTIONS_FOR_SERVICE } from './database.js';
 import { SpannerEntityManager } from './entity-manager.js';
 import { SpannerModule } from './module.js';
@@ -12,18 +12,32 @@ import { SpannerModule } from './module.js';
 @Injectable()
 class MyService {
   constructor(
+    readonly spanner: Spanner,
     readonly database: Database,
     readonly entityManager: SpannerEntityManager,
   ) {}
 }
 
 describe('SpannerModule', () => {
+  let testModule: TestingModule | undefined;
+
   beforeEach(() => {
     spyOnLogger();
   });
 
+  afterEach(async () => {
+    await testModule?.close();
+    testModule = undefined;
+  });
+
+  it('should expose the Spanner client', async () => {
+    const { spanner: actualSpanner } = await createInjectedService();
+
+    expect(actualSpanner).toBeInstanceOf(Spanner);
+  });
+
   it('should expose the Spanner database using the configuration', async () => {
-    const { database: actualDatabase } = await createInjectedService();
+    const { database: actualDatabase, spanner } = await createInjectedService();
 
     expect(actualDatabase).toBeInstanceOf(Database);
     expect(actualDatabase.formattedName_).toEqual(
@@ -32,6 +46,9 @@ describe('SpannerModule', () => {
     expect((actualDatabase.pool_ as any).options).toMatchObject(
       SPANNER_SESSION_POOL_OPTIONS_FOR_SERVICE,
     );
+    const databaseInstance = (actualDatabase as any).parent;
+    const databaseSpanner = (databaseInstance as any).parent;
+    expect(databaseSpanner).toBe(spanner);
   });
 
   it('should use the provided pool options', async () => {
@@ -68,7 +85,7 @@ describe('SpannerModule', () => {
   async function createInjectedService(
     args: Parameters<(typeof SpannerModule)['forRoot']> = [],
   ): Promise<MyService> {
-    const testModule = await Test.createTestingModule({
+    testModule = await Test.createTestingModule({
       providers: [MyService],
       imports: [
         ConfigModule.forRoot({ isGlobal: true }),
