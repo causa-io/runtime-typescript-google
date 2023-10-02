@@ -8,6 +8,7 @@ import {
   catchSpannerDatabaseErrors,
 } from './database.js';
 import { SpannerEntityManager } from './entity-manager.js';
+import { SpannerLifecycleService } from './lifecycle.service.js';
 
 /**
  * Options when instantiating the Spanner {@link Database}.
@@ -75,6 +76,7 @@ export class SpannerModule {
         { provide: Spanner, useFactory: () => new Spanner() },
         makeDatabaseProvider(options),
         SpannerEntityManager,
+        SpannerLifecycleService,
       ],
       exports: [Spanner, Database, SpannerEntityManager],
     };

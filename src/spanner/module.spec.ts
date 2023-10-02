@@ -2,9 +2,11 @@ import { LoggerModule } from '@causa/runtime/nestjs';
 import { createMockConfigService } from '@causa/runtime/nestjs/testing';
 import { getLoggedInfos, spyOnLogger } from '@causa/runtime/testing';
 import { Database, Spanner } from '@google-cloud/spanner';
+import { jest } from '@jest/globals';
 import { Injectable } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
+import 'jest-extended';
 import { SPANNER_SESSION_POOL_OPTIONS_FOR_SERVICE } from './database.js';
 import { SpannerEntityManager } from './entity-manager.js';
 import { SpannerModule } from './module.js';
@@ -80,6 +82,17 @@ describe('SpannerModule', () => {
 
     expect(actualEntityManager).toBeInstanceOf(SpannerEntityManager);
     expect(actualEntityManager.database).toBe(database);
+  });
+
+  it('should close the Spanner client and database when closing the app', async () => {
+    const { database, spanner } = await createInjectedService();
+    jest.spyOn(spanner, 'close');
+    jest.spyOn(database, 'close');
+
+    await testModule?.close();
+
+    expect(database.close).toHaveBeenCalledExactlyOnceWith();
+    expect(spanner.close).toHaveBeenCalledExactlyOnceWith();
   });
 
   async function createInjectedService(
