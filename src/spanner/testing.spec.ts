@@ -8,10 +8,12 @@ import { createDatabase, overrideDatabase } from './testing.js';
 describe('testing', () => {
   describe('createDatabase', () => {
     let previousEnv: NodeJS.ProcessEnv;
+    let spanner: Spanner;
     let instance: Instance;
 
     beforeAll(async () => {
-      const [newInstance, operation] = await new Spanner().createInstance(
+      spanner = new Spanner();
+      const [newInstance, operation] = await spanner.createInstance(
         'test-instance',
         { displayName: 'test-utils', config: 'test/local' },
       );
@@ -30,6 +32,7 @@ describe('testing', () => {
 
     afterAll(async () => {
       await instance.delete();
+      spanner.close();
     });
 
     it('should use the default instance', async () => {
@@ -51,6 +54,17 @@ describe('testing', () => {
       expect(actualDatabase.formattedName_).toEndWith(
         'instances/test-instance/databases/test-db',
       );
+    });
+
+    it('should use the provided Spanner client', async () => {
+      const actualDatabase = await createDatabase({
+        name: 'test-db',
+        spanner,
+      });
+
+      const actualInstance = (actualDatabase as any).parent;
+      const actualSpanner = (actualInstance as any).parent;
+      expect(actualSpanner).toBe(spanner);
     });
 
     it('should create a database that does not exist', async () => {

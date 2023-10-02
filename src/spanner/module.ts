@@ -8,6 +8,7 @@ import {
   catchSpannerDatabaseErrors,
 } from './database.js';
 import { SpannerEntityManager } from './entity-manager.js';
+import { SpannerLifecycleService } from './lifecycle.service.js';
 
 /**
  * Options when instantiating the Spanner {@link Database}.
@@ -31,11 +32,15 @@ function makeDatabaseProvider(
 ): FactoryProvider<Database> {
   return {
     provide: Database,
-    useFactory: (configService: ConfigService, logger: Logger) => {
+    useFactory: (
+      configService: ConfigService,
+      spanner: Spanner,
+      logger: Logger,
+    ) => {
       const instanceName = configService.getOrThrow<string>('SPANNER_INSTANCE');
       const databaseName = configService.getOrThrow<string>('SPANNER_DATABASE');
 
-      const database = new Spanner()
+      const database = spanner
         .instance(instanceName)
         .database(
           databaseName,
@@ -46,7 +51,7 @@ function makeDatabaseProvider(
 
       return database;
     },
-    inject: [ConfigService, Logger],
+    inject: [ConfigService, Spanner, Logger],
   };
 }
 
@@ -56,7 +61,8 @@ function makeDatabaseProvider(
  */
 export class SpannerModule {
   /**
-   * Create a global module that provides the Spanner {@link Database} and the {@link SpannerEntityManager}.
+   * Creates a global module that provides the {@link Spanner} client, the {@link Database} and the
+   * {@link SpannerEntityManager}.
    * The {@link ConfigService} and {@link Logger} should be globally available for this module to work.
    *
    * @param options Options for Spanner services.
@@ -66,8 +72,13 @@ export class SpannerModule {
     return {
       module: SpannerModule,
       global: true,
-      providers: [makeDatabaseProvider(options), SpannerEntityManager],
-      exports: [Database, SpannerEntityManager],
+      providers: [
+        { provide: Spanner, useFactory: () => new Spanner() },
+        makeDatabaseProvider(options),
+        SpannerEntityManager,
+        SpannerLifecycleService,
+      ],
+      exports: [Spanner, Database, SpannerEntityManager],
     };
   }
 }

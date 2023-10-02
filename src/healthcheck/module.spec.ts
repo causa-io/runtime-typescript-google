@@ -33,7 +33,7 @@ describe('GoogleHealthcheckModule', () => {
         overrides: (builder) =>
           builder
             .overrideProvider(Database)
-            .useValue({ run: runMock })
+            .useValue({ run: runMock, close: () => Promise.resolve() })
             .overrideProvider(PubSub)
             .useValue({ getTopics: getTopicsMock }),
       }),

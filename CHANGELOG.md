@@ -6,6 +6,14 @@ Breaking changes:
 
 - Use NestJS `Type` for all references to class types.
 
+Features:
+
+- Expose the `Spanner` client from the `SpannerModule`.
+
+Fix:
+
+- Close the `Spanner` client and `Database` when the application terminates.
+
 ## v0.12.0 (2023-09-19)
 
 Breaking changes:
