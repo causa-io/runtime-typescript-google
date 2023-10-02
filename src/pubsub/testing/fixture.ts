@@ -215,6 +215,12 @@ export class PubSubFixture {
         return;
       } catch (e) {
         if (new Date().getTime() >= timeoutTime) {
+          if (fixture.messages.length === 1) {
+            // This throws with a clearer message than `toContainEqual` because the single received message is actually
+            // compared to the expected message.
+            expect(fixture.messages[0]).toEqual(expectedMessage);
+          }
+
           throw e;
         }
 
