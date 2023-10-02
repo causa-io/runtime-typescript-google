@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.13.0 (2023-10-02)
+
 Breaking changes:
 
 - Use NestJS `Type` for all references to class types.
