@@ -9,6 +9,9 @@ Breaking changes:
 Features:
 
 - Expose the `Spanner` client from the `SpannerModule`.
+- Manage the `Spanner` client in the `GoogleAppFixture`.
+- Make the failed `PubSubFixture` event expectation clearer.
+- Add a default delay before checking that no message has been published to a topic in `PubSubFixture.expectNoMessageInTopic`.
 
 Fix:
 

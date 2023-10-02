@@ -149,13 +149,15 @@ class MyModule {}
 
 describe('GoogleAppFixture', () => {
   let previousEnv: NodeJS.ProcessEnv;
+  let spanner: Spanner;
   let sourceDatabase: Database;
 
-  let fixture: GoogleAppFixture;
+  let fixture!: GoogleAppFixture;
   let publisher: EventPublisher;
 
   beforeAll(async () => {
-    const [database, operation] = await new Spanner()
+    spanner = new Spanner();
+    const [database, operation] = await spanner
       .instance(process.env.SPANNER_INSTANCE ?? '')
       .createDatabase('test-google');
     await operation.promise();
@@ -189,12 +191,13 @@ describe('GoogleAppFixture', () => {
   });
 
   afterEach(async () => {
-    await fixture.clearFirestore();
-    await fixture.delete();
+    await fixture?.clearFirestore();
+    await fixture?.delete();
   });
 
   afterAll(async () => {
     await sourceDatabase.delete();
+    spanner.close();
     process.env = previousEnv;
   });
 
@@ -265,16 +268,22 @@ describe('GoogleAppFixture', () => {
     it('should delete resources', async () => {
       const databaseName = fixture.entityManager.database.formattedName_;
       await fixture.users.createAuthUserAndToken();
+      jest.spyOn(fixture.spanner, 'close');
 
       await fixture.delete();
 
-      const [databaseExists] = await new Spanner()
+      const spanner = new Spanner();
+      const [databaseExists] = await spanner
         .instance(process.env.SPANNER_INSTANCE ?? '')
         .database(databaseName, { min: 0 })
         .exists();
       expect(databaseExists).toBeFalse();
+      spanner.close();
       expect(Object.keys(fixture.pubSub.fixtures)).toBeEmpty();
       expect(fixture.users.users).toBeEmpty();
+      expect(fixture.spanner.close).toHaveBeenCalledExactlyOnceWith();
+      // Avoids deleting the fixture twice.
+      fixture = undefined as any;
     });
   });
 
