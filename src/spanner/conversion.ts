@@ -1,5 +1,6 @@
 import { PreciseDate } from '@google-cloud/precise-date';
 import { Float, Int } from '@google-cloud/spanner';
+import { Type } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import {
   SpannerColumnMetadata,
@@ -17,7 +18,7 @@ import { RecursivePartialEntity } from './types.js';
  */
 function spannerObjectToInstanceWithOptions<T>(
   spannerObject: Record<string, any>,
-  type: { new (): T },
+  type: Type<T>,
   options: {
     /**
      * The prefix to add to column names when converting the object.
@@ -118,7 +119,7 @@ function spannerValueToJavaScript(
  */
 export function spannerObjectToInstance<T>(
   spannerObject: Record<string, any>,
-  type: { new (): T },
+  type: Type<T>,
 ): T {
   // This is okay as `null` can only be returned when the internal option `nullifyInstance` is set.
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -168,7 +169,7 @@ function makeSpannerValue(value: any, metadata: SpannerColumnMetadata): any {
  */
 export function instanceToSpannerObjectInternal<T>(
   instance: T | RecursivePartialEntity<T> | null,
-  type: { new (): T },
+  type: Type<T>,
   columnNamePrefix = '',
 ): Record<string, any> {
   const columnsMetadata = getSpannerColumnsMetadata(type);
@@ -216,7 +217,7 @@ export function instanceToSpannerObjectInternal<T>(
  */
 export function instanceToSpannerObject<T>(
   instance: T | RecursivePartialEntity<T>,
-  type: { new (): T },
+  type: Type<T>,
 ): Record<string, any> {
   return instanceToSpannerObjectInternal(instance, type);
 }
@@ -231,7 +232,7 @@ export function instanceToSpannerObject<T>(
  */
 export function copyInstanceWithMissingColumnsToNull<T>(
   instance: T | RecursivePartialEntity<T>,
-  type: { new (): T },
+  type: Type<T>,
 ): T {
   const columnsMetadata = getSpannerColumnsMetadata(type);
 
@@ -272,9 +273,9 @@ export function copyInstanceWithMissingColumnsToNull<T>(
 export function updateInstanceByColumn<T>(
   instance: T,
   update: RecursivePartialEntity<T>,
-  type?: { new (): T },
+  type?: Type<T>,
 ): T {
-  type ??= (instance as any).constructor as { new (): T };
+  type ??= (instance as any).constructor as Type<T>;
   const columnsMetadata = getSpannerColumnsMetadata(type);
 
   const plain: any = {};

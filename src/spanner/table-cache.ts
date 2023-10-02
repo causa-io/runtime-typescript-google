@@ -1,3 +1,4 @@
+import { Type } from '@nestjs/common';
 import {
   getSpannerColumns,
   getSpannerColumnsMetadata,
@@ -47,8 +48,7 @@ export class SpannerTableCache {
   /**
    * The cache of {@link CachedSpannerTableMetadata} objects, where keys are entity types (class constructors).
    */
-  private readonly cache: Map<{ new (): any }, CachedSpannerTableMetadata> =
-    new Map();
+  private readonly cache: Map<Type, CachedSpannerTableMetadata> = new Map();
 
   /**
    * Builds the {@link CachedSpannerTableMetadata} for the given entity type, by reading decorator metadata.
@@ -56,9 +56,7 @@ export class SpannerTableCache {
    * @param entityType The entity type for which to build the metadata.
    * @returns The metadata.
    */
-  private buildMetadata(entityType: {
-    new (): any;
-  }): CachedSpannerTableMetadata {
+  private buildMetadata(entityType: Type): CachedSpannerTableMetadata {
     const tableMetadata = getSpannerTableMetadataFromType(entityType);
     if (!tableMetadata) {
       throw new InvalidEntityDefinitionError(entityType);
@@ -105,7 +103,7 @@ export class SpannerTableCache {
    * @param entityType The entity type for which to get the metadata.
    * @returns The metadata.
    */
-  getMetadata<T>(entityType: { new (): T }): CachedSpannerTableMetadata {
+  getMetadata(entityType: Type): CachedSpannerTableMetadata {
     let metadata = this.cache.get(entityType);
 
     if (!metadata) {

@@ -1,3 +1,4 @@
+import { Type } from '@nestjs/common';
 import {
   CollectionReference,
   DocumentReference,
@@ -36,7 +37,7 @@ export type FirestoreCollectionMetadata<T> = {
 export function FirestoreCollection<T>(
   metadata: FirestoreCollectionMetadata<T>,
 ) {
-  return (target: { new (): T }) => {
+  return (target: Type<T>) => {
     Reflect.defineMetadata(FIRESTORE_COLLECTION_METADATA_KEY, metadata, target);
   };
 }
@@ -48,9 +49,9 @@ export function FirestoreCollection<T>(
  * @param documentType The type of document.
  * @returns The metadata for the Firestore collection.
  */
-export function getFirestoreCollectionMetadataForType<T>(documentType: {
-  new (): T;
-}): FirestoreCollectionMetadata<T> {
+export function getFirestoreCollectionMetadataForType<T>(
+  documentType: Type<T>,
+): FirestoreCollectionMetadata<T> {
   const metadata = Reflect.getOwnMetadata(
     FIRESTORE_COLLECTION_METADATA_KEY,
     documentType,
@@ -77,9 +78,9 @@ export function getFirestoreCollectionMetadataForType<T>(documentType: {
 export function getReferenceForFirestoreDocument<T>(
   collection: CollectionReference<T>,
   document: T | Partial<T>,
-  documentType?: new () => T,
+  documentType?: Type<T>,
 ): DocumentReference<T> {
-  documentType ??= (document as any).constructor as { new (): T };
+  documentType ??= (document as any).constructor as Type<T>;
   const { path } = getFirestoreCollectionMetadataForType(documentType);
 
   const relativePath = path(document);

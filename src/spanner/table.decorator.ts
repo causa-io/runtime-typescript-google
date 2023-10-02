@@ -1,3 +1,4 @@
+import { Type } from '@nestjs/common';
 import 'reflect-metadata';
 
 /**
@@ -29,7 +30,7 @@ export function SpannerTable(
   metadata: Partial<SpannerTableMetadata> &
     Pick<SpannerTableMetadata, 'primaryKey'>,
 ) {
-  return (target: { new (): any }) => {
+  return (target: Type) => {
     const value: SpannerTableMetadata = {
       name: target.name,
       ...metadata,
@@ -45,8 +46,8 @@ export function SpannerTable(
  * @param tableType The class for the table.
  * @returns The metadata for the Spanner table, or `null` if the class is not decorated.
  */
-export function getSpannerTableMetadataFromType(tableType: {
-  new (): any;
-}): SpannerTableMetadata | null {
+export function getSpannerTableMetadataFromType(
+  tableType: Type,
+): SpannerTableMetadata | null {
   return Reflect.getOwnMetadata(SPANNER_TABLE_METADATA_KEY, tableType) ?? null;
 }

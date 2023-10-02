@@ -1,10 +1,11 @@
 import { RetryableError } from '@causa/runtime';
+import { Type } from '@nestjs/common';
 
 /**
  * Error raised when the class for a Spanner table is not correctly defined (e.g. a decorator is missing).
  */
 export class InvalidEntityDefinitionError extends Error {
-  constructor(entityType: { new (): any }, message?: string) {
+  constructor(entityType: Type, message?: string) {
     super(
       message ??
         `The definition of the Spanner entity class '${entityType.name}' is not valid.`,

@@ -6,7 +6,7 @@ import {
 } from '@causa/runtime/nestjs/testing';
 import { serializeAsJavaScriptObject } from '@causa/runtime/testing';
 import { Database } from '@google-cloud/spanner';
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, Type } from '@nestjs/common';
 import { CollectionReference } from 'firebase-admin/firestore';
 import supertest, { SuperTest, Test } from 'supertest';
 import { overrideFirebaseApp } from '../firebase/testing.js';
@@ -32,7 +32,7 @@ type EntityToFetch<T extends VersionedEntity> = {
   /**
    * The type of entity to fetch.
    */
-  type: { new (): T };
+  type: Type<T>;
 
   /**
    * The ID of the entity to fetch.
@@ -110,8 +110,8 @@ export class GoogleAppFixture {
     readonly users: AuthUsersFixture,
     readonly request: SuperTest<Test>,
     readonly pubSubRequest: EventRequester,
-    readonly entities: { new (): any }[],
-    readonly firestoreDocuments: { new (): any }[],
+    readonly entities: Type[],
+    readonly firestoreDocuments: Type[],
   ) {}
 
   /**
@@ -120,7 +120,7 @@ export class GoogleAppFixture {
    * @param document The type of document to get the collection for.
    * @returns The Firestore collection.
    */
-  firestoreCollection<T>(document: { new (): T }): CollectionReference<T> {
+  firestoreCollection<T>(document: Type<T>): CollectionReference<T> {
     return getFirestoreCollectionFromModule(this.app, document);
   }
 
@@ -269,17 +269,17 @@ export class GoogleAppFixture {
       /**
        * Temporary Pub/Sub topics to create using the {@link PubSubFixture}.
        */
-      pubSubTopics?: Record<string, { new (): any }>;
+      pubSubTopics?: Record<string, Type>;
 
       /**
        * Temporary Firestore collections to create and to clear during teardown.
        */
-      firestoreDocuments?: { new (): any }[];
+      firestoreDocuments?: Type[];
 
       /**
        * Spanner entities to clear during teardown.
        */
-      entities?: { new (): any }[];
+      entities?: Type[];
 
       /**
        * Options for the {@link makeTestAppFactory} function.

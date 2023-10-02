@@ -1,5 +1,6 @@
 import { FindReplaceStateTransaction } from '@causa/runtime';
 import { Transaction as SpannerTransaction } from '@google-cloud/spanner';
+import { Type } from '@nestjs/common';
 import { SpannerEntityManager } from '../../spanner/index.js';
 
 /**
@@ -22,7 +23,7 @@ export class SpannerStateTransaction implements FindReplaceStateTransaction {
   }
 
   async deleteWithSameKeyAs<T extends object>(
-    type: new () => T,
+    type: Type<T>,
     key: Partial<T>,
   ): Promise<void> {
     const primaryKey = this.entityManager.getPrimaryKey(key, type);
@@ -34,7 +35,7 @@ export class SpannerStateTransaction implements FindReplaceStateTransaction {
   }
 
   async findOneWithSameKeyAs<T extends object>(
-    type: new () => T,
+    type: Type<T>,
     entity: Partial<T>,
   ): Promise<T | undefined> {
     const primaryKey = this.entityManager.getPrimaryKey(entity, type);

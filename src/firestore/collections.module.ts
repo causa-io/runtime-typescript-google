@@ -1,4 +1,4 @@
-import { DynamicModule, FactoryProvider } from '@nestjs/common';
+import { DynamicModule, FactoryProvider, Type } from '@nestjs/common';
 import { Firestore } from 'firebase-admin/firestore';
 import { getFirestoreCollectionMetadataForType } from './collection.decorator.js';
 import { makeFirestoreDataConverter } from './converter.js';
@@ -18,7 +18,7 @@ export class FirestoreCollectionsModule {
    *   They should be decorated with `FirestoreCollection`.
    * @returns The module.
    */
-  static forRoot(documentTypes: { new (): any }[]): DynamicModule {
+  static forRoot(documentTypes: Type[]): DynamicModule {
     const providers: FactoryProvider[] = documentTypes.map((documentType) => ({
       provide: getFirestoreCollectionInjectionName(documentType),
       useFactory: (firestore: Firestore) =>

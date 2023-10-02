@@ -1,4 +1,5 @@
 import { PreciseDate } from '@google-cloud/precise-date';
+import { Type } from '@nestjs/common';
 import { Transform } from 'class-transformer';
 import 'reflect-metadata';
 
@@ -19,7 +20,7 @@ export type SpannerColumnMetadata = {
   /**
    * If the type of the property is a nested type, this is the class for this property.
    */
-  nestedType?: { new (): any };
+  nestedType?: Type;
 
   /**
    * When `true`, sets the property to null if all properties is the nested object are null.
@@ -113,9 +114,9 @@ export function SpannerColumn(options: Partial<SpannerColumnMetadata> = {}) {
  * @param classType The class for the table.
  * @returns The metadata for all columns of this table.
  */
-export function getSpannerColumnsMetadata(classType: {
-  new (): any;
-}): SpannerColumnMetadataDictionary {
+export function getSpannerColumnsMetadata(
+  classType: Type,
+): SpannerColumnMetadataDictionary {
   return (
     Reflect.getOwnMetadata(SPANNER_COLUMN_METADATA_KEY, classType) ?? {
       ...Reflect.getMetadata(SPANNER_COLUMN_METADATA_KEY, classType),
@@ -130,10 +131,7 @@ export function getSpannerColumnsMetadata(classType: {
  * @param namePrefix Used for recursion with nested types, do not use directly.
  * @returns The list of columns for the given class.
  */
-export function getSpannerColumns(
-  classType: { new (): any },
-  namePrefix = '',
-): string[] {
+export function getSpannerColumns(classType: Type, namePrefix = ''): string[] {
   const columnsMetadata = getSpannerColumnsMetadata(classType);
 
   return Object.values(columnsMetadata).flatMap((c) =>
