@@ -13,6 +13,11 @@ import { PUBSUB_PUBLISHER_CONFIGURATION_GETTER_INJECTION_NAME } from '../publish
 const DEFAULT_EXPECT_TIMEOUT = 2000;
 
 /**
+ * The default delay (in milliseconds) before checking that no message has been received.
+ */
+const DEFAULT_EXPECT_NO_MESSAGE_DELAY = 50;
+
+/**
  * When the `expect` operation for a message fails, the wait duration (in milliseconds) before trying again.
  */
 const DURATION_BETWEEN_EXPECT_ATTEMPTS = 50;
@@ -251,13 +256,29 @@ export class PubSubFixture {
 
   /**
    * Checks that no message has been published to the given topic.
+   * By default, because publishing (and receiving) the messages is asynchronous, a small delay is added before checking
+   * that no message has been received. This delay can be removed or increased by passing the `delay` option.
    *
    * @param sourceTopicName The original name of the topic, i.e. the one used in production.
+   * @param options Options for the expectation.
    */
-  async expectNoMessageInTopic(sourceTopicName: string): Promise<void> {
+  async expectNoMessageInTopic(
+    sourceTopicName: string,
+    options: {
+      /**
+       * The delay (in milliseconds) before checking that no message has been received.
+       */
+      delay?: number;
+    } = {},
+  ): Promise<void> {
     const fixture = this.fixtures[sourceTopicName];
     if (!fixture) {
       throw new Error(`Fixture for topic '${sourceTopicName}' does not exist.`);
+    }
+
+    const delay = options.delay ?? DEFAULT_EXPECT_NO_MESSAGE_DELAY;
+    if (delay > 0) {
+      await setTimeout(delay);
     }
 
     const numMessages = fixture.messages.length;
