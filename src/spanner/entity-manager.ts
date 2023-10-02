@@ -1,8 +1,11 @@
 import { EntityNotFoundError } from '@causa/runtime';
 import { Database, Snapshot, Transaction } from '@google-cloud/spanner';
-import { Int, Type } from '@google-cloud/spanner/build/src/codec.js';
+import {
+  Int,
+  Type as ParamType,
+} from '@google-cloud/spanner/build/src/codec.js';
 import { TimestampBounds } from '@google-cloud/spanner/build/src/transaction.js';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Type } from '@nestjs/common';
 import {
   copyInstanceWithMissingColumnsToNull,
   instanceToSpannerObject,
@@ -80,7 +83,7 @@ export type SqlStatement = {
   /**
    * The types of the parameters in the statement.
    */
-  types?: Record<string, Type>;
+  types?: Record<string, ParamType>;
 };
 
 /**
@@ -90,7 +93,7 @@ export type QueryOptions<T> = ReadOperationOptions & {
   /**
    * The type of entity to return in the list of results.
    */
-  entityType?: { new (): T };
+  entityType?: Type<T>;
 };
 
 /**
@@ -143,9 +146,9 @@ export class SpannerEntityManager {
    */
   getPrimaryKey<T>(
     entity: T | RecursivePartialEntity<T>,
-    entityType?: { new (): T },
+    entityType?: Type<T>,
   ): SpannerKey {
-    entityType ??= (entity as any).constructor as { new (): T };
+    entityType ??= (entity as any).constructor as Type<T>;
     const obj = instanceToSpannerObject(entity, entityType);
     return this.getPrimaryKeyForSpannerObject(obj, entityType);
   }
@@ -159,7 +162,7 @@ export class SpannerEntityManager {
    */
   protected getPrimaryKeyForSpannerObject(
     obj: Record<string, any>,
-    entityType: { new (): any },
+    entityType: Type,
   ): SpannerKey {
     const { primaryKeyColumns } = this.tableCache.getMetadata(entityType);
 
@@ -190,7 +193,7 @@ export class SpannerEntityManager {
    * @returns The name of the table, quoted with backticks.
    */
   sqlTableName(
-    entityTypeOrTable: { new (): any } | string,
+    entityTypeOrTable: Type | string,
     options: {
       /**
        * Sets a table hint to indicate which index to use when querying the table.
@@ -236,7 +239,7 @@ export class SpannerEntityManager {
    * @param entityTypeOrColumns The type of entity, or the unquoted list of columns.
    * @returns The list of columns, quoted with backticks and joined.
    */
-  sqlColumns(entityTypeOrColumns: { new (): any } | string[]): string {
+  sqlColumns(entityTypeOrColumns: Type | string[]): string {
     if (Array.isArray(entityTypeOrColumns)) {
       return entityTypeOrColumns.map((c) => `\`${c}\``).join(', ');
     }
@@ -261,7 +264,7 @@ export class SpannerEntityManager {
    * @returns The row returned by Spanner, or `undefined` if it was not found.
    */
   protected async findRowByKey(
-    entityType: { new (): any },
+    entityType: Type,
     key: SpannerKey | SpannerKey[number],
     options: FindOptions = {},
   ): Promise<Record<string, any> | undefined> {
@@ -334,7 +337,7 @@ export class SpannerEntityManager {
    * @returns The entity, or `undefined` if it was not found.
    */
   async findOneByKey<T>(
-    entityType: { new (): T },
+    entityType: Type<T>,
     key: SpannerKey | SpannerKey[number],
     options: FindOptions = {},
   ): Promise<T | undefined> {
@@ -357,7 +360,7 @@ export class SpannerEntityManager {
    * @returns The fetched entity.
    */
   async findOneByKeyOrFail<T>(
-    entityType: { new (): T },
+    entityType: Type<T>,
     key: SpannerKey | SpannerKey[number],
     options: FindOptions = {},
   ): Promise<T> {
@@ -455,7 +458,7 @@ export class SpannerEntityManager {
    * @param options The options to use when running the operation.
    */
   async clear(
-    entityType: { new (): any },
+    entityType: Type,
     options: WriteOperationOptions = {},
   ): Promise<void> {
     const { quotedTableName } = this.tableCache.getMetadata(entityType);
@@ -517,39 +520,39 @@ export class SpannerEntityManager {
   }
 
   // Types that can be used as hints to disambiguate query parameter array types.
-  static readonly ParamTypeFloat64Array: Type = {
+  static readonly ParamTypeFloat64Array: ParamType = {
     type: 'array',
     child: { type: 'float64' },
   };
-  static readonly ParamTypeInt64Array: Type = {
+  static readonly ParamTypeInt64Array: ParamType = {
     type: 'array',
     child: { type: 'int64' },
   };
-  static readonly ParamTypeNumericArray: Type = {
+  static readonly ParamTypeNumericArray: ParamType = {
     type: 'array',
     child: { type: 'numeric' },
   };
-  static readonly ParamTypeBoolArray: Type = {
+  static readonly ParamTypeBoolArray: ParamType = {
     type: 'array',
     child: { type: 'bool' },
   };
-  static readonly ParamTypeStringArray: Type = {
+  static readonly ParamTypeStringArray: ParamType = {
     type: 'array',
     child: { type: 'string' },
   };
-  static readonly ParamTypeBytesArray: Type = {
+  static readonly ParamTypeBytesArray: ParamType = {
     type: 'array',
     child: { type: 'bytes' },
   };
-  static readonly ParamTypeJsonArray: Type = {
+  static readonly ParamTypeJsonArray: ParamType = {
     type: 'array',
     child: { type: 'json' },
   };
-  static readonly ParamTypeTimestampArray: Type = {
+  static readonly ParamTypeTimestampArray: ParamType = {
     type: 'array',
     child: { type: 'timestamp' },
   };
-  static readonly ParamTypeDateArray: Type = {
+  static readonly ParamTypeDateArray: ParamType = {
     type: 'array',
     child: { type: 'date' },
   };
@@ -643,7 +646,7 @@ export class SpannerEntityManager {
    * @returns The updated entity.
    */
   async update<T>(
-    entityType: { new (): T },
+    entityType: Type<T>,
     update: RecursivePartialEntity<T>,
     options: WriteOperationOptions &
       Pick<FindOptions, 'includeSoftDeletes'> & {
@@ -704,7 +707,7 @@ export class SpannerEntityManager {
    * @returns The deleted entity.
    */
   async delete<T>(
-    entityType: { new (): T },
+    entityType: Type<T>,
     key: SpannerKey | SpannerKey[number],
     options: WriteOperationOptions &
       Pick<FindOptions, 'includeSoftDeletes'> & {

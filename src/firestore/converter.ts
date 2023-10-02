@@ -1,3 +1,4 @@
+import { Type } from '@nestjs/common';
 import { instanceToPlain, plainToInstance } from 'class-transformer';
 import {
   FirestoreDataConverter,
@@ -11,9 +12,9 @@ import {
  *
  * @returns The converter.
  */
-export function makeFirestoreDataConverter<T>(classType: {
-  new (): T;
-}): FirestoreDataConverter<T> {
+export function makeFirestoreDataConverter<T>(
+  classType: Type<T>,
+): FirestoreDataConverter<T> {
   return {
     toFirestore: (data: PartialWithFieldValue<T>) => instanceToPlain(data),
     fromFirestore: (snapshot: QueryDocumentSnapshot) => {

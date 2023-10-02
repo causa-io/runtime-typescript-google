@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Type } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
 import { CollectionReference } from 'firebase-admin/firestore';
 import { makeFirestoreDataConverter } from '../../firestore/index.js';
@@ -20,7 +20,7 @@ export class NestJsFirestoreCollectionResolver
    * A cache of Firestore collections for document types.
    */
   private readonly collectionsByType: Map<
-    { new (): any },
+    Type,
     FirestoreCollectionsForDocumentType<any>
   > = new Map();
 
@@ -33,7 +33,7 @@ export class NestJsFirestoreCollectionResolver
   constructor(readonly moduleRef: ModuleRef) {}
 
   getCollectionsForType<T>(
-    documentType: new () => T,
+    documentType: Type<T>,
   ): FirestoreCollectionsForDocumentType<T> {
     const existingDocumentCollections =
       this.collectionsByType.get(documentType);

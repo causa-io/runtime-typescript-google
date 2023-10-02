@@ -1,4 +1,5 @@
 import { FindReplaceStateTransaction } from '@causa/runtime';
+import { Type } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { CollectionReference, Transaction } from 'firebase-admin/firestore';
 import { getReferenceForFirestoreDocument } from '../../firestore/index.js';
@@ -31,9 +32,9 @@ export interface FirestoreCollectionResolver {
    * @param documentType The type of document.
    * @returns The Firestore collections for the given document type.
    */
-  getCollectionsForType<T>(documentType: {
-    new (): T;
-  }): FirestoreCollectionsForDocumentType<T>;
+  getCollectionsForType<T>(
+    documentType: Type<T>,
+  ): FirestoreCollectionsForDocumentType<T>;
 }
 
 /**
@@ -60,7 +61,7 @@ export class FirestoreStateTransaction implements FindReplaceStateTransaction {
   ) {}
 
   async deleteWithSameKeyAs<T extends object>(
-    type: new () => T,
+    type: Type<T>,
     key: Partial<T>,
   ): Promise<void> {
     const { activeCollection, deletedCollection } =
@@ -82,7 +83,7 @@ export class FirestoreStateTransaction implements FindReplaceStateTransaction {
   }
 
   async findOneWithSameKeyAs<T extends object>(
-    type: new () => T,
+    type: Type<T>,
     entity: Partial<T>,
   ): Promise<T | undefined> {
     const { activeCollection, deletedCollection } =
@@ -116,7 +117,7 @@ export class FirestoreStateTransaction implements FindReplaceStateTransaction {
   }
 
   async replace<T extends object>(entity: T): Promise<void> {
-    const documentType = entity.constructor as { new (): T };
+    const documentType = entity.constructor as Type<T>;
     const { activeCollection, deletedCollection } =
       this.collectionResolver.getCollectionsForType(documentType);
 

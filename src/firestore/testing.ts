@@ -1,5 +1,5 @@
 import { NestJsModuleOverrider } from '@causa/runtime/nestjs/testing';
-import { INestApplicationContext } from '@nestjs/common';
+import { INestApplicationContext, Type } from '@nestjs/common';
 import { CollectionReference, Firestore } from 'firebase-admin/firestore';
 import * as uuid from 'uuid';
 import { getFirestoreCollectionMetadataForType } from './collection.decorator.js';
@@ -16,7 +16,7 @@ import { getFirestoreCollectionInjectionName } from './inject-collection.decorat
  */
 export function createFirestoreTemporaryCollection<T>(
   firestore: Firestore,
-  documentType: { new (): T },
+  documentType: Type<T>,
 ): CollectionReference<T> {
   const prefix = `${uuid.v4().slice(-10)}-`;
   const { name } = getFirestoreCollectionMetadataForType(documentType);
@@ -50,7 +50,7 @@ export async function clearFirestoreCollection(
  * @returns The {@link NestJsModuleOverrider} that can be used to override the Firestore collections.
  */
 export function overrideFirestoreCollections(
-  ...documentTypes: { new (): any }[]
+  ...documentTypes: Type[]
 ): NestJsModuleOverrider {
   return (builder) => {
     documentTypes.forEach((documentType) => {
@@ -77,7 +77,7 @@ export function overrideFirestoreCollections(
  */
 export function getFirestoreCollectionFromModule<T>(
   context: INestApplicationContext,
-  documentType: { new (): T },
+  documentType: Type<T>,
 ): CollectionReference<T> {
   return context.get(getFirestoreCollectionInjectionName(documentType));
 }

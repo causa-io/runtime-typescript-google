@@ -1,6 +1,7 @@
 import { JsonObjectSerializer, ObjectSerializer } from '@causa/runtime';
 import { NestJsModuleOverrider } from '@causa/runtime/nestjs/testing';
 import { Message, PubSub, Subscription, Topic } from '@google-cloud/pubsub';
+import { Type } from '@nestjs/common';
 import { setTimeout } from 'timers/promises';
 import * as uuid from 'uuid';
 import { getConfigurationKeyForTopic } from '../configuration.js';
@@ -116,7 +117,7 @@ export class PubSubFixture {
    */
   async create(
     sourceTopicName: string,
-    eventType: { new (): any },
+    eventType: Type,
   ): Promise<Record<string, string>> {
     await this.delete(sourceTopicName);
 
@@ -159,7 +160,7 @@ export class PubSubFixture {
    * @returns The configuration for Pub/Sub topics, with the IDs of the created topics.
    */
   async createMany(
-    topicsAndTypes: Record<string, { new (): any }>,
+    topicsAndTypes: Record<string, Type>,
   ): Promise<Record<string, string>> {
     const configurations = await Promise.all(
       Object.entries(topicsAndTypes).map(async ([topicName, eventType]) =>
@@ -178,7 +179,7 @@ export class PubSubFixture {
    * @returns The {@link NestJsModuleOverrider} to use to override the Pub/Sub publisher configuration.
    */
   async createWithOverrider(
-    topicsAndTypes: Record<string, { new (): any }>,
+    topicsAndTypes: Record<string, Type>,
   ): Promise<NestJsModuleOverrider> {
     const configuration = await this.createMany(topicsAndTypes);
     return (builder) =>

@@ -1,4 +1,5 @@
 import { VersionedEntity } from '@causa/runtime';
+import { Type } from '@nestjs/common';
 import 'reflect-metadata';
 
 /**
@@ -43,7 +44,7 @@ const FIRESTORE_SOFT_DELETED_COLLECTION_METADATA_KEY =
 export function SoftDeletedFirestoreCollection(
   metadata: Partial<SoftDeletedFirestoreCollectionMetadata> = {},
 ) {
-  return (target: { new (): VersionedEntity }) => {
+  return (target: Type<VersionedEntity>) => {
     Reflect.defineMetadata(
       FIRESTORE_SOFT_DELETED_COLLECTION_METADATA_KEY,
       {
@@ -64,9 +65,9 @@ export function SoftDeletedFirestoreCollection(
  * @param documentType The type of document.
  * @returns The metadata for the soft-deleted Firestore collection.
  */
-export function getSoftDeletedFirestoreCollectionMetadataForType(documentType: {
-  new (): any;
-}): SoftDeletedFirestoreCollectionMetadata {
+export function getSoftDeletedFirestoreCollectionMetadataForType(
+  documentType: Type,
+): SoftDeletedFirestoreCollectionMetadata {
   const metadata = Reflect.getOwnMetadata(
     FIRESTORE_SOFT_DELETED_COLLECTION_METADATA_KEY,
     documentType,
