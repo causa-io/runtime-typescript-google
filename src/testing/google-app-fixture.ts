@@ -5,7 +5,7 @@ import {
   makeTestAppFactory,
 } from '@causa/runtime/nestjs/testing';
 import { serializeAsJavaScriptObject } from '@causa/runtime/testing';
-import { Database } from '@google-cloud/spanner';
+import { Database, Spanner } from '@google-cloud/spanner';
 import { INestApplication, Type } from '@nestjs/common';
 import { CollectionReference } from 'firebase-admin/firestore';
 import supertest, { SuperTest, Test } from 'supertest';
@@ -93,6 +93,7 @@ export class GoogleAppFixture {
    * Creates a new {@link GoogleAppFixture} instance.
    *
    * @param app The NestJS application.
+   * @param spanner The {@link Spanner} client managed by the fixture.
    * @param database The temporary Spanner database.
    * @param entityManager The {@link SpannerEntityManager} for the temporary database.
    * @param pubSub The {@link PubSubFixture} managing temporary topics.
@@ -104,6 +105,7 @@ export class GoogleAppFixture {
    */
   private constructor(
     readonly app: INestApplication,
+    readonly spanner: Spanner,
     readonly database: Database,
     readonly entityManager: SpannerEntityManager,
     readonly pubSub: PubSubFixture,
@@ -254,6 +256,8 @@ export class GoogleAppFixture {
       this.pubSub.deleteAll(),
       this.database.delete(),
     ]);
+
+    this.spanner.close();
   }
 
   /**
@@ -290,7 +294,8 @@ export class GoogleAppFixture {
     const entities = options.entities ?? [];
     const firestoreDocuments = options.firestoreDocuments ?? [];
 
-    const database = await createDatabase();
+    const spanner = new Spanner();
+    const database = await createDatabase({ spanner });
     const entityManager = new SpannerEntityManager(database);
 
     const pubSubFixture = new PubSubFixture();
@@ -323,6 +328,7 @@ export class GoogleAppFixture {
 
     return new GoogleAppFixture(
       app,
+      spanner,
       database,
       entityManager,
       pubSubFixture,
