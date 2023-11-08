@@ -177,8 +177,8 @@ describe('SpannerPubSubTransactionRunner', () => {
       numCalls += 1;
       return await myEntityManager.update(
         '📝',
-        { id: 'id', value: '🌔' },
-        futureDate,
+        { id: 'id' },
+        { value: '🌔' },
         { transaction },
       );
     });
@@ -209,9 +209,12 @@ describe('SpannerPubSubTransactionRunner', () => {
     await entityManager.insert(existingEntity);
 
     const actualPromise = runner.run((transaction) =>
-      myEntityManager.update('📝', { id: 'id', value: '🌔' }, futureDate, {
-        transaction,
-      }),
+      myEntityManager.update(
+        '📝',
+        { id: 'id' },
+        { value: '🌔' },
+        { transaction },
+      ),
     );
 
     await expect(actualPromise).rejects.toThrow(TransactionOldTimestampError);
