@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.14.0 (2023-11-08)
+
 Breaking changes:
 
 - Make the Pub/Sub `EventRequester` accept an options object. In addition to the previous `expectedStatus` argument, it also supports passing message attributes in the request.
