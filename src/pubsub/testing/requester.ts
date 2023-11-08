@@ -4,13 +4,28 @@ import supertest from 'supertest';
 import * as uuid from 'uuid';
 
 /**
+ * Options when making a request to an endpoint handling Pub/Sub events using an {@link EventRequester}.
+ */
+export type EventRequesterOptions = {
+  /**
+   * The attributes to add to the Pub/Sub message.
+   */
+  attributes?: Record<string, string>;
+
+  /**
+   * The expected status code when making the request.
+   * Default is `200`.
+   */
+  expectedStatus?: number;
+};
+
+/**
  * A function that makes a query to an endpoint handling Pub/Sub events and tests the response.
- * By default, the `expectedStatus` is `200`, or the value provided to {@link makePubSubRequester}.
  */
 export type EventRequester = (
   endpoint: string,
   event: Event,
-  expectedStatus?: number,
+  options?: EventRequesterOptions,
 ) => Promise<void>;
 
 /**
@@ -44,7 +59,7 @@ export function makePubSubRequester(
   const routePrefix = options.routePrefix ?? '';
   const serializer = options.serializer ?? new JsonObjectSerializer();
 
-  return async (endpoint, event, expectedStatus) => {
+  return async (endpoint, event, requestOptions) => {
     const messageId = uuid.v4();
     const publishTime = new Date().toISOString();
     const buffer = await serializer.serialize(event);
@@ -62,11 +77,16 @@ export function makePubSubRequester(
             producedAt: event.producedAt,
             eventName: event.name,
             eventId: event.id,
+            ...requestOptions?.attributes,
           },
           data,
         },
         subscription: 'subscription',
       })
-      .expect(expectedStatus ?? options.expectedStatus ?? HttpStatus.OK);
+      .expect(
+        requestOptions?.expectedStatus ??
+          options.expectedStatus ??
+          HttpStatus.OK,
+      );
   };
 }

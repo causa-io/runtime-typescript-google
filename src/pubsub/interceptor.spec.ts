@@ -1,5 +1,10 @@
 import { Event, IsDateType, ValidateNestedType } from '@causa/runtime';
-import { EventBody, Logger, createApp } from '@causa/runtime/nestjs';
+import {
+  EventAttributes,
+  EventBody,
+  Logger,
+  createApp,
+} from '@causa/runtime/nestjs';
 import {
   getLoggedErrors,
   getLoggedInfos,
@@ -57,8 +62,17 @@ class MyController {
 
   @Post()
   @HttpCode(HttpStatus.OK)
-  async handleMyEvent(@EventBody() event: MyEvent): Promise<void> {
-    this.logger.info({ someProp: event.data.someProp }, '🎉');
+  async handleMyEvent(
+    @EventBody() event: MyEvent,
+    @EventAttributes() attributes: Record<string, string>,
+  ): Promise<void> {
+    this.logger.info(
+      {
+        someProp: event.data.someProp,
+        someAttribute: attributes.someAttribute,
+      },
+      '🎉',
+    );
   }
 }
 
@@ -100,11 +114,15 @@ describe('PubSubEventHandlerInterceptor', () => {
   });
 
   it('should deserialize the message data and return it', async () => {
-    await request('/', new MyEvent(), 200);
+    await request('/', new MyEvent(), {
+      expectedStatus: 200,
+      attributes: { someAttribute: '🌻' },
+    });
 
     expect(getLoggedInfos({ predicate: (o) => o.message === '🎉' })).toEqual([
       expect.objectContaining({
         someProp: '👋',
+        someAttribute: '🌻',
         eventId: '1234',
         pubSubMessageId: expect.any(String),
       }),
