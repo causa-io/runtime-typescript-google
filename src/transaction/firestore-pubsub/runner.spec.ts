@@ -161,7 +161,6 @@ describe('FirestorePubSubTransactionRunner', () => {
       return await myEntityManager.delete(
         '🗑️',
         { id: document.id },
-        document.updatedAt,
         { transaction },
       );
     });
