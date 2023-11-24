@@ -5,6 +5,8 @@
 Features:
 
 - Rethrow transient errors as `RetryableError`s in the `CloudTasksScheduler`.
+- Implement the `convertFirestoreError` and `wrapFirestoreOperation` utilities.
+- Use `wrapFirestoreOperation` in the `FirestorePubSubTransactionRunner` to catch and rethrow Firestore errors as entity errors or `RetryableError`s.
 
 ## v0.14.0 (2023-11-08)
 
