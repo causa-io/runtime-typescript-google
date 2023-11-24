@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.15.0 (2023-11-24)
+
 Features:
 
 - Rethrow transient errors as `RetryableError`s in the `CloudTasksScheduler`.
