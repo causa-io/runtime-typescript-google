@@ -1,12 +1,16 @@
 import {
+  EntityNotFoundError,
   Event,
   IsDateType,
   IsNullable,
+  RetryableError,
   ValidateNestedType,
   VersionedEntity,
   VersionedEntityManager,
 } from '@causa/runtime';
 import { Logger } from '@causa/runtime/nestjs';
+import { status } from '@grpc/grpc-js';
+import { jest } from '@jest/globals';
 import { IsString, IsUUID } from 'class-validator';
 import {
   CollectionReference,
@@ -197,5 +201,27 @@ describe('FirestorePubSubTransactionRunner', () => {
     const actualDocument = await activeCollection.doc('id').get();
     expect(actualDocument.exists).toBeFalse();
     await pubSubFixture.expectNoMessageInTopic('my.entity.v1');
+  });
+
+  it('should rethrow transient Firestore errors as retryable errors', async () => {
+    const deadlineExceeded = new Error('🕰️');
+    (deadlineExceeded as any).code = status.CANCELLED;
+    jest
+      .spyOn(firestore, 'runTransaction')
+      .mockRejectedValueOnce(deadlineExceeded);
+
+    const actualPromise = runner.run(async () => {});
+
+    await expect(actualPromise).rejects.toThrow(RetryableError);
+  });
+
+  it('should convert Firestore errors to entity errors', async () => {
+    const actualPromise = runner.run(async (transaction) => {
+      transaction.firestoreTransaction.delete(activeCollection.doc('id'), {
+        exists: true,
+      });
+    });
+
+    await expect(actualPromise).rejects.toThrow(EntityNotFoundError);
   });
 });
