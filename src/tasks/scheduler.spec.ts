@@ -1,4 +1,6 @@
+import { RetryableError } from '@causa/runtime';
 import { CloudTasksClient } from '@google-cloud/tasks';
+import { status } from '@grpc/grpc-js';
 import { jest } from '@jest/globals';
 import 'jest-extended';
 import { CloudTasksScheduler, HttpMethod } from './scheduler.js';
@@ -9,11 +11,15 @@ const EXPECTED_SERVICE_ACCOUNT_EMAIL = 'eixample@heetch.com';
 describe('CloudTasksScheduler', () => {
   let client: CloudTasksClient;
   let scheduler: CloudTasksScheduler;
+  let createTasksSpy: jest.SpiedFunction<any>;
+  let getCredentialsSpy: jest.SpiedFunction<any>;
 
   beforeEach(() => {
     client = new CloudTasksClient();
-    jest.spyOn(client as any, 'createTask').mockResolvedValue([EXPECTED_TASK]);
-    jest
+    createTasksSpy = jest
+      .spyOn(client as any, 'createTask')
+      .mockResolvedValue([EXPECTED_TASK]);
+    getCredentialsSpy = jest
       .spyOn(client.auth as any, 'getCredentials')
       .mockResolvedValue({ client_email: EXPECTED_SERVICE_ACCOUNT_EMAIL });
     scheduler = new CloudTasksScheduler(client);
@@ -100,5 +106,29 @@ describe('CloudTasksScheduler', () => {
       {},
     );
     expect(client.auth.getCredentials).toHaveBeenCalledExactlyOnceWith();
+  });
+
+  it('should rethrow Cloud Tasks transient errors as retryable errors', async () => {
+    const deadlineExceeded = new Error('🕰️');
+    (deadlineExceeded as any).code = status.DEADLINE_EXCEEDED;
+    createTasksSpy.mockRejectedValueOnce(deadlineExceeded);
+
+    const actualPromise = scheduler.schedule('MY_QUEUE', new Date(), {});
+
+    await expect(actualPromise).rejects.toThrow(RetryableError);
+    await expect(actualPromise).rejects.toThrow('🕰️');
+  });
+
+  it('should rethrow credential transient errors as retryable errors', async () => {
+    const internal = new Error('🔧');
+    (internal as any).code = status.INTERNAL;
+    getCredentialsSpy.mockRejectedValueOnce(internal);
+
+    const actualPromise2 = scheduler.schedule('MY_QUEUE', new Date(), {
+      oidcToken: 'self',
+    });
+
+    await expect(actualPromise2).rejects.toThrow(RetryableError);
+    await expect(actualPromise2).rejects.toThrow('🔧');
   });
 });
