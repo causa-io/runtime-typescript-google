@@ -1,6 +1,7 @@
 import { CloudTasksClient, protos } from '@google-cloud/tasks';
 import { Injectable } from '@nestjs/common';
 import { RetryOptions, grpc } from 'google-gax';
+import { TemporaryCloudTasksError } from './errors.js';
 
 export import Task = protos.google.cloud.tasks.v2.ITask;
 export import HttpMethod = protos.google.cloud.tasks.v2.HttpMethod;
@@ -39,6 +40,17 @@ const RETRY_CONFIG: RetryOptions = {
     totalTimeoutMillis: 600000,
   },
 };
+
+/**
+ * The list of gRPC status codes that should be retried when creating a Cloud Tasks task.
+ * Errors could come from the Cloud Tasks request, or from the authentication request to get the service account email.
+ */
+const GRPC_RETRYABLE_CODES = [
+  grpc.status.CANCELLED,
+  grpc.status.DEADLINE_EXCEEDED,
+  grpc.status.INTERNAL,
+  grpc.status.UNAVAILABLE,
+];
 
 /**
  * A service that can be used to schedule Cloud Tasks using a {@link CloudTasksClient}.
@@ -123,25 +135,33 @@ export class CloudTasksScheduler {
       taskName?: string;
     } = {},
   ): Promise<Task> {
-    const httpRequest = await this.makeHttpRequest(creation);
+    try {
+      const httpRequest = await this.makeHttpRequest(creation);
 
-    const retry = options.retry ?? true;
-    const scheduleTime = scheduleDate.getTime();
-    const seconds = Math.floor(scheduleTime / 1000);
-    const nanos = (scheduleTime - seconds * 1000) * 1e6;
+      const retry = options.retry ?? true;
+      const scheduleTime = scheduleDate.getTime();
+      const seconds = Math.floor(scheduleTime / 1000);
+      const nanos = (scheduleTime - seconds * 1000) * 1e6;
 
-    const name = options.taskName
-      ? `${queue}/tasks/${options.taskName}`
-      : undefined;
+      const name = options.taskName
+        ? `${queue}/tasks/${options.taskName}`
+        : undefined;
 
-    const [task] = await this.client.createTask(
-      {
-        parent: queue,
-        task: { name, httpRequest, scheduleTime: { seconds, nanos } },
-      },
-      retry ? { retry: retry === true ? RETRY_CONFIG : retry } : {},
-    );
+      const [task] = await this.client.createTask(
+        {
+          parent: queue,
+          task: { name, httpRequest, scheduleTime: { seconds, nanos } },
+        },
+        retry ? { retry: retry === true ? RETRY_CONFIG : retry } : {},
+      );
 
-    return task;
+      return task;
+    } catch (error: any) {
+      if (GRPC_RETRYABLE_CODES.includes(error.code)) {
+        throw new TemporaryCloudTasksError(error.message);
+      }
+
+      throw error;
+    }
   }
 }
