@@ -33,8 +33,8 @@ describe('FirebaseModule', () => {
         options === 'testing'
           ? FirebaseModule.forTesting()
           : options === undefined
-          ? FirebaseModule
-          : FirebaseModule.forRoot(options),
+            ? FirebaseModule
+            : FirebaseModule.forRoot(options),
       ],
       providers: [MyService],
     }).compile();
