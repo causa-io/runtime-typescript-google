@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.16.0 (2023-11-28)
+
 Features:
 
 - Loosen `makePubSubRequester`'s `EventRequester` to allow testing arbitrary events, which don't conform to the `Event` interface.
