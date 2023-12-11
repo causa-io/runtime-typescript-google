@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+Breaking changes:
+
+- Adapt the `PubSubEventHandlerInterceptor` and the `PubSubPublisher` to breaking changes in the Causa runtime.
+
+Features:
+
+- Add option for the `PubSubEventHandlerModule` not to set the interceptor globally.
+
 ## v0.16.0 (2023-11-28)
 
 Features:
