@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.17.0 (2023-12-11)
+
 Breaking changes:
 
 - Adapt the `PubSubEventHandlerInterceptor` and the `PubSubPublisher` to breaking changes in the Causa runtime.
