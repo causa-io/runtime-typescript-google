@@ -168,6 +168,19 @@ describe('PubSubPublisher', () => {
       });
     });
 
+    it('should support events that do not conform to the Event interface', async () => {
+      const event = { someData: '🗃️' };
+
+      await publisher.publish('my.awesome-topic.v1', event);
+
+      await fixture.expectMessageInTopic('my.awesome-topic.v1', {
+        attributes: {},
+        orderingKey: undefined,
+        // Not an equal match because the `MyEvent` constructor assigns default values to other fields.
+        event: expect.objectContaining(event),
+      });
+    });
+
     it('should log the message to publish when publishing fails', async () => {
       const event = new MyEvent({
         id: '1234',

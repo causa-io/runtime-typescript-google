@@ -128,4 +128,18 @@ describe('PubSubEventHandlerInterceptor', () => {
       }),
     ]);
   });
+
+  it('should return 200 and log an error when the event is invalid', async () => {
+    const event = new MyEvent({ data: new MyData({ someProp: 1234 as any }) });
+
+    await request('/', event, { expectedStatus: 200 });
+
+    expect(getLoggedErrors()).toEqual([
+      expect.objectContaining({
+        eventId: event.id,
+        message: 'Received an invalid event.',
+        validationMessages: ['someProp must be a string'],
+      }),
+    ]);
+  });
 });

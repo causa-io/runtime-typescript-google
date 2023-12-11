@@ -21,19 +21,34 @@ export class PubSubEventHandlerModule {
        * The {@link ObjectSerializer} to use to deserialize events.
        */
       serializer?: ObjectSerializer;
+
+      /**
+       * Whether to set the Pub/Sub event handler interceptor as a global NestJS app interceptor.
+       * Defaults to `true`.
+       */
+      setAppInterceptor?: boolean;
     } = {},
   ): DynamicModule {
     const serializer = options.serializer ?? new JsonObjectSerializer();
 
     return {
       module: PubSubEventHandlerModule,
+      global: true,
       providers: [
         {
-          provide: APP_INTERCEPTOR,
+          provide: PubSubEventHandlerInterceptor,
           useFactory: (reflector: Reflector, logger: Logger) =>
             new PubSubEventHandlerInterceptor(serializer, reflector, logger),
           inject: [Reflector, Logger],
         },
+        ...(options.setAppInterceptor ?? true
+          ? [
+              {
+                provide: APP_INTERCEPTOR,
+                useExisting: PubSubEventHandlerInterceptor,
+              },
+            ]
+          : []),
       ],
     };
   }
