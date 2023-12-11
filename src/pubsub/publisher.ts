@@ -1,5 +1,4 @@
 import {
-  Event,
   EventAttributes,
   EventPublisher,
   JsonObjectSerializer,
@@ -157,23 +156,33 @@ export class PubSubPublisher implements EventPublisher, OnApplicationShutdown {
 
   async publish(
     topic: string,
-    event: Event,
+    event: object,
     options: PublishOptions = {},
   ): Promise<void> {
     const data = await this.serializer.serialize(event);
     const pubSubTopic = this.getTopic(topic);
-    const attributes: EventAttributes = {
-      ...options.attributes,
-      producedAt: event.producedAt.toISOString(),
-      eventName: event.name,
-      eventId: event.id,
-    };
-    const orderingKey = options.key;
-    const baseLogData = {
+
+    const defaultAttributes: EventAttributes = {};
+    const baseLogData: Record<string, string> = {
       topic,
-      eventId: event.id,
       pubSubTopic: pubSubTopic.name,
     };
+    if ('id' in event && typeof event.id === 'string') {
+      defaultAttributes.eventId = event.id;
+      baseLogData.eventId = event.id;
+    }
+    if ('producedAt' in event && event.producedAt instanceof Date) {
+      defaultAttributes.producedAt = event.producedAt.toISOString();
+    }
+    if ('name' in event && typeof event.name === 'string') {
+      defaultAttributes.eventName = event.name;
+    }
+    const attributes: EventAttributes = {
+      ...defaultAttributes,
+      ...options.attributes,
+    };
+
+    const orderingKey = options.key;
 
     try {
       const pubSubMessageId = await pubSubTopic.publishMessage({
