@@ -7,6 +7,7 @@ import { HealthCheckService, TerminusModule } from '@nestjs/terminus';
 import 'jest-extended';
 import { Logger } from 'nestjs-pino';
 import supertest from 'supertest';
+import TestAgent from 'supertest/lib/agent.js';
 import { SpannerHealthIndicator } from './healthcheck.js';
 import { SpannerModule } from './module.js';
 import { createDatabase } from './testing.js';
@@ -39,7 +40,7 @@ export class HealthModule {}
 describe('SpannerHealthIndicator', () => {
   let database: Database;
   let app: INestApplication;
-  let request: supertest.SuperTest<supertest.Test>;
+  let request: TestAgent<supertest.Test>;
 
   beforeAll(async () => {
     database = await createDatabase();

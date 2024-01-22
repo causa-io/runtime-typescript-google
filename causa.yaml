@@ -20,8 +20,6 @@ javascript:
     update:
       packageTargets:
         '@types/node': minor
-        # `@google-cloud/spanner` still references version 3.
-        '@google-cloud/precise-date': minor
 
 google:
   firestore:

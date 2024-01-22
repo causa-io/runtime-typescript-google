@@ -6,6 +6,7 @@ import { Controller, Get, INestApplication, Module } from '@nestjs/common';
 import { HealthCheckService, TerminusModule } from '@nestjs/terminus';
 import { Logger } from 'nestjs-pino';
 import supertest from 'supertest';
+import TestAgent from 'supertest/lib/agent.js';
 import { PubSubHealthIndicator } from './healthcheck.js';
 import { PubSubPublisherModule } from './publisher.module.js';
 
@@ -36,7 +37,7 @@ export class HealthModule {}
 
 describe('PubSubHealthIndicator', () => {
   let app: INestApplication;
-  let request: supertest.SuperTest<supertest.Test>;
+  let request: TestAgent<supertest.Test>;
 
   beforeEach(async () => {
     app = await createApp(HealthModule);
