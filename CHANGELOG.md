@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+Breaking changes:
+
+- Use new `supertest` types, which makes the main object a `TestAgent`.
+
+Chores:
+
+- Upgrade dependencies to keep in sync with `@causa/runtime`.
+
 ## v0.17.0 (2023-12-11)
 
 Breaking changes:
