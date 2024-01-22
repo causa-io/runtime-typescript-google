@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.18.0 (2024-01-22)
+
 Breaking changes:
 
 - Use new `supertest` types, which makes the main object a `TestAgent`.
