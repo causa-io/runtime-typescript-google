@@ -8,7 +8,8 @@ import { serializeAsJavaScriptObject } from '@causa/runtime/testing';
 import { Database, Spanner } from '@google-cloud/spanner';
 import { INestApplication, Type } from '@nestjs/common';
 import { CollectionReference } from 'firebase-admin/firestore';
-import supertest, { SuperTest, Test } from 'supertest';
+import supertest, { Test } from 'supertest';
+import TestAgent from 'supertest/lib/agent.js';
 import { overrideFirebaseApp } from '../firebase/testing.js';
 import {
   clearFirestoreCollection,
@@ -110,7 +111,7 @@ export class GoogleAppFixture {
     readonly entityManager: SpannerEntityManager,
     readonly pubSub: PubSubFixture,
     readonly users: AuthUsersFixture,
-    readonly request: SuperTest<Test>,
+    readonly request: TestAgent<Test>,
     readonly pubSubRequest: EventRequester,
     readonly entities: Type[],
     readonly firestoreDocuments: Type[],

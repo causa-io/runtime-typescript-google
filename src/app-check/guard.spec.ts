@@ -6,6 +6,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { AppCheck } from 'firebase-admin/app-check';
 import 'jest-extended';
 import supertest from 'supertest';
+import TestAgent from 'supertest/lib/agent.js';
 import { FirebaseModule } from '../firebase/index.js';
 import { AppCheckDisabled } from './app-check-disabled.decorator.js';
 import { AppCheckGuard } from './guard.js';
@@ -42,7 +43,7 @@ class MyModule {}
 
 describe('AppCheckGuard', () => {
   let app: INestApplication;
-  let request: supertest.SuperTest<supertest.Test>;
+  let request: TestAgent<supertest.Test>;
 
   beforeEach(async () => {
     app = await createApp(MyModule);

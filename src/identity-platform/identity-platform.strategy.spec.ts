@@ -4,6 +4,7 @@ import { makeTestAppFactory } from '@causa/runtime/nestjs/testing';
 import { getLoggedWarnings, spyOnLogger } from '@causa/runtime/testing';
 import { Controller, Get, INestApplication, Module } from '@nestjs/common';
 import supertest from 'supertest';
+import TestAgent from 'supertest/lib/agent.js';
 import { setTimeout } from 'timers/promises';
 import { FirebaseModule } from '../firebase/index.js';
 import { IdentityPlatformStrategy } from './identity-platform.strategy.js';
@@ -27,7 +28,7 @@ class MyModule {}
 describe('IdentityPlatformStrategy', () => {
   let fixture: AuthUsersFixture;
   let app: INestApplication;
-  let request: supertest.SuperTest<supertest.Test>;
+  let request: TestAgent<supertest.Test>;
 
   async function startApp(config: Record<string, string> = {}): Promise<void> {
     app = await createApp(MyModule, {

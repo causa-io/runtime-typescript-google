@@ -5,6 +5,7 @@ import { Database } from '@google-cloud/spanner';
 import { jest } from '@jest/globals';
 import { INestApplication, Module } from '@nestjs/common';
 import supertest from 'supertest';
+import TestAgent from 'supertest/lib/agent.js';
 import { PubSubPublisherModule } from '../pubsub/index.js';
 import { SpannerModule } from '../spanner/index.js';
 import { GoogleHealthcheckModule } from './module.js';
@@ -22,7 +23,7 @@ class MyModule {}
 
 describe('GoogleHealthcheckModule', () => {
   let app: INestApplication;
-  let request: supertest.SuperTest<supertest.Test>;
+  let request: TestAgent<supertest.Test>;
 
   const runMock = jest.fn(() => Promise.resolve());
   const getTopicsMock = jest.fn(() => Promise.resolve([]));
