@@ -18,6 +18,11 @@ export type EventRequesterOptions = {
    * Default is `200`.
    */
   expectedStatus?: number;
+
+  /**
+   * The time to set as the publication time of the Pub/Sub message.
+   */
+  publishTime?: Date;
 };
 
 /**
@@ -65,7 +70,9 @@ export function makePubSubRequester(
 
   return async (endpoint, event, requestOptions) => {
     const messageId = uuid.v4();
-    const publishTime = new Date().toISOString();
+    const publishTime = (
+      requestOptions?.publishTime ?? new Date()
+    ).toISOString();
     const buffer = await serializer.serialize(event);
     const data = buffer.toString('base64');
 
