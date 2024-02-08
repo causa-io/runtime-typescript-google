@@ -21,6 +21,7 @@ import {
 import { IsString } from 'class-validator';
 import supertest from 'supertest';
 import { PubSubEventHandlerModule } from './interceptor.module.js';
+import { PubSubEventPublishTime } from './publish-time.decorator.js';
 import { EventRequester, makePubSubRequester } from './testing/index.js';
 
 class MyData {
@@ -65,11 +66,13 @@ class MyController {
   async handleMyEvent(
     @EventBody() event: MyEvent,
     @EventAttributes() attributes: Record<string, string>,
+    @PubSubEventPublishTime() publishTime: Date,
   ): Promise<void> {
     this.logger.info(
       {
         someProp: event.data.someProp,
         someAttribute: attributes.someAttribute,
+        publishTime,
       },
       '🎉',
     );
@@ -114,15 +117,19 @@ describe('PubSubEventHandlerInterceptor', () => {
   });
 
   it('should deserialize the message data and return it', async () => {
+    const expectedDate = new Date();
+
     await request('/', new MyEvent(), {
       expectedStatus: 200,
       attributes: { someAttribute: '🌻' },
+      publishTime: expectedDate,
     });
 
     expect(getLoggedInfos({ predicate: (o) => o.message === '🎉' })).toEqual([
       expect.objectContaining({
         someProp: '👋',
         someAttribute: '🌻',
+        publishTime: expectedDate.toISOString(),
         eventId: '1234',
         pubSubMessageId: expect.any(String),
       }),

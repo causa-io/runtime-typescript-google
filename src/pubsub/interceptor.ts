@@ -17,6 +17,7 @@ import { Reflector } from '@nestjs/core';
 import { IsBase64, IsObject, IsString } from 'class-validator';
 import { Request } from 'express';
 import { PinoLogger } from 'nestjs-pino';
+import { RequestWithPubSubInfo } from './request-with-pubsub-info.js';
 
 /**
  * The ID of the Pub/Sub event handler interceptor, that can passed to the `UseEventHandler` decorator.
@@ -90,17 +91,14 @@ export class PubSubEventHandlerInterceptor extends BaseEventHandlerInterceptor {
    * @param request The express request object.
    * @returns The parsed Pub/Sub message.
    */
-  protected async parsePubSubMessage(request: Request): Promise<{
-    /**
-     * The body of the Pub/Sub message.
-     */
-    body: Buffer;
-
-    /**
-     * The attributes of the Pub/Sub message.
-     */
-    attributes: Record<string, string>;
-  }> {
+  protected async parsePubSubMessage(request: Request): Promise<
+    PubSubMessage & {
+      /**
+       * The data of the Pub/Sub message as a `Buffer` instead of a Base64 string.
+       */
+      body: Buffer;
+    }
+  > {
     let message: PubSubMessage;
     let body: Buffer;
     try {
@@ -128,15 +126,19 @@ export class PubSubEventHandlerInterceptor extends BaseEventHandlerInterceptor {
     this.logger.assign({ pubSubMessageId: message.messageId });
     this.logger.info('Successfully parsed Pub/Sub message.');
 
-    return { body, attributes: message.attributes ?? {} };
+    return { ...message, body };
   }
 
   protected async parseEventFromContext(
     context: ExecutionContext,
     dataType: Type,
   ): Promise<ParsedEventRequest> {
-    const request = context.switchToHttp().getRequest<Request>();
+    const request = context
+      .switchToHttp()
+      .getRequest<Request & RequestWithPubSubInfo>();
     const message = await this.parsePubSubMessage(request);
+
+    request.pubSubPublishTime = message.publishTime;
 
     return await this.wrapParsing(async () => {
       const body = await this.serializer.deserialize(dataType, message.body);
@@ -149,7 +151,7 @@ export class PubSubEventHandlerInterceptor extends BaseEventHandlerInterceptor {
         forbidNonWhitelisted: false,
       });
 
-      return { attributes: message.attributes, body };
+      return { attributes: message.attributes ?? {}, body };
     });
   }
 }
