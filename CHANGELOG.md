@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+Features:
+
+- Implement the `PubSubEventPublishTime` decorator, to retrieve the `publishTime` for the message.
+
 ## v0.18.0 (2024-01-22)
 
 Breaking changes:
