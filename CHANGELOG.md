@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+Chores:
+
+- Upgrade dependencies to keep in sync with `@causa/runtime`.
+
 ## v0.19.0 (2024-02-08)
 
 Features:
