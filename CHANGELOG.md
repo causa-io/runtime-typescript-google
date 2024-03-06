@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.20.0 (2024-03-06)
+
 Chores:
 
 - Upgrade dependencies to keep in sync with `@causa/runtime`.
