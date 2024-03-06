@@ -1,4 +1,5 @@
 import { CloudTasksClient } from '@google-cloud/tasks';
+import { DynamicModule } from '@nestjs/common';
 import { CloudTasksScheduler } from './scheduler.js';
 
 /**
@@ -10,7 +11,7 @@ export class CloudTasksModule {
    *
    * @returns The module.
    */
-  static forRoot() {
+  static forRoot(): DynamicModule {
     return {
       module: CloudTasksModule,
       global: true,
