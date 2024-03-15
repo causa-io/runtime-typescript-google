@@ -7,8 +7,10 @@ import { Logger } from '@causa/runtime/nestjs';
 import { Injectable } from '@nestjs/common';
 import { setTimeout } from 'timers/promises';
 import { PubSubPublisher } from '../../pubsub/index.js';
-import { SpannerEntityManager } from '../../spanner/index.js';
-import { SpannerTransactionOldTimestampError } from './errors.js';
+import {
+  SpannerEntityManager,
+  TemporarySpannerError,
+} from '../../spanner/index.js';
 import { SpannerStateTransaction } from './state-transaction.js';
 import { SpannerPubSubTransaction } from './transaction.js';
 
@@ -78,7 +80,7 @@ export class SpannerPubSubTransactionRunner extends TransactionRunner<SpannerPub
             await setTimeout(delay);
           }
 
-          throw new SpannerTransactionOldTimestampError(error);
+          throw TemporarySpannerError.retryableInTransaction(error.message);
         }
       },
     );
