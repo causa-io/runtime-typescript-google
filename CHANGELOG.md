@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.21.0 (2024-03-15)
+
 Features:
 
 - Support an optional `code` parameter for `TemporarySpannerError` and `TemporaryFirestoreError`, and provide a `retryableInTransaction` utility for both of them.
