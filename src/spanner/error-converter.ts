@@ -37,7 +37,8 @@ export function convertSpannerToEntityError(error: any): Error | undefined {
     case status.DEADLINE_EXCEEDED:
     case status.INTERNAL:
     case status.UNAVAILABLE:
-      return new TemporarySpannerError(error.message);
+    case status.ABORTED:
+      return new TemporarySpannerError(error.message, error.code);
     default:
       return;
   }

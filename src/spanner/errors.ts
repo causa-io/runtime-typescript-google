@@ -1,4 +1,5 @@
 import { RetryableError } from '@causa/runtime';
+import { status } from '@grpc/grpc-js';
 import { Type } from '@nestjs/common';
 
 /**
@@ -65,9 +66,27 @@ export class InvalidArgumentError extends UnexpectedSpannerError {
 /**
  * Error raised when Spanner returns an error that makes the current operation fail, but can usually be retried.
  * For example, the call has been cancelled or timed out.
+ * An optional gRPC status code can be provided, which should match the source error.
  */
 export class TemporarySpannerError extends RetryableError {
-  constructor(message: string) {
+  constructor(
+    message: string,
+    readonly code?: status,
+  ) {
     super(message);
+  }
+
+  /**
+   * Creates a new {@link TemporarySpannerError} that can be thrown to retry a transaction using the Spanner client
+   * retry mechanism.
+   *
+   * @param message The error message.
+   * @returns The error to throw to retry the transaction.
+   */
+  static retryableInTransaction(message: string): TemporarySpannerError {
+    // In order for the transaction to be retried, the error must be detected as an "aborted" response by the Spanner
+    // NodeJS client.
+    // https://github.com/googleapis/nodejs-spanner/blob/45b985436ff968e8f7d05272c41103859692a509/src/transaction-runner.ts#L34
+    return new TemporarySpannerError(message, status.ABORTED);
   }
 }

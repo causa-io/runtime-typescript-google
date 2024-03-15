@@ -27,11 +27,22 @@ export function convertFirestoreError(error: any): Error | undefined {
         new Date(NaN),
         new Date(NaN),
       );
+    // The following is based on the logic in the Firestore client:
+    // https://github.com/googleapis/nodejs-firestore/blob/e598b9daf628cbc54dc10dab80bb0f46e2a3e2a2/dev/src/transaction.ts#L750
+    case status.ABORTED:
     case status.CANCELLED:
+    case status.UNKNOWN:
     case status.DEADLINE_EXCEEDED:
     case status.INTERNAL:
     case status.UNAVAILABLE:
-      return new TemporaryFirestoreError(error.message);
+    case status.UNAUTHENTICATED:
+    case status.RESOURCE_EXHAUSTED:
+      return new TemporaryFirestoreError(error.message, error.code);
+    case status.INVALID_ARGUMENT:
+      if (error.message.match(/transaction has expired/)) {
+        return new TemporaryFirestoreError(error.message, error.code);
+      }
+      return;
     default:
       return;
   }

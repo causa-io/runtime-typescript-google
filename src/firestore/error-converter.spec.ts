@@ -89,10 +89,14 @@ describe('error converter', () => {
 
     it('should throw a TemporaryFirestoreError', async () => {
       const errorCodes = [
+        status.ABORTED,
         status.CANCELLED,
+        status.UNKNOWN,
         status.DEADLINE_EXCEEDED,
         status.INTERNAL,
         status.UNAVAILABLE,
+        status.UNAUTHENTICATED,
+        status.RESOURCE_EXHAUSTED,
       ];
 
       for (const code of errorCodes) {
@@ -103,7 +107,37 @@ describe('error converter', () => {
         });
 
         await expect(actualPromise).rejects.toThrow(TemporaryFirestoreError);
+        await expect(actualPromise).rejects.toThrow(
+          expect.objectContaining({ code }),
+        );
       }
+    });
+
+    it('should treat expired transaction errors as temporary', async () => {
+      const actualPromise = wrapFirestoreOperation(async () => {
+        const error = new Error('🤝 transaction has expired');
+        (error as any).code = status.INVALID_ARGUMENT;
+        throw error;
+      });
+
+      await expect(actualPromise).rejects.toThrow(TemporaryFirestoreError);
+      await expect(actualPromise).rejects.toThrow(
+        expect.objectContaining({
+          message: '🤝 transaction has expired',
+          code: status.INVALID_ARGUMENT,
+        }),
+      );
+    });
+
+    it('should treat other invalid argument errors as unknown', async () => {
+      const actualPromise = wrapFirestoreOperation(async () => {
+        const error = new Error('🤝');
+        (error as any).code = status.INVALID_ARGUMENT;
+        throw error;
+      });
+
+      await expect(actualPromise).rejects.toThrow('🤝');
+      await expect(actualPromise).rejects.not.toThrow(TemporaryFirestoreError);
     });
   });
 });

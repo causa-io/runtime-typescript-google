@@ -419,6 +419,34 @@ describe('SpannerEntityManager', () => {
 
       await expect(actualPromise).rejects.toThrow(TemporarySpannerError);
     });
+
+    it('should rethrow an aborted error that will be retried by Spanner', async () => {
+      let firstTime = true;
+      const errors: any[] = [];
+      await database.runTransactionAsync(async (transaction) => {
+        try {
+          await manager.runInExistingOrNewTransaction(transaction, async () => {
+            if (!firstTime) {
+              return;
+            }
+
+            firstTime = false;
+            const error = new Error('♻️');
+            (error as any).code = status.ABORTED;
+            throw error;
+          });
+        } catch (error) {
+          errors.push(error);
+          throw error;
+        }
+      });
+
+      expect(errors).toHaveLength(1);
+      expect(errors[0].code).toBe(status.ABORTED);
+      expect(errors[0].message).toEqual('♻️');
+      // Throwing the error as a `TemporarySpannerError` makes it easier for clients to detect and rethrow.
+      expect(errors[0]).toBeInstanceOf(TemporarySpannerError);
+    });
   });
 
   describe('runInExistingOrNewReadOnlyTransaction', () => {

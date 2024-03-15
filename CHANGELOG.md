@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+Features:
+
+- Support an optional `code` parameter for `TemporarySpannerError` and `TemporaryFirestoreError`, and provide a `retryableInTransaction` utility for both of them.
+
+Fixes:
+
+- Ensure all retryable errors cases are handled for Firestore and Spanner.
+
 ## v0.20.0 (2024-03-06)
 
 Chores:
