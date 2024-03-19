@@ -302,7 +302,10 @@ describe('GoogleAppFixture', () => {
 
     it('should make optional checks', async () => {
       const myEntity = new MyEntity();
-      const myEvent = new MyEvent({ data: myEntity });
+      const myEvent = new MyEvent({
+        producedAt: myEntity.updatedAt,
+        data: myEntity,
+      });
       await fixture.entityManager.insert(myEntity);
       await publisher.publish('my.event.v1', myEvent);
       const response = await serializeAsJavaScriptObject(myEntity);
