@@ -1,39 +1,20 @@
-import { createApp } from '@causa/runtime/nestjs';
+import { HealthCheckModule, createApp } from '@causa/runtime/nestjs';
 import { makeTestAppFactory } from '@causa/runtime/nestjs/testing';
 import { Database } from '@google-cloud/spanner';
 import { jest } from '@jest/globals';
-import { Controller, Get, INestApplication, Module } from '@nestjs/common';
-import { HealthCheckService, TerminusModule } from '@nestjs/terminus';
+import { INestApplication, Module } from '@nestjs/common';
 import 'jest-extended';
-import { Logger } from 'nestjs-pino';
 import supertest from 'supertest';
 import TestAgent from 'supertest/lib/agent.js';
 import { SpannerHealthIndicator } from './healthcheck.js';
 import { SpannerModule } from './module.js';
 import { createDatabase } from './testing.js';
 
-@Controller()
-export class HealthController {
-  constructor(
-    private health: HealthCheckService,
-    private spannerHealthIndicator: SpannerHealthIndicator,
-  ) {}
-
-  @Get()
-  async healthCheck() {
-    return await this.health.check([
-      () => this.spannerHealthIndicator.isHealthy(),
-    ]);
-  }
-}
-
 @Module({
-  controllers: [HealthController],
   imports: [
-    TerminusModule.forRoot({ logger: Logger }),
     SpannerModule.forRoot(),
+    HealthCheckModule.forIndicators([SpannerHealthIndicator]),
   ],
-  providers: [SpannerHealthIndicator],
 })
 export class HealthModule {}
 
@@ -56,27 +37,31 @@ describe('SpannerHealthIndicator', () => {
     request = supertest(app.getHttpServer());
   });
 
+  afterEach(async () => {
+    app.close();
+  });
+
   afterAll(async () => {
     await database.delete();
   });
 
   it('should return 200 if the Spanner client is healthy', async () => {
-    await request.get('/').expect(200, {
+    await request.get('/health').expect(200, {
       status: 'ok',
-      info: { spanner: { status: 'up' } },
+      info: { 'google.spanner': { status: 'up' } },
       error: {},
-      details: { spanner: { status: 'up' } },
+      details: { 'google.spanner': { status: 'up' } },
     });
   });
 
   it('should return 503 if the Spanner client is unhealthy', async () => {
     jest.spyOn(database as any, 'run').mockRejectedValue(new Error('💥'));
 
-    await request.get('/').expect(503, {
+    await request.get('/health').expect(503, {
       status: 'error',
       info: {},
-      error: { spanner: { status: 'down', error: '💥' } },
-      details: { spanner: { status: 'down', error: '💥' } },
+      error: { 'google.spanner': { status: 'down', error: '💥' } },
+      details: { 'google.spanner': { status: 'down', error: '💥' } },
     });
     expect(database.run).toHaveBeenCalledExactlyOnceWith('SELECT 1');
   });

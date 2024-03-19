@@ -1,37 +1,18 @@
-import { createApp } from '@causa/runtime/nestjs';
+import { HealthCheckModule, createApp } from '@causa/runtime/nestjs';
 import { PubSub } from '@google-cloud/pubsub';
 import { status } from '@grpc/grpc-js';
 import { jest } from '@jest/globals';
-import { Controller, Get, INestApplication, Module } from '@nestjs/common';
-import { HealthCheckService, TerminusModule } from '@nestjs/terminus';
-import { Logger } from 'nestjs-pino';
+import { INestApplication, Module } from '@nestjs/common';
 import supertest from 'supertest';
 import TestAgent from 'supertest/lib/agent.js';
 import { PubSubHealthIndicator } from './healthcheck.js';
 import { PubSubPublisherModule } from './publisher.module.js';
 
-@Controller()
-export class HealthController {
-  constructor(
-    private health: HealthCheckService,
-    private pubSubHealthIndicator: PubSubHealthIndicator,
-  ) {}
-
-  @Get()
-  async healthCheck() {
-    return await this.health.check([
-      () => this.pubSubHealthIndicator.isHealthy(),
-    ]);
-  }
-}
-
 @Module({
-  controllers: [HealthController],
   imports: [
-    TerminusModule.forRoot({ logger: Logger }),
+    HealthCheckModule.forIndicators([PubSubHealthIndicator]),
     PubSubPublisherModule.forRoot(),
   ],
-  providers: [PubSubHealthIndicator],
 })
 export class HealthModule {}
 
@@ -44,12 +25,16 @@ describe('PubSubHealthIndicator', () => {
     request = supertest(app.getHttpServer());
   });
 
+  afterEach(async () => {
+    await app.close();
+  });
+
   it('should return 200 if the Pub/Sub client is healthy', async () => {
-    await request.get('/').expect(200, {
+    await request.get('/health').expect(200, {
       status: 'ok',
-      info: { pubSub: { status: 'up' } },
+      info: { 'google.pubSub': { status: 'up' } },
       error: {},
-      details: { pubSub: { status: 'up' } },
+      details: { 'google.pubSub': { status: 'up' } },
     });
   });
 
@@ -60,11 +45,11 @@ describe('PubSubHealthIndicator', () => {
       message: 'Permission denied',
     });
 
-    await request.get('/').expect(200, {
+    await request.get('/health').expect(200, {
       status: 'ok',
-      info: { pubSub: { status: 'up' } },
+      info: { 'google.pubSub': { status: 'up' } },
       error: {},
-      details: { pubSub: { status: 'up' } },
+      details: { 'google.pubSub': { status: 'up' } },
     });
   });
 
@@ -72,11 +57,11 @@ describe('PubSubHealthIndicator', () => {
     const pubSub = app.get(PubSub);
     jest.spyOn(pubSub as any, 'getTopics').mockRejectedValue(new Error('💥'));
 
-    await request.get('/').expect(503, {
+    await request.get('/health').expect(503, {
       status: 'error',
       info: {},
-      error: { pubSub: { status: 'down', error: '💥' } },
-      details: { pubSub: { status: 'down', error: '💥' } },
+      error: { 'google.pubSub': { status: 'down', error: '💥' } },
+      details: { 'google.pubSub': { status: 'down', error: '💥' } },
     });
   });
 });

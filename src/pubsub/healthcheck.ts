@@ -1,32 +1,24 @@
+import { BaseHealthIndicatorService } from '@causa/runtime/nestjs';
 import { PubSub } from '@google-cloud/pubsub';
 import { status } from '@grpc/grpc-js';
 import { Injectable } from '@nestjs/common';
-import {
-  HealthCheckError,
-  HealthIndicator,
-  HealthIndicatorResult,
-} from '@nestjs/terminus';
+import { HealthCheckError, HealthIndicatorResult } from '@nestjs/terminus';
 
 /**
  * The key used to identify the Pub/Sub health indicator.
  */
-const PUBSUB_HEALTH_KEY = 'pubSub';
+const PUBSUB_HEALTH_KEY = 'google.pubSub';
 
 /**
  * A service testing the availability of the Pub/Sub service.
  */
 @Injectable()
-export class PubSubHealthIndicator extends HealthIndicator {
+export class PubSubHealthIndicator extends BaseHealthIndicatorService {
   constructor(private readonly pubSub: PubSub) {
     super();
   }
 
-  /**
-   * Checks the health of the Pub/Sub service by listing (at most one) topic.
-   *
-   * @returns The health of the Pub/Sub service.
-   */
-  async isHealthy(): Promise<HealthIndicatorResult> {
+  async check(): Promise<HealthIndicatorResult> {
     try {
       await this.pubSub.getTopics({
         autoPaginate: false,

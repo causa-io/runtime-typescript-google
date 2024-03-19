@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+Breaking changes:
+
+- `PubSubHealthIndicator` and `SpannerHealthIndicator` now extend the `BaseHealthIndicatorService`.
+- Remove the `GoogleHealthcheckModule`.
+
+Features:
+
+- Implement the `FirestoreHealthIndicator`.
+
 ## v0.21.0 (2024-03-15)
 
 Features:
