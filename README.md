@@ -64,7 +64,7 @@ Testing utilities are also provided. `clearFirestoreCollection()` can be used in
 
 ### NestJS health checks
 
-The `GoogleHealthcheckModule` is a ready-to-use module that includes the Spanner and Pub/Sub health checks. This module can be used if no other health check is needed in the application. Otherwise, you can combine the individual health checks into your own controller and module.
+This package provides 3 health check indicators that can be used with Causa's `HealthCheckModule`: `SpannerHealthIndicator`, `PubSubHealthIndicator`, and `FirestoreHealthIndicator`.
 
 ### Identity Platform Passport strategy
 
