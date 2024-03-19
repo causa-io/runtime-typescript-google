@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.22.0 (2024-03-19)
+
 Breaking changes:
 
 - `PubSubHealthIndicator` and `SpannerHealthIndicator` now extend the `BaseHealthIndicatorService`.
