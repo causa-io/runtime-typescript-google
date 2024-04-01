@@ -14,6 +14,7 @@ import {
 import { SoftDeletedFirestoreCollection } from './soft-deleted-collection.decorator.js';
 import {
   FirestoreCollectionResolver,
+  FirestoreCollectionsForDocumentType,
   FirestoreStateTransaction,
 } from './state-transaction.js';
 
@@ -36,10 +37,29 @@ class MyDocument implements VersionedEntity {
   readonly deletedAt!: Date | null;
 }
 
+@FirestoreCollection({ name: 'myOtherDocument', path: (doc) => doc.id })
+class MyNonSoftDeletedDocument implements VersionedEntity {
+  constructor(data: Partial<MyNonSoftDeletedDocument> = {}) {
+    Object.assign(this, {
+      id: '1234',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      deletedAt: null,
+      ...data,
+    });
+  }
+
+  readonly id!: string;
+  readonly createdAt!: Date;
+  readonly updatedAt!: Date;
+  readonly deletedAt!: Date | null;
+}
+
 describe('FirestoreStateTransaction', () => {
   let firestore: Firestore;
   let activeCollection: CollectionReference<MyDocument>;
   let deletedCollection: CollectionReference<MyDocument>;
+  let nonSoftDeleteCollection: CollectionReference<MyNonSoftDeletedDocument>;
   let resolver: FirestoreCollectionResolver;
 
   beforeAll(() => {
@@ -52,13 +72,33 @@ describe('FirestoreStateTransaction', () => {
       firestore,
       MyDocument,
     );
+    nonSoftDeleteCollection = createFirestoreTemporaryCollection(
+      firestore,
+      MyNonSoftDeletedDocument,
+    );
     resolver = {
-      getCollectionsForType<T>(documentType: { new (): T }) {
-        if (documentType !== MyDocument) {
-          throw new Error('Unexpected document type.');
+      getCollectionsForType<T>(documentType: {
+        new (): T;
+      }): FirestoreCollectionsForDocumentType<any> {
+        if (documentType === MyDocument) {
+          return {
+            activeCollection,
+            softDelete: {
+              collection: deletedCollection,
+              expirationField: '_expirationDate',
+              expirationDelay: 24 * 3600 * 1000,
+            },
+          };
         }
 
-        return { activeCollection, deletedCollection } as any;
+        if (documentType === MyNonSoftDeletedDocument) {
+          return {
+            activeCollection: nonSoftDeleteCollection,
+            softDelete: null,
+          };
+        }
+
+        throw new Error('Unexpected document type.');
       },
     };
   });
@@ -148,6 +188,27 @@ describe('FirestoreStateTransaction', () => {
       expect(actualActiveDocument.exists).toBeFalse();
       const actualDeletedDocument = await deletedCollection.doc('🎁').get();
       expect(actualDeletedDocument.exists).toBeFalse();
+    });
+
+    it('should handle a document without a soft delete collection', async () => {
+      const document = new MyNonSoftDeletedDocument();
+      await nonSoftDeleteCollection.doc(document.id).set(document);
+
+      await firestore.runTransaction(async (transaction) => {
+        const stateTransaction = new FirestoreStateTransaction(
+          transaction,
+          resolver,
+        );
+
+        await stateTransaction.deleteWithSameKeyAs(MyNonSoftDeletedDocument, {
+          id: document.id,
+        });
+      });
+
+      const actualDocument = await nonSoftDeleteCollection
+        .doc(document.id)
+        .get();
+      expect(actualDocument.exists).toBeFalse();
     });
   });
 
@@ -241,6 +302,28 @@ describe('FirestoreStateTransaction', () => {
       );
 
       expect(actualDocument).toBeUndefined();
+    });
+
+    it('should return a document without a soft delete collection', async () => {
+      const document = new MyNonSoftDeletedDocument();
+      await nonSoftDeleteCollection.doc(document.id).set(document);
+
+      const actualDocument = await firestore.runTransaction(
+        async (transaction) => {
+          const stateTransaction = new FirestoreStateTransaction(
+            transaction,
+            resolver,
+          );
+
+          return stateTransaction.findOneWithSameKeyAs(
+            MyNonSoftDeletedDocument,
+            { id: document.id },
+          );
+        },
+      );
+
+      expect(actualDocument).toEqual(document);
+      expect(actualDocument).toBeInstanceOf(MyNonSoftDeletedDocument);
     });
   });
 
@@ -340,6 +423,24 @@ describe('FirestoreStateTransaction', () => {
         .doc(document.id)
         .get();
       expect(actualActiveDocument.exists).toBeFalse();
+    });
+
+    it('should insert a document without a soft delete collection', async () => {
+      const document = new MyNonSoftDeletedDocument();
+
+      await firestore.runTransaction(async (transaction) => {
+        const stateTransaction = new FirestoreStateTransaction(
+          transaction,
+          resolver,
+        );
+
+        await stateTransaction.replace(document);
+      });
+
+      const actualDocument = await nonSoftDeleteCollection
+        .doc(document.id)
+        .get();
+      expect(actualDocument.data()).toEqual(document);
     });
   });
 });

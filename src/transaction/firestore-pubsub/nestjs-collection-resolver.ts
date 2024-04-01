@@ -46,16 +46,22 @@ export class NestJsFirestoreCollectionResolver
       { strict: false },
     );
 
-    const { deletedDocumentsCollectionSuffix } =
+    const softDeleteMetadata =
       getSoftDeletedFirestoreCollectionMetadataForType(documentType);
-
-    const deletedCollection = activeCollection.firestore
-      .collection(`${activeCollection.path}${deletedDocumentsCollectionSuffix}`)
-      .withConverter(makeFirestoreDataConverter(documentType));
 
     const documentCollections: FirestoreCollectionsForDocumentType<T> = {
       activeCollection,
-      deletedCollection,
+      softDelete: softDeleteMetadata
+        ? {
+            collection: activeCollection.firestore
+              .collection(
+                `${activeCollection.path}${softDeleteMetadata.deletedDocumentsCollectionSuffix}`,
+              )
+              .withConverter(makeFirestoreDataConverter(documentType)),
+            expirationDelay: softDeleteMetadata.expirationDelay,
+            expirationField: softDeleteMetadata.expirationField,
+          }
+        : null,
     };
 
     this.collectionsByType.set(documentType, documentCollections);

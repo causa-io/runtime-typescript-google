@@ -86,11 +86,11 @@ describe('NestJsFirestoreCollectionResolver', () => {
       const actualCollections = resolver.getCollectionsForType(MyDocument);
 
       expect(actualCollections.activeCollection).toBe(activeCollection);
-      expect(actualCollections.deletedCollection.path).toEqual(
+      expect(actualCollections.softDelete?.collection.path).toEqual(
         deletedCollection.path,
       );
       // It should be a temporary collection with a prefix.
-      expect(actualCollections.deletedCollection.path).not.toStartWith(
+      expect(actualCollections.softDelete?.collection.path).not.toStartWith(
         'myDocuments',
       );
     });
@@ -130,7 +130,7 @@ describe('NestJsFirestoreCollectionResolver', () => {
     });
 
     it('should return a deleted collection with a converter', async () => {
-      const { deletedCollection } = resolver.getCollectionsForType(MyDocument);
+      const { softDelete } = resolver.getCollectionsForType(MyDocument);
       const deletedAt = new Date('2021-01-02');
       const expectedDocument = new MyDocument({
         id: '🎁',
@@ -140,14 +140,14 @@ describe('NestJsFirestoreCollectionResolver', () => {
         value: 'omg 🎉',
       });
       const docRef = getReferenceForFirestoreDocument(
-        deletedCollection,
+        softDelete?.collection as any,
         expectedDocument,
       );
       await docRef.set(expectedDocument);
 
       const actualStoredDocument = (
         await firestore
-          .collection(deletedCollection.path)
+          .collection(softDelete?.collection.path ?? '')
           .doc(expectedDocument.id)
           .get()
       ).data();

@@ -79,7 +79,7 @@ describe('FirestorePubSubTransactionModule', () => {
     expect(actualCollections.activeCollection).toBe(
       getFirestoreCollectionFromModule(testModule, MyDocument),
     );
-    expect(actualCollections.deletedCollection.path).toEqual(
+    expect(actualCollections.softDelete?.collection.path).toEqual(
       `${actualCollections.activeCollection.path}$deleted`,
     );
   });
