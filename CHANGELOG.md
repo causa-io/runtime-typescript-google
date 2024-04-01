@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.23.0 (2024-04-01)
+
 Features:
 
 - Support Firestore documents/collections which are not decorated with `@SoftDeletedFirestoreCollection` in the `FirestoreStateTransaction`.
