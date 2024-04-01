@@ -31,7 +31,10 @@ import { PubSubPublisher } from '../../pubsub/index.js';
 import { PubSubFixture } from '../../pubsub/testing/index.js';
 import { FirestorePubSubTransactionRunner } from './runner.js';
 import { SoftDeletedFirestoreCollection } from './soft-deleted-collection.decorator.js';
-import { FirestoreCollectionResolver } from './state-transaction.js';
+import {
+  FirestoreCollectionResolver,
+  FirestoreCollectionsForDocumentType,
+} from './state-transaction.js';
 import { FirestorePubSubTransaction } from './transaction.js';
 
 @FirestoreCollection({ name: 'myDocuments', path: (doc) => doc.id })
@@ -110,12 +113,21 @@ describe('FirestorePubSubTransactionRunner', () => {
       MyDocument,
     );
     resolver = {
-      getCollectionsForType<T>(documentType: { new (): T }) {
+      getCollectionsForType<T>(documentType: {
+        new (): T;
+      }): FirestoreCollectionsForDocumentType<any> {
         if (documentType !== MyDocument) {
           throw new Error('Unexpected document type.');
         }
 
-        return { activeCollection, deletedCollection } as any;
+        return {
+          activeCollection,
+          softDelete: {
+            collection: deletedCollection,
+            expirationDelay: 24 * 3600 * 1000,
+            expirationField: '_expirationDate',
+          },
+        };
       },
     };
   });

@@ -3,7 +3,7 @@ import { Type } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { CollectionReference, Transaction } from 'firebase-admin/firestore';
 import { getReferenceForFirestoreDocument } from '../../firestore/index.js';
-import { getSoftDeletedFirestoreCollectionMetadataForType } from './soft-deleted-collection.decorator.js';
+import { SoftDeletedFirestoreCollectionMetadata } from './soft-deleted-collection.decorator.js';
 
 /**
  * The Firestore collections that should be used to create document references for a given document type.
@@ -12,12 +12,23 @@ export type FirestoreCollectionsForDocumentType<T> = {
   /**
    * The regular collection, where documents are stored when they are not deleted.
    */
-  activeCollection: CollectionReference<T>;
+  readonly activeCollection: CollectionReference<T>;
 
   /**
-   * The soft-delete collection, where documents are stored when their `deletedAt` field is not `null`.
+   * Configuration about the soft-delete collection, where documents are stored when their `deletedAt` field is not
+   * `null`. This can be `null` if the document type does not declare a soft-delete collection.
    */
-  deletedCollection: CollectionReference<T>;
+  readonly softDelete:
+    | ({
+        /**
+         * The collection where soft-deleted documents are stored.
+         */
+        collection: CollectionReference<T>;
+      } & Pick<
+        SoftDeletedFirestoreCollectionMetadata,
+        'expirationDelay' | 'expirationField'
+      >)
+    | null;
 };
 
 /**
@@ -40,8 +51,8 @@ export interface FirestoreCollectionResolver {
 /**
  * A {@link FindReplaceStateTransaction} that uses Firestore for state storage.
  *
- * This transaction handles soft-deleted documents, which means that documents with a `deletedAt` field set to a
- * non-null value are considered deleted.
+ * This transaction handles soft-deleted documents if the class is decorated with `SoftDeletedFirestoreCollection`,
+ * which means that documents with a `deletedAt` field set to a non-null value are considered deleted.
  * Soft-deleted documents are moved to a separate collection, where they are kept for a configurable amount of time
  * before being permanently deleted. See the `SoftDeletedFirestoreCollection` decorator for more information.
  *
@@ -64,7 +75,7 @@ export class FirestoreStateTransaction implements FindReplaceStateTransaction {
     type: Type<T>,
     key: Partial<T>,
   ): Promise<void> {
-    const { activeCollection, deletedCollection } =
+    const { activeCollection, softDelete } =
       this.collectionResolver.getCollectionsForType(type);
 
     const activeDocRef = getReferenceForFirestoreDocument(
@@ -72,13 +83,17 @@ export class FirestoreStateTransaction implements FindReplaceStateTransaction {
       key,
       type,
     );
+    this.transaction.delete(activeDocRef);
+
+    if (!softDelete) {
+      return;
+    }
+
     const deletedDocRef = getReferenceForFirestoreDocument(
-      deletedCollection,
+      softDelete.collection,
       key,
       type,
     );
-
-    this.transaction.delete(activeDocRef);
     this.transaction.delete(deletedDocRef);
   }
 
@@ -86,7 +101,7 @@ export class FirestoreStateTransaction implements FindReplaceStateTransaction {
     type: Type<T>,
     entity: Partial<T>,
   ): Promise<T | undefined> {
-    const { activeCollection, deletedCollection } =
+    const { activeCollection, softDelete } =
       this.collectionResolver.getCollectionsForType(type);
 
     const activeDocRef = getReferenceForFirestoreDocument(
@@ -99,40 +114,46 @@ export class FirestoreStateTransaction implements FindReplaceStateTransaction {
       return activeSnapshot.data();
     }
 
+    if (!softDelete) {
+      return undefined;
+    }
+
     const deletedDocRef = getReferenceForFirestoreDocument(
-      deletedCollection,
+      softDelete.collection,
       entity,
       type,
     );
     const deletedSnapshot = await this.transaction.get(deletedDocRef);
-    if (deletedSnapshot.exists) {
-      const deletedDocument = deletedSnapshot.data();
-      const { expirationField } =
-        getSoftDeletedFirestoreCollectionMetadataForType(type);
-      delete (deletedDocument as any)[expirationField];
-      return deletedDocument;
+    if (!deletedSnapshot.exists) {
+      return undefined;
     }
 
-    return undefined;
+    const deletedDocument = deletedSnapshot.data();
+    delete (deletedDocument as any)[softDelete.expirationField];
+    return deletedDocument;
   }
 
   async replace<T extends object>(entity: T): Promise<void> {
     const documentType = entity.constructor as Type<T>;
-    const { activeCollection, deletedCollection } =
+    const { activeCollection, softDelete } =
       this.collectionResolver.getCollectionsForType(documentType);
 
     const activeDocRef = getReferenceForFirestoreDocument(
       activeCollection,
       entity,
     );
+    if (!softDelete) {
+      this.transaction.set(activeDocRef, entity);
+      return;
+    }
+
     const deletedDocRef = getReferenceForFirestoreDocument(
-      deletedCollection,
+      softDelete.collection,
       entity,
     );
 
     if ('deletedAt' in entity && entity.deletedAt instanceof Date) {
-      const { expirationDelay, expirationField } =
-        getSoftDeletedFirestoreCollectionMetadataForType(documentType);
+      const { expirationDelay, expirationField } = softDelete;
       const expiresAt = new Date(entity.deletedAt.getTime() + expirationDelay);
       const deletedDoc = plainToInstance(documentType, {
         ...entity,

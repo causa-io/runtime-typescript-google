@@ -46,14 +46,13 @@ describe('SoftDeletedFirestoreCollection', () => {
       });
     });
 
-    it('should throw if the class is not decorated with SoftDeletedFirestoreCollection', () => {
+    it('should return null if the class is not decorated with SoftDeletedFirestoreCollection', () => {
       class MyDocument {}
 
-      expect(() =>
-        getSoftDeletedFirestoreCollectionMetadataForType(MyDocument),
-      ).toThrow(
-        `Class 'MyDocument' is not declared as a soft-deleted Firestore collection.`,
-      );
+      const actualMetadata =
+        getSoftDeletedFirestoreCollectionMetadataForType(MyDocument);
+
+      expect(actualMetadata).toBeNull();
     });
   });
 });

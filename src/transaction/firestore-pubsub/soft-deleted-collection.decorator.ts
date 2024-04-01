@@ -60,24 +60,17 @@ export function SoftDeletedFirestoreCollection(
 
 /**
  * Returns the metadata for the soft-deleted Firestore collection corresponding to the given class.
- * Throws if the class is not decorated with {@link SoftDeletedFirestoreCollection}.
  *
  * @param documentType The type of document.
- * @returns The metadata for the soft-deleted Firestore collection.
+ * @returns The metadata for the soft-deleted Firestore collection, or `null` if the type is not decorated.
  */
 export function getSoftDeletedFirestoreCollectionMetadataForType(
   documentType: Type,
-): SoftDeletedFirestoreCollectionMetadata {
+): SoftDeletedFirestoreCollectionMetadata | null {
   const metadata = Reflect.getOwnMetadata(
     FIRESTORE_SOFT_DELETED_COLLECTION_METADATA_KEY,
     documentType,
   );
 
-  if (!metadata) {
-    throw new Error(
-      `Class '${documentType.name}' is not declared as a soft-deleted Firestore collection.`,
-    );
-  }
-
-  return metadata;
+  return metadata ?? null;
 }
