@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+Fixes:
+
+- Loosen type constraint on `GoogleAppFixture.expectNonMutatedVersionedEntity`.
+
 ## v0.24.0 (2024-04-02)
 
 Breaking changes:
