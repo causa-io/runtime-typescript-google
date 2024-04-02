@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+Breaking changes:
+
+- Change types for versioned entity tests in the `GoogleAppFixture`.
+
 ## v0.23.0 (2024-04-01)
 
 Features:
