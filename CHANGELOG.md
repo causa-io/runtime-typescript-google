@@ -6,6 +6,10 @@ Breaking changes:
 
 - Change types for versioned entity tests in the `GoogleAppFixture`.
 
+Fixes:
+
+- Do not remove interleaved rows when updating an entity using `SpannerEntityManager.update`.
+
 ## v0.23.0 (2024-04-01)
 
 Features:
