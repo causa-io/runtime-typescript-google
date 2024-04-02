@@ -176,7 +176,9 @@ export class GoogleAppFixture {
    * @param entity Describes the entity to fetch using the {@link SpannerEntityManager}.
    * @param tests The tests to run on the entity.
    */
-  async expectNonMutatedVersionedEntity<T extends VersionedEntity>(
+  async expectNonMutatedVersionedEntity<
+    T extends Pick<VersionedEntity, 'updatedAt'>,
+  >(
     entity: EntityToFetch<T>,
     tests: Omit<VersionedEntityTests<T>, 'expectedEvent'> & {
       // The function is not needed here, since the entity is not mutated.
