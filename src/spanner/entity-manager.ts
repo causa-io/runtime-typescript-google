@@ -674,23 +674,26 @@ export class SpannerEntityManager {
         });
 
         let updatedInstance: T;
+        let operation: 'update' | 'insert';
         if (existingEntity) {
           if (options.validateFn) {
             options.validateFn(existingEntity);
           }
 
           updatedInstance = updateInstanceByColumn(existingEntity, update);
+          operation = 'update';
         } else if (options.upsert) {
           updatedInstance = copyInstanceWithMissingColumnsToNull(
             update,
             entityType,
           );
+          operation = 'insert';
         } else {
           throw new EntityNotFoundError(entityType, primaryKey);
         }
 
         const updateObj = instanceToSpannerObject(updatedInstance, entityType);
-        transaction.replace(tableName, updateObj);
+        transaction[operation](tableName, updateObj);
         return updatedInstance;
       },
     );

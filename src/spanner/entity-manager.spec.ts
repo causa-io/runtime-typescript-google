@@ -111,6 +111,10 @@ const TEST_SCHEMA = [
     id STRING(MAX) NOT NULL,
     value STRING(MAX) NOT NULL
   ) PRIMARY KEY (id)`,
+  `CREATE TABLE MyInterleavedEntity (
+    id STRING(MAX) NOT NULL,
+  ) PRIMARY KEY (id),
+  INTERLEAVE IN PARENT MyEntity ON DELETE CASCADE`,
   `CREATE TABLE IntEntity (
     id STRING(MAX) NOT NULL,
     value INT64 NOT NULL
@@ -1007,6 +1011,24 @@ describe('SpannerEntityManager', () => {
         json: true,
       });
       expect(actualRows).toEqual([actualEntity]);
+    });
+
+    it('should not remove interleaved child entities', async () => {
+      await database.table('MyEntity').insert({ id: '1', value: '🎁' });
+      await database.table('MyInterleavedEntity').insert({ id: '1' });
+
+      const actualEntity = await manager.update(SomeEntity, {
+        id: '1',
+        value: '🎉',
+      });
+
+      expect(actualEntity).toEqual({ id: '1', value: '🎉' });
+      const [actualRows] = await database.table('MyInterleavedEntity').read({
+        keys: ['1'],
+        columns: ['id'],
+        json: true,
+      });
+      expect(actualRows).toEqual([{ id: '1' }]);
     });
 
     it('should throw if the entity does not exist', async () => {
