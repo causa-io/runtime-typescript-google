@@ -29,7 +29,7 @@ import { createDatabase, overrideDatabase } from '../spanner/testing.js';
  * Describes an entity to fetch using the {@link SpannerEntityManager}.
  * Used by expect methods in {@link GoogleAppFixture}.
  */
-type EntityToFetch<T extends VersionedEntity> = {
+type EntityToFetch<T extends object> = {
   /**
    * The type of entity to fetch.
    */
@@ -50,13 +50,13 @@ type EntityToFetch<T extends VersionedEntity> = {
 /**
  * Describes tests to run on a versioned entity stored in Spanner.
  */
-type VersionedEntityTests<T extends VersionedEntity> = {
+type VersionedEntityTests<T extends object> = {
   /**
    * The expected entity after mutation.
    * It is checked against the actual entity in the database using `toEqual`, which means it can contain matchers.
    * A function can be provided to generate the expected entity from the actual entity.
    */
-  expectedEntity: ((actual: T) => object) | object;
+  expectedEntity: ((actual: T) => T) | T;
 
   /**
    * If set, checks that an event has been published to the corresponding Pub/Sub topic with the entity as `data`.
@@ -136,10 +136,9 @@ export class GoogleAppFixture {
    * @param tests The tests to run on the entity and its event.
    * @returns The entity fetched from the database.
    */
-  async expectMutatedVersionedEntity<T extends VersionedEntity>(
-    entity: EntityToFetch<T>,
-    tests: VersionedEntityTests<T>,
-  ): Promise<T> {
+  async expectMutatedVersionedEntity<
+    T extends Pick<VersionedEntity, 'updatedAt'>,
+  >(entity: EntityToFetch<T>, tests: VersionedEntityTests<T>): Promise<T> {
     const storedEntity = await this.entityManager.findOneByKeyOrFail(
       entity.type,
       entity.id,
