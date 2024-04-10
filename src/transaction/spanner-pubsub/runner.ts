@@ -11,7 +11,7 @@ import {
   SpannerEntityManager,
   TemporarySpannerError,
 } from '../../spanner/index.js';
-import { SpannerStateTransaction } from './state-transaction.js';
+import { SpannerStateTransaction } from '../spanner-state-transaction.js';
 import { SpannerPubSubTransaction } from './transaction.js';
 
 /**

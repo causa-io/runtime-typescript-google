@@ -1,7 +1,7 @@
 import type { FindReplaceStateTransaction } from '@causa/runtime';
 import { Transaction as SpannerTransaction } from '@google-cloud/spanner';
 import type { Type } from '@nestjs/common';
-import { SpannerEntityManager } from '../../spanner/index.js';
+import { SpannerEntityManager } from '../spanner/index.js';
 
 /**
  * A {@link FindReplaceStateTransaction} that uses Spanner for state storage.

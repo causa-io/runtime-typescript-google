@@ -6,9 +6,9 @@ import {
   SpannerColumn,
   SpannerEntityManager,
   SpannerTable,
-} from '../../spanner/index.js';
-import { createDatabase } from '../../testing.js';
-import { SpannerStateTransaction } from './state-transaction.js';
+} from '../spanner/index.js';
+import { createDatabase } from '../testing.js';
+import { SpannerStateTransaction } from './spanner-state-transaction.js';
 
 @SpannerTable({ primaryKey: ['id1', 'id2'] })
 class MyEntity {
