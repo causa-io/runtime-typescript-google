@@ -1,7 +1,9 @@
 import type { FindReplaceStateTransaction } from '@causa/runtime';
-import { Transaction as SpannerTransaction } from '@google-cloud/spanner';
 import type { Type } from '@nestjs/common';
-import { SpannerEntityManager } from '../spanner/index.js';
+import {
+  SpannerEntityManager,
+  type SpannerReadWriteTransaction,
+} from '../spanner/index.js';
 
 /**
  * A {@link FindReplaceStateTransaction} that uses Spanner for state storage.
@@ -11,11 +13,11 @@ export class SpannerStateTransaction implements FindReplaceStateTransaction {
    * Creates a new {@link SpannerStateTransaction}.
    *
    * @param entityManager The {@link SpannerEntityManager} to use to access entities in the state.
-   * @param transaction The {@link SpannerTransaction} to use for the transaction.
+   * @param transaction The {@link SpannerReadWriteTransaction} to use for the transaction.
    */
   constructor(
     readonly entityManager: SpannerEntityManager,
-    readonly transaction: SpannerTransaction,
+    readonly transaction: SpannerReadWriteTransaction,
   ) {}
 
   async replace<T extends object>(entity: T): Promise<void> {

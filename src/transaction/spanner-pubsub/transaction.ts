@@ -1,19 +1,20 @@
-import { BufferEventTransaction, Transaction } from '@causa/runtime';
-import { Transaction as SpannerTransaction } from '@google-cloud/spanner';
-import { SpannerEntityManager } from '../../spanner/index.js';
+import { type EventTransaction, Transaction } from '@causa/runtime';
+import {
+  SpannerEntityManager,
+  type SpannerReadWriteTransaction,
+} from '../../spanner/index.js';
 import { SpannerStateTransaction } from '../spanner-state-transaction.js';
 
 /**
  * A {@link Transaction} that uses Spanner for state storage and Pub/Sub for event publishing.
  */
-export class SpannerPubSubTransaction extends Transaction<
-  SpannerStateTransaction,
-  BufferEventTransaction
-> {
+export class SpannerPubSubTransaction<
+  ET extends EventTransaction = EventTransaction,
+> extends Transaction<SpannerStateTransaction, ET> {
   /**
    * The underlying {@link SpannerTransaction} used by the state transaction.
    */
-  get spannerTransaction(): SpannerTransaction {
+  get spannerTransaction(): SpannerReadWriteTransaction {
     return this.stateTransaction.transaction;
   }
 

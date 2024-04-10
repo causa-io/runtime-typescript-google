@@ -27,6 +27,11 @@ import type { RecursivePartialEntity } from './types.js';
 export type SpannerReadOnlyTransaction = Snapshot | Transaction;
 
 /**
+ * A Spanner transaction that can be used for reading and writing.
+ */
+export type SpannerReadWriteTransaction = Transaction;
+
+/**
  * A key for a Spanner row.
  */
 export type SpannerKey = (string | null)[];
@@ -36,9 +41,9 @@ export type SpannerKey = (string | null)[];
  */
 type WriteOperationOptions = {
   /**
-   * The {@link Transaction} to use.
+   * The {@link SpannerReadWriteTransaction} to use.
    */
-  transaction?: Transaction;
+  transaction?: SpannerReadWriteTransaction;
 };
 
 /**
@@ -46,7 +51,7 @@ type WriteOperationOptions = {
  */
 type ReadOperationOptions = {
   /**
-   * The {@link Transaction} or {@link Snapshot} to use.
+   * The {@link SpannerReadOnlyTransaction} to use.
    */
   transaction?: SpannerReadOnlyTransaction;
 };
@@ -64,7 +69,9 @@ type SnapshotOptions = {
 /**
  * A function that can be passed to the {@link SpannerEntityManager.snapshot} method.
  */
-export type SnapshotFunction<T> = (snapshot: Snapshot) => Promise<T>;
+export type SnapshotFunction<T> = (
+  snapshot: SpannerReadOnlyTransaction,
+) => Promise<T>;
 
 /**
  * A SQL statement run using {@link SpannerEntityManager.query}.
@@ -373,7 +380,7 @@ export class SpannerEntityManager {
   }
 
   /**
-   * Runs the provided function in a (read write) {@link Transaction}.
+   * Runs the provided function in a (read write) {@link SpannerReadWriteTransaction}.
    * The function itself should not commit or rollback the transaction.
    * If the function throws an error, the transaction will be rolled back.
    *
@@ -381,7 +388,7 @@ export class SpannerEntityManager {
    * @returns The return value of the function.
    */
   async transaction<T>(
-    runFn: (transaction: Transaction) => Promise<T>,
+    runFn: (transaction: SpannerReadWriteTransaction) => Promise<T>,
   ): Promise<T> {
     try {
       return await this.database.runTransactionAsync(async (transaction) => {
@@ -413,7 +420,7 @@ export class SpannerEntityManager {
   }
 
   /**
-   * Runs the provided function in a read-only transaction ({@link Snapshot}).
+   * Runs the provided function in a {@link SpannerReadOnlyTransaction}.
    * The snapshot will be automatically released when the function returns.
    *
    * @param runFn The function to run in the transaction.
@@ -421,7 +428,7 @@ export class SpannerEntityManager {
    */
   snapshot<T>(runFn: SnapshotFunction<T>): Promise<T>;
   /**
-   * Runs the provided function in a read-only transaction ({@link Snapshot}).
+   * Runs the provided function in a {@link SpannerReadOnlyTransaction}.
    * The snapshot will be automatically released when the function returns.
    *
    * @param options The options to use when creating the snapshot.
@@ -431,7 +438,7 @@ export class SpannerEntityManager {
   snapshot<T>(options: SnapshotOptions, runFn: SnapshotFunction<T>): Promise<T>;
   async snapshot<T>(
     optionsOrRunFn: SnapshotOptions | SnapshotFunction<T>,
-    runFn?: (snapshot: Snapshot) => Promise<T>,
+    runFn?: SnapshotFunction<T>,
   ): Promise<T> {
     const snapshotFn =
       typeof optionsOrRunFn === 'function'
@@ -474,8 +481,8 @@ export class SpannerEntityManager {
 
   /**
    * Runs the given SQL statement in the database.
-   * By default, the statement is run in a read-only transaction ({@link Snapshot}). To perform a write operation, pass
-   * a {@link Transaction} in the options.
+   * By default, the statement is run in a {@link SpannerReadOnlyTransaction}. To perform a write operation, pass a
+   * {@link SpannerReadWriteTransaction} in the options.
    *
    * @param options Options for the operation.
    * @param statement The SQL statement to run.
@@ -485,7 +492,7 @@ export class SpannerEntityManager {
   query<T>(options: QueryOptions<T>, statement: SqlStatement): Promise<T[]>;
   /**
    * Runs the given SQL statement in the database.
-   * The statement is run in a read-only transaction ({@link Snapshot}).
+   * The statement is run in a {@link SpannerReadOnlyTransaction}.
    *
    * @param statement The SQL statement to run.
    * @returns The rows returned by the query.
@@ -746,16 +753,16 @@ export class SpannerEntityManager {
   }
 
   /**
-   * Runs the given "read-write" function on a transaction. If a transaction is not passed, a new {@link Transaction} is
-   * created instead.
+   * Runs the given "read-write" function on a transaction. If a transaction is not passed, a new
+   * {@link SpannerReadWriteTransaction} is created instead.
    *
    * @param transaction The transaction to use. If `undefined`, a new transaction is created.
    * @param fn The function to run on the transaction.
    * @returns The result of the function.
    */
   async runInExistingOrNewTransaction<T>(
-    transaction: Transaction | undefined,
-    fn: (transaction: Transaction) => Promise<T>,
+    transaction: SpannerReadWriteTransaction | undefined,
+    fn: (transaction: SpannerReadWriteTransaction) => Promise<T>,
   ) {
     if (transaction) {
       try {
@@ -769,16 +776,16 @@ export class SpannerEntityManager {
   }
 
   /**
-   * Runs the given "read-only" function on a transaction. If a transaction is not passed, a new {@link Snapshot} is
-   * created instead.
+   * Runs the given "read-only" function on a transaction. If a transaction is not passed, a new
+   * {@link SpannerReadOnlyTransaction} is created instead.
    *
-   * @param transaction The transaction to use. If `undefined`, a new {@link Snapshot} is created.
+   * @param transaction The transaction to use. If `undefined`, a new {@link SpannerReadOnlyTransaction} is created.
    * @param fn The function to run on the transaction.
    * @returns The result of the function.
    */
   async runInExistingOrNewReadOnlyTransaction<T>(
     transaction: SpannerReadOnlyTransaction | undefined,
-    fn: (transaction: SpannerReadOnlyTransaction) => Promise<T>,
+    fn: SnapshotFunction<T>,
   ) {
     if (transaction) {
       try {

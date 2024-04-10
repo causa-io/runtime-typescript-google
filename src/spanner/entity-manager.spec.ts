@@ -9,6 +9,7 @@ import { SpannerColumn } from './column.decorator.js';
 import {
   SpannerEntityManager,
   type SpannerReadOnlyTransaction,
+  type SpannerReadWriteTransaction,
 } from './entity-manager.js';
 import {
   EntityMissingPrimaryKeyError,
@@ -231,7 +232,7 @@ describe('SpannerEntityManager', () => {
     });
 
     it('should rethrow unknown errors and rollback', async () => {
-      let actualTransaction!: Transaction;
+      let actualTransaction!: SpannerReadWriteTransaction;
       const actualPromise = manager.transaction(async (transaction) => {
         actualTransaction = transaction;
 
@@ -253,7 +254,7 @@ describe('SpannerEntityManager', () => {
     });
 
     it('should rethrow unknown errors and end the transaction', async () => {
-      let actualTransaction!: Transaction;
+      let actualTransaction!: SpannerReadWriteTransaction;
       const actualPromise = manager.transaction(async (transaction) => {
         actualTransaction = transaction;
 
@@ -301,7 +302,7 @@ describe('SpannerEntityManager', () => {
     });
 
     it('should catch and rethrow Spanner errors', async () => {
-      let actualSnapshot!: Snapshot;
+      let actualSnapshot!: SpannerReadOnlyTransaction;
       const actualPromise = manager.snapshot(async (snapshot) => {
         actualSnapshot = snapshot;
         await snapshot.read('nope', { columns: ['nope'], keys: ['nope'] });
@@ -312,7 +313,7 @@ describe('SpannerEntityManager', () => {
     }, 10000);
 
     it('should rethrow unknown errors', async () => {
-      let actualSnapshot!: Snapshot;
+      let actualSnapshot!: SpannerReadOnlyTransaction;
       const actualPromise = manager.snapshot(async (snapshot) => {
         actualSnapshot = snapshot;
         throw new Error('💣');

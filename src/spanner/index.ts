@@ -9,6 +9,7 @@ export { SpannerEntityManager } from './entity-manager.js';
 export type {
   SpannerKey,
   SpannerReadOnlyTransaction,
+  SpannerReadWriteTransaction,
 } from './entity-manager.js';
 export * from './errors.js';
 export { SpannerHealthIndicator } from './healthcheck.js';
