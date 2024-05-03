@@ -1,4 +1,9 @@
-import { Event, IsDateType, ValidateNestedType } from '@causa/runtime';
+import {
+  Event,
+  IsDateType,
+  JsonObjectSerializer,
+  ValidateNestedType,
+} from '@causa/runtime';
 import {
   EventAttributes,
   EventBody,
@@ -18,9 +23,10 @@ import {
   Module,
   Post,
 } from '@nestjs/common';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { IsString } from 'class-validator';
 import supertest from 'supertest';
-import { PubSubEventHandlerModule } from './interceptor.module.js';
+import { PubSubEventHandlerInterceptor } from './interceptor.js';
 import { PubSubEventPublishTime } from './publish-time.decorator.js';
 import { EventRequester, makePubSubRequester } from './testing/index.js';
 
@@ -81,7 +87,14 @@ class MyController {
 
 @Module({
   controllers: [MyController],
-  imports: [PubSubEventHandlerModule.forRoot()],
+  providers: [
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: PubSubEventHandlerInterceptor.withSerializer(
+        new JsonObjectSerializer(),
+      ),
+    },
+  ],
 })
 class MyModule {}
 

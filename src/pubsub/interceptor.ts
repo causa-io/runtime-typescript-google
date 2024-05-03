@@ -154,4 +154,24 @@ export class PubSubEventHandlerInterceptor extends BaseEventHandlerInterceptor {
       return { attributes: message.attributes ?? {}, body };
     });
   }
+
+  /**
+   * Returns a `PubSubEventHandlerInterceptor` class that uses the provided {@link ObjectSerializer}.
+   * This can be used with the `UseInterceptors` decorator.
+   *
+   * @param serializer The {@link ObjectSerializer} to use to deserialize the event data.
+   * @returns A class that can be used as an interceptor for Pub/Sub event handlers.
+   */
+  static withSerializer(
+    serializer: ObjectSerializer,
+  ): Type<PubSubEventHandlerInterceptor> {
+    @Injectable()
+    class PubSubEventHandlerInterceptorWithSerializer extends PubSubEventHandlerInterceptor {
+      constructor(reflector: Reflector, logger: PinoLogger) {
+        super(serializer, reflector, logger);
+      }
+    }
+
+    return PubSubEventHandlerInterceptorWithSerializer;
+  }
 }
