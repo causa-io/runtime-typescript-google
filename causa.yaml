@@ -20,6 +20,9 @@ javascript:
     update:
       packageTargets:
         '@types/node': minor
+        # `@typescript-eslint/eslint-plugin` is not yet compatible with ESLint 9.
+        # https://github.com/typescript-eslint/typescript-eslint/issues/8211
+        eslint: minor
 
 google:
   firestore:

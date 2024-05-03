@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+Breaking changes:
+
+- Remove the `PubSubEventHandlerModule`, as "interceptors are not providers". Prefer using `APP_INTERCEPTOR` or `@UseInterceptors` instead.
+
+Features:
+
+- Add the `withSerializer` static method to the `PubSubEventHandlerInterceptor`.
+
 ## v0.24.1 (2024-04-02)
 
 Fixes:
