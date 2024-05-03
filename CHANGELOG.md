@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.25.0 (2024-05-03)
+
 Breaking changes:
 
 - Remove the `PubSubEventHandlerModule`, as "interceptors are not providers". Prefer using `APP_INTERCEPTOR` or `@UseInterceptors` instead.
