@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.26.0 (2024-05-06)
+
 Features:
 
 - Provide Firebase `Messaging` in the `FirebaseModule`.
