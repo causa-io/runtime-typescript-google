@@ -11,6 +11,7 @@ import { AppOptions, initializeApp } from 'firebase-admin/app';
 import { AppCheck, getAppCheck } from 'firebase-admin/app-check';
 import { Auth, getAuth } from 'firebase-admin/auth';
 import { Firestore, getFirestore } from 'firebase-admin/firestore';
+import { Messaging, getMessaging } from 'firebase-admin/messaging';
 import { getDefaultFirebaseApp } from './app.js';
 import { FIREBASE_APP_TOKEN } from './inject-firebase-app.decorator.js';
 import { FirebaseLifecycleService } from './lifecycle.service.js';
@@ -31,6 +32,11 @@ const childProviders: (
     inject: [FIREBASE_APP_TOKEN],
   },
   { provide: AppCheck, useFactory: getAppCheck, inject: [FIREBASE_APP_TOKEN] },
+  {
+    provide: Messaging,
+    useFactory: getMessaging,
+    inject: [FIREBASE_APP_TOKEN],
+  },
 ];
 
 /**
