@@ -48,7 +48,7 @@ The `AppCheckGuard` provides a NestJS app guard which verifies [Firebase AppChec
 
 ### Firebase NestJS module
 
-The `FirebaseModule` is a NestJS module which exports various Firebase services for injection: `Auth`, `Firestore`, and `AppCheck`. The `@InjectFirebaseApp` decorator can be used to retrieve the parent Firebase application.
+The `FirebaseModule` is a NestJS module which exports various Firebase services for injection: `Auth`, `Firestore`, `AppCheck`, and `Messaging`. The `@InjectFirebaseApp` decorator can be used to retrieve the parent Firebase application.
 
 Outside of a NestJS context, `getDefaultFirebaseApp()` can be used to retrieve a consistently initialized singleton app.
 
