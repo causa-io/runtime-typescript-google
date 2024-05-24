@@ -10,10 +10,12 @@ import { EVENT_PUBLISHER_INJECTION_NAME } from '@causa/runtime/nestjs';
 import { serializeAsJavaScriptObject } from '@causa/runtime/testing';
 import { Database, Spanner } from '@google-cloud/spanner';
 import { jest } from '@jest/globals';
-import { Injectable, Module } from '@nestjs/common';
+import { Controller, Get, Injectable, Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { IsString, IsUUID } from 'class-validator';
 import 'jest-extended';
 import * as uuid from 'uuid';
+import { AppCheckGuard } from '../app-check/index.js';
 import { FirebaseModule } from '../firebase/index.js';
 import {
   FirestoreCollection,
@@ -136,6 +138,12 @@ class MyServiceWithDependency {
   constructor(readonly dependency: MyService) {}
 }
 
+@Controller()
+class MyController {
+  @Get()
+  async get(): Promise<void> {}
+}
+
 @Module({
   imports: [
     FirebaseModule.forRoot(),
@@ -143,7 +151,13 @@ class MyServiceWithDependency {
     PubSubPublisherModule.forRoot(),
     FirestoreCollectionsModule.forRoot([MyDocument]),
   ],
-  providers: [MyService, MyServiceWithDependency],
+  providers: [
+    AppCheckGuard,
+    { provide: APP_GUARD, useExisting: AppCheckGuard },
+    MyService,
+    MyServiceWithDependency,
+  ],
+  controllers: [MyController],
 })
 class MyModule {}
 
@@ -284,6 +298,12 @@ describe('GoogleAppFixture', () => {
       expect(fixture.spanner.close).toHaveBeenCalledExactlyOnceWith();
       // Avoids deleting the fixture twice.
       fixture = undefined as any;
+    });
+  });
+
+  describe('AppCheck', () => {
+    it('should disable the AppCheckGuard', async () => {
+      await fixture.request.get('/').expect(200);
     });
   });
 
