@@ -10,6 +10,7 @@ import { INestApplication, Type } from '@nestjs/common';
 import { CollectionReference } from 'firebase-admin/firestore';
 import supertest, { Test } from 'supertest';
 import TestAgent from 'supertest/lib/agent.js';
+import { overrideAppCheck } from '../app-check/testing.js';
 import { overrideFirebaseApp } from '../firebase/testing.js';
 import {
   clearFirestoreCollection,
@@ -291,10 +292,17 @@ export class GoogleAppFixture {
        * Options for the {@link makeTestAppFactory} function.
        */
       appFactoryOptions?: MakeTestAppFactoryOptions;
+
+      /**
+       * Whether the `AppCheckGuard` should be disabled.
+       * Defaults to `true`.
+       */
+      disableAppCheck?: boolean;
     } = {},
   ): Promise<GoogleAppFixture> {
     const entities = options.entities ?? [];
     const firestoreDocuments = options.firestoreDocuments ?? [];
+    const disableAppCheck = options.disableAppCheck ?? true;
 
     const spanner = new Spanner();
     const database = await createDatabase({ spanner });
@@ -320,6 +328,7 @@ export class GoogleAppFixture {
           overridePubSub,
           overrideFirebaseApp,
           overrideFirestoreCollections(...firestoreDocuments),
+          ...(disableAppCheck ? [overrideAppCheck] : []),
           ...additionalOverrides,
         ],
       }),

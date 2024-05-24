@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+Features:
+
+- Provide the `overrideAppCheck` testing utility.
+- Disable the `AppCheckGuard` by default in the `GoogleAppFixture`.
+
 ## v0.26.0 (2024-05-06)
 
 Features:
