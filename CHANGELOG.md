@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.27.0 (2024-05-24)
+
 Features:
 
 - Provide the `overrideAppCheck` testing utility.
