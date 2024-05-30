@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+Fixes:
+
+- Add `RESOURCE_EXHAUSTED` to the list of retryable statuses for Spanner errors.
+
 ## v0.27.0 (2024-05-24)
 
 Features:
