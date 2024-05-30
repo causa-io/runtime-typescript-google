@@ -63,6 +63,11 @@ export class PubSubFixture {
   readonly pubSub: PubSub;
 
   /**
+   * Whether the Pub/Sub client is managed by the fixture.
+   */
+  private readonly isManagedClient: boolean;
+
+  /**
    * The (de)serializer to use for Pub/Sub messages.
    */
   readonly serializer: ObjectSerializer;
@@ -110,6 +115,7 @@ export class PubSubFixture {
     } = {},
   ) {
     this.pubSub = options.pubSub ?? new PubSub();
+    this.isManagedClient = !options.pubSub;
     this.serializer = options.serializer ?? new JsonObjectSerializer();
   }
 
@@ -319,6 +325,7 @@ export class PubSubFixture {
 
   /**
    * Deletes all previously created temporary topics.
+   * If the Pub/Sub client was managed by the fixture (it wasn't passed as an option), it is also closed.
    */
   async deleteAll(): Promise<void> {
     await Promise.all(
@@ -326,5 +333,9 @@ export class PubSubFixture {
         this.delete(sourceTopicName),
       ),
     );
+
+    if (this.isManagedClient) {
+      await this.pubSub.close();
+    }
   }
 }
