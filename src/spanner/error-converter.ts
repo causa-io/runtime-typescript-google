@@ -38,6 +38,7 @@ export function convertSpannerToEntityError(error: any): Error | undefined {
     case status.INTERNAL:
     case status.UNAVAILABLE:
     case status.ABORTED:
+    case status.RESOURCE_EXHAUSTED:
       return new TemporarySpannerError(error.message, error.code);
     default:
       return;
