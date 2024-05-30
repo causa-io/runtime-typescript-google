@@ -5,6 +5,7 @@
 Fixes:
 
 - Add `RESOURCE_EXHAUSTED` to the list of retryable statuses for Spanner errors.
+- Close the Pub/Sub client after having deleted all topic fixtures.
 
 ## v0.27.0 (2024-05-24)
 
