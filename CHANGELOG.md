@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.28.0 (2024-07-04)
+
 Features:
 
 - Redact the `X-Firebase-AppCheck` header by default in the `googlePinoConfiguration`.
