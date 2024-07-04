@@ -4,8 +4,12 @@ import { LogFn, Logger, LoggerOptions } from 'pino';
  * Options that should be passed to `updatePinoConfiguration` when initializing a logger for a GCP environment.
  * Errors will be tagged with the Cloud Error Reporting-specific `@type` key, such that they are detected by the
  * service. Severity levels are also mapped to the ones used by Cloud Logging.
+ * The `X-Firebase-AppCheck` header is redacted from logs.
  */
 export const googlePinoConfiguration: LoggerOptions = {
+  redact: {
+    paths: ['req.headers["x-firebase-appcheck"]'],
+  },
   hooks: {
     logMethod(args: any[], method: LogFn, level: number) {
       let binding: any;

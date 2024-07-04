@@ -90,4 +90,14 @@ describe('configuration', () => {
       severity: 'ERROR',
     });
   });
+
+  it('should redact the Firebase AppCheck header', () => {
+    logger.info({ req: { headers: { 'x-firebase-appcheck': 'token' } } }, '🔒');
+
+    const actualLogs = getLogs();
+
+    expect(actualLogs[0]).toMatchObject({
+      req: { headers: { 'x-firebase-appcheck': '[Redacted]' } },
+    });
+  });
 });
