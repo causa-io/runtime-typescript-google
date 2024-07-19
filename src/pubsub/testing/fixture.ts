@@ -251,11 +251,20 @@ export class PubSubFixture {
   async expectEventInTopic(
     sourceTopicName: string,
     expectedEvent: any,
-    options: ExpectMessageInTopicOptions = {},
+    options: ExpectMessageInTopicOptions & {
+      /**
+       * The attributes expected to have been published with the event.
+       * This may contain only a subset of the attributes.
+       */
+      attributes?: Record<string, string>;
+    } = {},
   ): Promise<void> {
     await this.expectMessageInTopic(
       sourceTopicName,
-      expect.objectContaining({ event: expectedEvent }),
+      expect.objectContaining({
+        event: expectedEvent,
+        attributes: expect.objectContaining(options.attributes ?? {}),
+      }),
       options,
     );
   }
