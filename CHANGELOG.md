@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+Features:
+
+- Support testing Pub/Sub attributes in higher-level test functions (`PubSubFixture.expectEventInTopic` and `GoogleAppFixture.expectMutatedVersionedEntity`).
+
 ## v0.28.0 (2024-07-04)
 
 Features:
