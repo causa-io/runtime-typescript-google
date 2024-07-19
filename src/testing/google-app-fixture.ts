@@ -72,6 +72,11 @@ type VersionedEntityTests<T extends object> = {
      * The `name` of the expected published event.
      */
     name: string;
+
+    /**
+     * Attributes expected to have been set on the published event.
+     */
+    attributes?: Record<string, string>;
   };
 
   /**
@@ -153,12 +158,16 @@ export class GoogleAppFixture {
 
     const { expectedEvent } = tests;
     if (expectedEvent) {
-      await this.pubSub.expectEventInTopic(expectedEvent.topic, {
-        id: expect.any(String),
-        name: expectedEvent.name,
-        producedAt: storedEntity.updatedAt,
-        data: storedEntity,
-      });
+      await this.pubSub.expectEventInTopic(
+        expectedEvent.topic,
+        {
+          id: expect.any(String),
+          name: expectedEvent.name,
+          producedAt: storedEntity.updatedAt,
+          data: storedEntity,
+        },
+        { attributes: expectedEvent.attributes },
+      );
     }
 
     if (tests.matchesHttpResponse) {
@@ -319,7 +328,7 @@ export class GoogleAppFixture {
     const additionalOverrides =
       appFactoryOptions.overrides && !Array.isArray(appFactoryOptions.overrides)
         ? [appFactoryOptions.overrides]
-        : appFactoryOptions.overrides ?? [];
+        : (appFactoryOptions.overrides ?? []);
     const app = await createApp(appModule, {
       appFactory: makeTestAppFactory({
         ...appFactoryOptions,
