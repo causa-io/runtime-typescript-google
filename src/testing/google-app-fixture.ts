@@ -328,7 +328,7 @@ export class GoogleAppFixture {
     const additionalOverrides =
       appFactoryOptions.overrides && !Array.isArray(appFactoryOptions.overrides)
         ? [appFactoryOptions.overrides]
-        : appFactoryOptions.overrides ?? [];
+        : (appFactoryOptions.overrides ?? []);
     const app = await createApp(appModule, {
       appFactory: makeTestAppFactory({
         ...appFactoryOptions,
