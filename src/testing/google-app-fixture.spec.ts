@@ -330,12 +330,20 @@ describe('GoogleAppFixture', () => {
       await publisher.publish('my.event.v1', myEvent);
       const response = await serializeAsJavaScriptObject(myEntity);
       jest.spyOn(fixture.pubSub, 'expectEventInTopic');
+      const expectedAttributes = {
+        eventId: myEvent.id,
+        producedAt: myEvent.producedAt.toISOString(),
+      };
 
       await fixture.expectMutatedVersionedEntity(
         { type: MyEntity, id: myEntity.id },
         {
           expectedEntity: myEntity,
-          expectedEvent: { topic: 'my.event.v1', name: myEvent.name },
+          expectedEvent: {
+            topic: 'my.event.v1',
+            name: myEvent.name,
+            attributes: expectedAttributes,
+          },
           matchesHttpResponse: response,
         },
       );
@@ -348,6 +356,7 @@ describe('GoogleAppFixture', () => {
           producedAt: myEntity.updatedAt,
           data: myEntity,
         },
+        { attributes: expectedAttributes },
       );
     });
   });
