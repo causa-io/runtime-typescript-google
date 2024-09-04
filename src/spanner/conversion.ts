@@ -122,7 +122,6 @@ export function spannerObjectToInstance<T>(
   type: Type<T>,
 ): T {
   // This is okay as `null` can only be returned when the internal option `nullifyInstance` is set.
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   return spannerObjectToInstanceWithOptions(spannerObject, type)!;
 }
 
