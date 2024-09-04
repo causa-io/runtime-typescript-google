@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+Features:
+
+- Export `getFirestoreCollectionInjectionName` to get the injection token for a Firestore collection.
+
 ## v0.29.0 (2024-07-19)
 
 Features:
