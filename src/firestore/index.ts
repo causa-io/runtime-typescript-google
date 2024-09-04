@@ -10,4 +10,7 @@ export {
 export { wrapFirestoreOperation } from './error-converter.js';
 export * from './errors.js';
 export { FirestoreHealthIndicator } from './healthcheck.js';
-export { InjectFirestoreCollection } from './inject-collection.decorator.js';
+export {
+  InjectFirestoreCollection,
+  getFirestoreCollectionInjectionName,
+} from './inject-collection.decorator.js';
