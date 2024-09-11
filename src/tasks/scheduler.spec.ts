@@ -1,4 +1,8 @@
 import { RetryableError } from '@causa/runtime';
+import {
+  createMockConfigService,
+  MockedConfigService,
+} from '@causa/runtime/nestjs/testing';
 import { CloudTasksClient } from '@google-cloud/tasks';
 import { status } from '@grpc/grpc-js';
 import { jest } from '@jest/globals';
@@ -10,6 +14,7 @@ const EXPECTED_SERVICE_ACCOUNT_EMAIL = 'eixample@heetch.com';
 
 describe('CloudTasksScheduler', () => {
   let client: CloudTasksClient;
+  let configService: MockedConfigService;
   let scheduler: CloudTasksScheduler;
   let createTasksSpy: jest.SpiedFunction<any>;
   let getCredentialsSpy: jest.SpiedFunction<any>;
@@ -22,7 +27,12 @@ describe('CloudTasksScheduler', () => {
     getCredentialsSpy = jest
       .spyOn(client.auth as any, 'getCredentials')
       .mockResolvedValue({ client_email: EXPECTED_SERVICE_ACCOUNT_EMAIL });
-    scheduler = new CloudTasksScheduler(client);
+
+    configService = createMockConfigService({
+      TASKS_QUEUE_MY_QUEUE_NAME: 'path/to/queues/my-queue',
+    });
+
+    scheduler = new CloudTasksScheduler(client, configService as any);
   });
 
   afterEach(async () => {
@@ -137,6 +147,20 @@ describe('CloudTasksScheduler', () => {
 
       await expect(actualPromise2).rejects.toThrow(RetryableError);
       await expect(actualPromise2).rejects.toThrow('🔧');
+    });
+  });
+
+  describe('getQueuePath', () => {
+    it('should return the queue name from the configuration', () => {
+      const actualName = scheduler.getQueuePath('my-queue.name');
+
+      expect(actualName).toEqual('path/to/queues/my-queue');
+    });
+
+    it('should return null if the environment variable is not set', () => {
+      const actualName = scheduler.getQueuePath('unknown-queue');
+
+      expect(actualName).toBeNull();
     });
   });
 });
