@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+Features:
+
+- Implement `CloudTasksScheduler.getQueuePath`, to get the full resource name for a queue from the configuration.
+
 ## v0.30.0 (2024-09-04)
 
 Features:

@@ -1,5 +1,6 @@
 import { CloudTasksClient, protos } from '@google-cloud/tasks';
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { RetryOptions, grpc } from 'google-gax';
 import { TemporaryCloudTasksError } from './errors.js';
 
@@ -57,7 +58,23 @@ const GRPC_RETRYABLE_CODES = [
  */
 @Injectable()
 export class CloudTasksScheduler {
-  constructor(private readonly client: CloudTasksClient) {}
+  constructor(
+    private readonly client: CloudTasksClient,
+    private readonly configService: ConfigService,
+  ) {}
+
+  /**
+   * Returns the full path of the queue with the given name.
+   * It gets the path from the configuration, using the `TASKS_QUEUE_` prefix and the uppercase and underscored name.
+   *
+   * @param name The name of the queue.
+   * @returns The full path of the queue, or `null` if the configuration could not be found.
+   */
+  getQueuePath(name: string): string | null {
+    const configName = `TASKS_QUEUE_${name.toUpperCase().replace(/[\.-]{1}/g, '_')}`;
+    const queuePath = this.configService.get<string>(configName);
+    return queuePath ?? null;
+  }
 
   /**
    * The promise resolving to the email of the service account used by the Cloud Tasks client.
