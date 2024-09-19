@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.32.1 (2024-09-19)
+
 Fix:
 
 - Revert the `FirestoreHealthIndicator` getting the database, as this is counted as a database operation with an extremely low quota.
