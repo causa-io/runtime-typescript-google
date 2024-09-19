@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.32.0 (2024-09-19)
+
 Features:
 
 - Make the `FirebaseModule` provide the `FirestoreAdminClient`.
