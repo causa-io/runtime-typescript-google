@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+Features:
+
+- Make the `FirebaseModule` provide the `FirestoreAdminClient`.
+- Make the `FirestoreHealthIndicator` get the database instead of listing collections.
+
 ## v0.31.0 (2024-09-13)
 
 Features:
