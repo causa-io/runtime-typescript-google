@@ -1,13 +1,13 @@
 import {
-  ClassProvider,
-  DynamicModule,
-  FactoryProvider,
+  type ClassProvider,
+  type DynamicModule,
+  type FactoryProvider,
   Module,
-  ModuleMetadata,
-  Provider,
-  ValueProvider,
+  type ModuleMetadata,
+  type Provider,
+  type ValueProvider,
 } from '@nestjs/common';
-import { AppOptions, initializeApp } from 'firebase-admin/app';
+import { type AppOptions, initializeApp } from 'firebase-admin/app';
 import { AppCheck, getAppCheck } from 'firebase-admin/app-check';
 import { Auth, getAuth } from 'firebase-admin/auth';
 import { Firestore, getFirestore } from 'firebase-admin/firestore';

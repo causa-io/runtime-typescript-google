@@ -1,4 +1,4 @@
-import { EventPublisher, VersionedEntity } from '@causa/runtime';
+import type { EventPublisher, VersionedEntity } from '@causa/runtime';
 import { InjectEventPublisher, LoggerModule } from '@causa/runtime/nestjs';
 import { Injectable } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';

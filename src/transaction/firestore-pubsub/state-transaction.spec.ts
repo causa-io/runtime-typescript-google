@@ -1,4 +1,4 @@
-import { VersionedEntity } from '@causa/runtime';
+import type { VersionedEntity } from '@causa/runtime';
 import {
   CollectionReference,
   Firestore,
@@ -13,8 +13,8 @@ import {
 } from '../../firestore/testing.js';
 import { SoftDeletedFirestoreCollection } from './soft-deleted-collection.decorator.js';
 import {
-  FirestoreCollectionResolver,
-  FirestoreCollectionsForDocumentType,
+  type FirestoreCollectionResolver,
+  type FirestoreCollectionsForDocumentType,
   FirestoreStateTransaction,
 } from './state-transaction.js';
 

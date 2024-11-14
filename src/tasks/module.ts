@@ -1,5 +1,5 @@
 import { CloudTasksClient } from '@google-cloud/tasks';
-import { DynamicModule } from '@nestjs/common';
+import type { DynamicModule } from '@nestjs/common';
 import { CloudTasksScheduler } from './scheduler.js';
 
 /**

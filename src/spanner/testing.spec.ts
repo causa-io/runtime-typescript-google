@@ -1,7 +1,7 @@
 import { createApp } from '@causa/runtime/nestjs';
 import { makeTestAppFactory } from '@causa/runtime/nestjs/testing';
 import { Database, Instance, Spanner } from '@google-cloud/spanner';
-import { INestApplication, Module } from '@nestjs/common';
+import { type INestApplication, Module } from '@nestjs/common';
 import 'jest-extended';
 import { createDatabase, overrideDatabase } from './testing.js';
 

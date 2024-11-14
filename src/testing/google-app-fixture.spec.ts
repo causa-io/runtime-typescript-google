@@ -1,10 +1,10 @@
 import {
-  Event,
-  EventPublisher,
+  type Event,
+  type EventPublisher,
   IsDateType,
   IsNullable,
   ValidateNestedType,
-  VersionedEntity,
+  type VersionedEntity,
 } from '@causa/runtime';
 import { EVENT_PUBLISHER_INJECTION_NAME } from '@causa/runtime/nestjs';
 import { serializeAsJavaScriptObject } from '@causa/runtime/testing';

@@ -2,7 +2,7 @@ import { HealthCheckModule, createApp } from '@causa/runtime/nestjs';
 import { makeTestAppFactory } from '@causa/runtime/nestjs/testing';
 import { Database } from '@google-cloud/spanner';
 import { jest } from '@jest/globals';
-import { INestApplication, Module } from '@nestjs/common';
+import { type INestApplication, Module } from '@nestjs/common';
 import 'jest-extended';
 import supertest from 'supertest';
 import TestAgent from 'supertest/lib/agent.js';

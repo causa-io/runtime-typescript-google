@@ -1,4 +1,4 @@
-import { EventPublisher } from '@causa/runtime';
+import type { EventPublisher } from '@causa/runtime';
 import { InjectEventPublisher, LoggerModule } from '@causa/runtime/nestjs';
 import { createMockConfigService } from '@causa/runtime/nestjs/testing';
 import { Injectable } from '@nestjs/common';

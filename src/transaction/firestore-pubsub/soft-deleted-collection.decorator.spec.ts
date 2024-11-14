@@ -1,4 +1,4 @@
-import { VersionedEntity } from '@causa/runtime';
+import type { VersionedEntity } from '@causa/runtime';
 import {
   SoftDeletedFirestoreCollection,
   getSoftDeletedFirestoreCollectionMetadataForType,

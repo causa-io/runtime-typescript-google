@@ -1,5 +1,5 @@
-import { NestJsModuleOverrider } from '@causa/runtime/nestjs/testing';
-import { INestApplicationContext, Type } from '@nestjs/common';
+import type { NestJsModuleOverrider } from '@causa/runtime/nestjs/testing';
+import type { INestApplicationContext, Type } from '@nestjs/common';
 import { CollectionReference, Firestore } from 'firebase-admin/firestore';
 import * as uuid from 'uuid';
 import { getFirestoreCollectionMetadataForType } from './collection.decorator.js';

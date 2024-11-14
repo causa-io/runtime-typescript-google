@@ -1,5 +1,5 @@
-import { NestJsModuleOverrider } from '@causa/runtime/nestjs/testing';
-import { CanActivate } from '@nestjs/common';
+import type { NestJsModuleOverrider } from '@causa/runtime/nestjs/testing';
+import type { CanActivate } from '@nestjs/common';
 import { AppCheckGuard } from './guard.js';
 
 /**

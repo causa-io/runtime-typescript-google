@@ -1,5 +1,5 @@
-import { JsonObjectSerializer, ObjectSerializer } from '@causa/runtime';
-import { HttpStatus, INestApplication } from '@nestjs/common';
+import { JsonObjectSerializer, type ObjectSerializer } from '@causa/runtime';
+import { HttpStatus, type INestApplication } from '@nestjs/common';
 import supertest from 'supertest';
 import * as uuid from 'uuid';
 

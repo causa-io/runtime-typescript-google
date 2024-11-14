@@ -1,5 +1,5 @@
 import {
-  Event,
+  type Event,
   IsDateType,
   JsonObjectSerializer,
   ValidateNestedType,
@@ -19,7 +19,7 @@ import {
   Controller,
   HttpCode,
   HttpStatus,
-  INestApplication,
+  type INestApplication,
   Module,
   Post,
 } from '@nestjs/common';
@@ -28,7 +28,7 @@ import { IsString } from 'class-validator';
 import supertest from 'supertest';
 import { PubSubEventHandlerInterceptor } from './interceptor.js';
 import { PubSubEventPublishTime } from './publish-time.decorator.js';
-import { EventRequester, makePubSubRequester } from './testing/index.js';
+import { type EventRequester, makePubSubRequester } from './testing/index.js';
 
 class MyData {
   constructor(data: Partial<MyData> = {}) {

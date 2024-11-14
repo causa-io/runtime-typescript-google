@@ -1,6 +1,6 @@
 import { BaseHealthIndicatorService } from '@causa/runtime/nestjs';
 import { Injectable } from '@nestjs/common';
-import { HealthCheckError, HealthIndicatorResult } from '@nestjs/terminus';
+import { HealthCheckError, type HealthIndicatorResult } from '@nestjs/terminus';
 import { Firestore } from 'firebase-admin/firestore';
 
 /**

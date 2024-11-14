@@ -1,7 +1,11 @@
 import { Logger, UnauthenticatedError } from '@causa/runtime/nestjs';
-import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
+import {
+  type CanActivate,
+  type ExecutionContext,
+  Injectable,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { Request } from 'express';
+import type { Request } from 'express';
 import { AppCheck } from 'firebase-admin/app-check';
 import { APP_CHECK_DISABLED_METADATA_KEY } from './app-check-disabled.decorator.js';
 

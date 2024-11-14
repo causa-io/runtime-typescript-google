@@ -1,9 +1,9 @@
-import { User } from '@causa/runtime';
+import type { User } from '@causa/runtime';
 import { Logger, UnauthenticatedError } from '@causa/runtime/nestjs';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
-import { Auth, DecodedIdToken } from 'firebase-admin/auth';
+import { Auth, type DecodedIdToken } from 'firebase-admin/auth';
 import { Strategy } from 'passport-http-bearer';
 
 /**

@@ -5,7 +5,7 @@ import { Injectable } from '@nestjs/common';
 import { wrapFirestoreOperation } from '../../firestore/index.js';
 import { PubSubPublisher } from '../../pubsub/index.js';
 import {
-  FirestoreCollectionResolver,
+  type FirestoreCollectionResolver,
   FirestoreStateTransaction,
 } from './state-transaction.js';
 import { FirestorePubSubTransaction } from './transaction.js';

@@ -2,7 +2,7 @@ import { BaseHealthIndicatorService } from '@causa/runtime/nestjs';
 import { PubSub } from '@google-cloud/pubsub';
 import { status } from '@grpc/grpc-js';
 import { Injectable } from '@nestjs/common';
-import { HealthCheckError, HealthIndicatorResult } from '@nestjs/terminus';
+import { HealthCheckError, type HealthIndicatorResult } from '@nestjs/terminus';
 
 /**
  * The key used to identify the Pub/Sub health indicator.

@@ -1,5 +1,5 @@
 import { Database, Spanner } from '@google-cloud/spanner';
-import { Injectable, OnApplicationShutdown } from '@nestjs/common';
+import { Injectable, type OnApplicationShutdown } from '@nestjs/common';
 
 /**
  * A private service that handles the graceful shutdown of the Spanner Database.

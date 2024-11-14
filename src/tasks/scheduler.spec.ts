@@ -1,7 +1,7 @@
 import { RetryableError } from '@causa/runtime';
 import {
   createMockConfigService,
-  MockedConfigService,
+  type MockedConfigService,
 } from '@causa/runtime/nestjs/testing';
 import { CloudTasksClient } from '@google-cloud/tasks';
 import { status } from '@grpc/grpc-js';

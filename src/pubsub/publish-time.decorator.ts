@@ -1,5 +1,5 @@
-import { ExecutionContext, createParamDecorator } from '@nestjs/common';
-import { RequestWithPubSubInfo } from './request-with-pubsub-info.js';
+import { type ExecutionContext, createParamDecorator } from '@nestjs/common';
+import type { RequestWithPubSubInfo } from './request-with-pubsub-info.js';
 
 /**
  * Decorates a route handler's parameter to populate it with the `publishTime` of the Pub/Sub message.

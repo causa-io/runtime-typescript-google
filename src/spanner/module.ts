@@ -1,7 +1,7 @@
 import { Logger } from '@causa/runtime/nestjs';
 import { Database, Spanner } from '@google-cloud/spanner';
-import { SessionPoolOptions } from '@google-cloud/spanner/build/src/session-pool.js';
-import { DynamicModule, FactoryProvider } from '@nestjs/common';
+import type { SessionPoolOptions } from '@google-cloud/spanner/build/src/session-pool.js';
+import type { DynamicModule, FactoryProvider } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   SPANNER_SESSION_POOL_OPTIONS_FOR_SERVICE,

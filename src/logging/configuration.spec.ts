@@ -1,6 +1,6 @@
 import type { getLoggedObjects } from '@causa/runtime/testing';
 import { jest } from '@jest/globals';
-import { Logger } from 'pino';
+import type { Logger } from 'pino';
 import { googlePinoConfiguration } from './configuration.js';
 
 describe('configuration', () => {

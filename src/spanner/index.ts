@@ -5,8 +5,8 @@ export {
   catchSpannerDatabaseErrors,
   getDefaultSpannerDatabaseForCloudFunction,
 } from './database.js';
-export {
-  SpannerEntityManager,
+export { SpannerEntityManager } from './entity-manager.js';
+export type {
   SpannerKey,
   SpannerReadOnlyTransaction,
 } from './entity-manager.js';

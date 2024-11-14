@@ -1,18 +1,18 @@
 import {
-  EventAttributes,
-  EventPublisher,
+  type EventAttributes,
+  type EventPublisher,
   JsonObjectSerializer,
-  ObjectSerializer,
-  PublishOptions,
+  type ObjectSerializer,
+  type PublishOptions,
   getDefaultLogger,
 } from '@causa/runtime';
 import {
   PubSub,
   Topic,
-  PublishOptions as TopicPublishOptions,
+  type PublishOptions as TopicPublishOptions,
 } from '@google-cloud/pubsub';
-import { OnApplicationShutdown } from '@nestjs/common';
-import { Logger } from 'pino';
+import type { OnApplicationShutdown } from '@nestjs/common';
+import type { Logger } from 'pino';
 import { getConfigurationKeyForTopic } from './configuration.js';
 import { PubSubTopicNotConfiguredError } from './errors.js';
 

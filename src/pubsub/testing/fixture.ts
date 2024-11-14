@@ -1,7 +1,7 @@
-import { JsonObjectSerializer, ObjectSerializer } from '@causa/runtime';
-import { NestJsModuleOverrider } from '@causa/runtime/nestjs/testing';
+import { JsonObjectSerializer, type ObjectSerializer } from '@causa/runtime';
+import type { NestJsModuleOverrider } from '@causa/runtime/nestjs/testing';
 import { Message, PubSub, Subscription, Topic } from '@google-cloud/pubsub';
-import { Type } from '@nestjs/common';
+import type { Type } from '@nestjs/common';
 import { setTimeout } from 'timers/promises';
 import * as uuid from 'uuid';
 import { getConfigurationKeyForTopic } from '../configuration.js';

@@ -1,4 +1,4 @@
-import { Inject, Type } from '@nestjs/common';
+import { Inject, type Type } from '@nestjs/common';
 
 /**
  * Returns a unique key that references a Firestore collection that should be injected.
