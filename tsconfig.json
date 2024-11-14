@@ -9,6 +9,7 @@
     "experimentalDecorators": true,
     "sourceMap": true,
     "outDir": "./dist",
-    "incremental": true
+    "incremental": true,
+    "verbatimModuleSyntax": true
   }
 }
