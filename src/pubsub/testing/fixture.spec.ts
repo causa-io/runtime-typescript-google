@@ -1,6 +1,6 @@
 import { createApp } from '@causa/runtime/nestjs';
 import { makeTestAppFactory } from '@causa/runtime/nestjs/testing';
-import { INestApplication, Module } from '@nestjs/common';
+import { type INestApplication, Module } from '@nestjs/common';
 import { PubSubPublisher } from '../publisher.js';
 import { PubSubPublisherModule } from '../publisher.module.js';
 import { PubSubFixture } from './fixture.js';

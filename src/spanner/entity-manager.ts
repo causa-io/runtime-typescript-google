@@ -2,10 +2,10 @@ import { EntityNotFoundError } from '@causa/runtime';
 import { Database, Snapshot, Transaction } from '@google-cloud/spanner';
 import {
   Int,
-  Type as ParamType,
+  type Type as ParamType,
 } from '@google-cloud/spanner/build/src/codec.js';
-import { TimestampBounds } from '@google-cloud/spanner/build/src/transaction.js';
-import { Injectable, Type } from '@nestjs/common';
+import type { TimestampBounds } from '@google-cloud/spanner/build/src/transaction.js';
+import { Injectable, type Type } from '@nestjs/common';
 import {
   copyInstanceWithMissingColumnsToNull,
   instanceToSpannerObject,
@@ -19,7 +19,7 @@ import {
   TransactionFinishedError,
 } from './errors.js';
 import { SpannerTableCache } from './table-cache.js';
-import { RecursivePartialEntity } from './types.js';
+import type { RecursivePartialEntity } from './types.js';
 
 /**
  * Any Spanner transaction that can be used for reading.

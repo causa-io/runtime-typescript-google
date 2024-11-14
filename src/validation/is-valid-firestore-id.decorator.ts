@@ -1,7 +1,7 @@
 import {
   isString,
   registerDecorator,
-  ValidationOptions,
+  type ValidationOptions,
 } from 'class-validator';
 
 /**

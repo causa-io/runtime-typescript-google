@@ -1,4 +1,4 @@
-import { Event } from '@causa/runtime';
+import { type Event } from '@causa/runtime';
 import { getLoggedErrors, spyOnLogger } from '@causa/runtime/testing';
 import { Topic } from '@google-cloud/pubsub';
 import { jest } from '@jest/globals';

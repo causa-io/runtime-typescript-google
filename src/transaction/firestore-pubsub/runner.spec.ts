@@ -1,11 +1,11 @@
 import {
   EntityNotFoundError,
-  Event,
+  type Event,
   IsDateType,
   IsNullable,
   RetryableError,
   ValidateNestedType,
-  VersionedEntity,
+  type VersionedEntity,
   VersionedEntityManager,
 } from '@causa/runtime';
 import { Logger } from '@causa/runtime/nestjs';
@@ -31,7 +31,7 @@ import { PubSubPublisher } from '../../pubsub/index.js';
 import { PubSubFixture } from '../../pubsub/testing/index.js';
 import { FirestorePubSubTransactionRunner } from './runner.js';
 import { SoftDeletedFirestoreCollection } from './soft-deleted-collection.decorator.js';
-import {
+import type {
   FirestoreCollectionResolver,
   FirestoreCollectionsForDocumentType,
 } from './state-transaction.js';

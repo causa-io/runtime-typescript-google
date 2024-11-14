@@ -1,12 +1,12 @@
 import { PreciseDate } from '@google-cloud/precise-date';
 import { Float, Int } from '@google-cloud/spanner';
-import { Type } from '@nestjs/common';
+import type { Type } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import {
-  SpannerColumnMetadata,
+  type SpannerColumnMetadata,
   getSpannerColumnsMetadata,
 } from './column.decorator.js';
-import { RecursivePartialEntity } from './types.js';
+import type { RecursivePartialEntity } from './types.js';
 
 /**
  * Creates a typed class instance from an object returned by the Spanner API.

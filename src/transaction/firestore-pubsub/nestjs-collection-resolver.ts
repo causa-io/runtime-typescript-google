@@ -1,12 +1,12 @@
-import { Injectable, Type } from '@nestjs/common';
+import { Injectable, type Type } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
 import { CollectionReference } from 'firebase-admin/firestore';
 import { makeFirestoreDataConverter } from '../../firestore/index.js';
 import { getFirestoreCollectionInjectionName } from '../../firestore/inject-collection.decorator.js';
 import { getSoftDeletedFirestoreCollectionMetadataForType } from './soft-deleted-collection.decorator.js';
 import {
-  FirestoreCollectionResolver,
-  FirestoreCollectionsForDocumentType,
+  type FirestoreCollectionResolver,
+  type FirestoreCollectionsForDocumentType,
 } from './state-transaction.js';
 
 /**

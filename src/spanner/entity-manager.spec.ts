@@ -8,7 +8,7 @@ import * as uuid from 'uuid';
 import { SpannerColumn } from './column.decorator.js';
 import {
   SpannerEntityManager,
-  SpannerReadOnlyTransaction,
+  type SpannerReadOnlyTransaction,
 } from './entity-manager.js';
 import {
   EntityMissingPrimaryKeyError,

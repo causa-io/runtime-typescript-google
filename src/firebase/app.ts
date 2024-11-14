@@ -1,5 +1,5 @@
 import firebaseAdmin from 'firebase-admin';
-import { App, initializeApp } from 'firebase-admin/app';
+import { type App, initializeApp } from 'firebase-admin/app';
 
 /**
  * Returns the default Firebase {@link App} that should be used when initializing Firebase clients.

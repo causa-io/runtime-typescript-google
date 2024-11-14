@@ -1,5 +1,5 @@
-import { Injectable, OnApplicationShutdown } from '@nestjs/common';
-import { App, deleteApp } from 'firebase-admin/app';
+import { Injectable, type OnApplicationShutdown } from '@nestjs/common';
+import { type App, deleteApp } from 'firebase-admin/app';
 import { Firestore } from 'firebase-admin/firestore';
 import { FirestoreAdminClient } from './firestore-admin-client.type.js';
 import { InjectFirebaseApp } from './inject-firebase-app.decorator.js';

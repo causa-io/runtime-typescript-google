@@ -1,8 +1,8 @@
-import { Type } from '@nestjs/common';
+import type { Type } from '@nestjs/common';
 import { instanceToPlain, plainToInstance } from 'class-transformer';
 import {
-  FirestoreDataConverter,
-  PartialWithFieldValue,
+  type FirestoreDataConverter,
+  type PartialWithFieldValue,
   QueryDocumentSnapshot,
   Timestamp,
 } from 'firebase-admin/firestore';

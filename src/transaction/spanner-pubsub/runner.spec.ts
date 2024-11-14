@@ -1,10 +1,10 @@
 import {
-  Event,
+  type Event,
   IsDateType,
   IsNullable,
   TransactionOldTimestampError,
   ValidateNestedType,
-  VersionedEntity,
+  type VersionedEntity,
   VersionedEntityManager,
 } from '@causa/runtime';
 import { Logger } from '@causa/runtime/nestjs';

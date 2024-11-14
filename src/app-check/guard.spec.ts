@@ -1,7 +1,7 @@
 import { createApp } from '@causa/runtime/nestjs';
 import { getLoggedWarnings, spyOnLogger } from '@causa/runtime/testing';
 import { jest } from '@jest/globals';
-import { Controller, Get, INestApplication, Module } from '@nestjs/common';
+import { Controller, Get, type INestApplication, Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { AppCheck } from 'firebase-admin/app-check';
 import 'jest-extended';

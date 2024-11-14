@@ -1,5 +1,5 @@
 import { PreciseDate } from '@google-cloud/precise-date';
-import { Type } from '@nestjs/common';
+import type { Type } from '@nestjs/common';
 import { Transform } from 'class-transformer';
 import 'reflect-metadata';
 

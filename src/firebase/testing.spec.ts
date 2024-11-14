@@ -1,7 +1,7 @@
 import { createApp } from '@causa/runtime/nestjs';
 import { makeTestAppFactory } from '@causa/runtime/nestjs/testing';
-import { INestApplication, Module } from '@nestjs/common';
-import { App } from 'firebase-admin/app';
+import { type INestApplication, Module } from '@nestjs/common';
+import type { App } from 'firebase-admin/app';
 import { getDefaultFirebaseApp } from './app.js';
 import { FIREBASE_APP_TOKEN } from './inject-firebase-app.decorator.js';
 import { FirebaseModule } from './module.js';

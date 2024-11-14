@@ -1,7 +1,7 @@
 import { getDefaultLogger } from '@causa/runtime';
 import { Database, Spanner } from '@google-cloud/spanner';
-import { SessionPoolOptions } from '@google-cloud/spanner/build/src/session-pool.js';
-import { Logger } from 'pino';
+import type { SessionPoolOptions } from '@google-cloud/spanner/build/src/session-pool.js';
+import type { Logger } from 'pino';
 
 /**
  * The default pool options when instantiating a database object for use within a Cloud Function.

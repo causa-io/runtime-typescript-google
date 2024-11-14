@@ -1,4 +1,4 @@
-import { User } from '@causa/runtime';
+import type { User } from '@causa/runtime';
 import { Auth, getAuth } from 'firebase-admin/auth';
 import jwt from 'jsonwebtoken';
 import * as uuid from 'uuid';

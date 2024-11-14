@@ -1,4 +1,4 @@
-import { LogFn, Logger, LoggerOptions } from 'pino';
+import type { LogFn, Logger, LoggerOptions } from 'pino';
 
 /**
  * Options that should be passed to `updatePinoConfiguration` when initializing a logger for a GCP environment.

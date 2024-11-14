@@ -1,8 +1,8 @@
 import { EVENT_PUBLISHER_INJECTION_NAME, Logger } from '@causa/runtime/nestjs';
 import { PubSub } from '@google-cloud/pubsub';
-import { DynamicModule } from '@nestjs/common';
+import type { DynamicModule } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { PubSubPublisher, PubSubPublisherOptions } from './publisher.js';
+import { PubSubPublisher, type PubSubPublisherOptions } from './publisher.js';
 
 /**
  * The name of the injection key used to provide the {@link PubSubPublisherOptions.configurationGetter}.

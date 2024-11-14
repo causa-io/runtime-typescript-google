@@ -1,5 +1,5 @@
-import { VersionedEntity } from '@causa/runtime';
-import { Type } from '@nestjs/common';
+import type { VersionedEntity } from '@causa/runtime';
+import type { Type } from '@nestjs/common';
 import 'reflect-metadata';
 
 /**

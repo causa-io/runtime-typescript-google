@@ -1,4 +1,4 @@
-import { NestJsModuleOverrider } from '@causa/runtime/nestjs/testing';
+import type { NestJsModuleOverrider } from '@causa/runtime/nestjs/testing';
 import { getDefaultFirebaseApp } from './app.js';
 import { FIREBASE_APP_TOKEN } from './inject-firebase-app.decorator.js';
 import { FirebaseLifecycleService } from './lifecycle.service.js';

@@ -1,4 +1,4 @@
-import { EventPublisher, JsonObjectSerializer } from '@causa/runtime';
+import { type EventPublisher, JsonObjectSerializer } from '@causa/runtime';
 import {
   EVENT_PUBLISHER_INJECTION_NAME,
   InjectEventPublisher,

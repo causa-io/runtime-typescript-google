@@ -1,4 +1,4 @@
-import { DynamicModule, FactoryProvider, Type } from '@nestjs/common';
+import type { DynamicModule, FactoryProvider, Type } from '@nestjs/common';
 import { Firestore } from 'firebase-admin/firestore';
 import { getFirestoreCollectionMetadataForType } from './collection.decorator.js';
 import { makeFirestoreDataConverter } from './converter.js';

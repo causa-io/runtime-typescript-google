@@ -1,5 +1,5 @@
 import { Logger } from '@causa/runtime/nestjs';
-import { DynamicModule } from '@nestjs/common';
+import type { DynamicModule } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
 import { Firestore } from 'firebase-admin/firestore';
 import { PubSubPublisher } from '../../index.js';

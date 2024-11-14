@@ -1,9 +1,9 @@
-import { FindReplaceStateTransaction } from '@causa/runtime';
-import { Type } from '@nestjs/common';
+import type { FindReplaceStateTransaction } from '@causa/runtime';
+import type { Type } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { CollectionReference, Transaction } from 'firebase-admin/firestore';
 import { getReferenceForFirestoreDocument } from '../../firestore/index.js';
-import { SoftDeletedFirestoreCollectionMetadata } from './soft-deleted-collection.decorator.js';
+import type { SoftDeletedFirestoreCollectionMetadata } from './soft-deleted-collection.decorator.js';
 
 /**
  * The Firestore collections that should be used to create document references for a given document type.

@@ -1,7 +1,7 @@
 import { BaseHealthIndicatorService } from '@causa/runtime/nestjs';
 import { Database } from '@google-cloud/spanner';
 import { Injectable } from '@nestjs/common';
-import { HealthCheckError, HealthIndicatorResult } from '@nestjs/terminus';
+import { HealthCheckError, type HealthIndicatorResult } from '@nestjs/terminus';
 
 /**
  * The key used to identify the Spanner health indicator.

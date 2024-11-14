@@ -4,9 +4,9 @@ import { ConfigService } from '@nestjs/config';
 import { RetryOptions, grpc } from 'google-gax';
 import { TemporaryCloudTasksError } from './errors.js';
 
-export import Task = protos.google.cloud.tasks.v2.ITask;
-export import HttpMethod = protos.google.cloud.tasks.v2.HttpMethod;
-export import HttpRequest = protos.google.cloud.tasks.v2.IHttpRequest;
+export type Task = protos.google.cloud.tasks.v2.ITask;
+export const HttpMethod = protos.google.cloud.tasks.v2.HttpMethod;
+export type HttpRequest = protos.google.cloud.tasks.v2.IHttpRequest;
 
 /**
  * Defines the HTTP request within a Cloud Tasks task.

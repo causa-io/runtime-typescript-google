@@ -1,7 +1,7 @@
 import {
   AllowMissing,
   IsDateType,
-  ObjectSerializer,
+  type ObjectSerializer,
   ValidateNestedType,
   ValidationError,
   parseObject,
@@ -10,14 +10,14 @@ import {
 import {
   BadRequestError,
   BaseEventHandlerInterceptor,
-  ParsedEventRequest,
+  type ParsedEventRequest,
 } from '@causa/runtime/nestjs';
-import { ExecutionContext, Injectable, Type } from '@nestjs/common';
+import { type ExecutionContext, Injectable, type Type } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { IsBase64, IsObject, IsString } from 'class-validator';
-import { Request } from 'express';
+import type { Request } from 'express';
 import { PinoLogger } from 'nestjs-pino';
-import { RequestWithPubSubInfo } from './request-with-pubsub-info.js';
+import type { RequestWithPubSubInfo } from './request-with-pubsub-info.js';
 
 /**
  * The ID of the Pub/Sub event handler interceptor, that can passed to the `UseEventHandler` decorator.

@@ -1,6 +1,5 @@
-import type { Config } from 'jest';
-
-const config: Config = {
+/** @type {import('jest').Config} */
+const config = {
   clearMocks: true,
   coverageDirectory: '../coverage',
   collectCoverageFrom: [
@@ -17,7 +16,7 @@ const config: Config = {
   extensionsToTreatAsEsm: ['.ts'],
   moduleFileExtensions: ['js', 'ts'],
   transform: {
-    '^.+\\.ts$': ['ts-jest', { useESM: true }],
+    '^.+\\.(t|j)s?$': '@swc/jest',
   },
   moduleNameMapper: {
     '^(\\.{1,2}/.*)\\.js$': '$1',

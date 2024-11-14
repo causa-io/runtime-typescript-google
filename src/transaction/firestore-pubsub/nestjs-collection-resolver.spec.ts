@@ -1,4 +1,4 @@
-import { VersionedEntity } from '@causa/runtime';
+import type { VersionedEntity } from '@causa/runtime';
 import { Module } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { Transform } from 'class-transformer';

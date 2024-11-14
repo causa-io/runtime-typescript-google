@@ -1,6 +1,6 @@
 import { RetryableError } from '@causa/runtime';
 import { status } from '@grpc/grpc-js';
-import { Type } from '@nestjs/common';
+import type { Type } from '@nestjs/common';
 
 /**
  * Error raised when the class for a Spanner table is not correctly defined (e.g. a decorator is missing).

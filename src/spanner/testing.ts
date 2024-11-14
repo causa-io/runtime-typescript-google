@@ -1,4 +1,4 @@
-import { NestJsModuleOverrider } from '@causa/runtime/nestjs/testing';
+import type { NestJsModuleOverrider } from '@causa/runtime/nestjs/testing';
 import { Database, Instance, Spanner } from '@google-cloud/spanner';
 import * as uuid from 'uuid';
 

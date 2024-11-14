@@ -1,12 +1,12 @@
-import { VersionedEntity } from '@causa/runtime';
+import type { VersionedEntity } from '@causa/runtime';
 import { createApp } from '@causa/runtime/nestjs';
 import {
-  MakeTestAppFactoryOptions,
+  type MakeTestAppFactoryOptions,
   makeTestAppFactory,
 } from '@causa/runtime/nestjs/testing';
 import { serializeAsJavaScriptObject } from '@causa/runtime/testing';
 import { Database, Spanner } from '@google-cloud/spanner';
-import { INestApplication, Type } from '@nestjs/common';
+import type { INestApplication, Type } from '@nestjs/common';
 import { CollectionReference } from 'firebase-admin/firestore';
 import supertest, { Test } from 'supertest';
 import TestAgent from 'supertest/lib/agent.js';
@@ -19,11 +19,11 @@ import {
 } from '../firestore/testing.js';
 import { AuthUsersFixture } from '../identity-platform/testing.js';
 import {
-  EventRequester,
+  type EventRequester,
   PubSubFixture,
   makePubSubRequester,
 } from '../pubsub/testing/index.js';
-import { SpannerEntityManager, SpannerKey } from '../spanner/index.js';
+import { SpannerEntityManager, type SpannerKey } from '../spanner/index.js';
 import { createDatabase, overrideDatabase } from '../spanner/testing.js';
 
 /**

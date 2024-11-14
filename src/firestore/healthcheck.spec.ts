@@ -1,6 +1,6 @@
 import { HealthCheckModule, createApp } from '@causa/runtime/nestjs';
 import { jest } from '@jest/globals';
-import { INestApplication, Module } from '@nestjs/common';
+import { type INestApplication, Module } from '@nestjs/common';
 import { Firestore } from 'firebase-admin/firestore';
 import supertest from 'supertest';
 import TestAgent from 'supertest/lib/agent.js';
