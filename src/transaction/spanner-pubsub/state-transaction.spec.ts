@@ -1,6 +1,7 @@
 import { EntityNotFoundError } from '@causa/runtime';
 import { PreciseDate } from '@google-cloud/precise-date';
 import { Database } from '@google-cloud/spanner';
+import { setTimeout } from 'timers/promises';
 import {
   SpannerColumn,
   SpannerEntityManager,
@@ -278,7 +279,10 @@ describe('SpannerStateTransaction', () => {
     });
 
     it('should use the transaction', async () => {
+      // Ensures `beforeInsertDate` is after the database creation...
       const beforeInsertDate = new PreciseDate();
+      // ...but is in the distant past relative to the insert.
+      await setTimeout(100);
 
       const entity = new MyEntity({ id1: '🕰️', id2: '🔮', value: '🌠' });
       await entityManager.insert(entity);
