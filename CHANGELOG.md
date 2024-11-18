@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.33.1 (2024-11-18)
+
 Fixes:
 
 - Export `HttpMethod` as value and not just type.
