@@ -1,23 +1,11 @@
-import {
-  BufferEventTransaction,
-  TransactionOldTimestampError,
-  TransactionRunner,
-} from '@causa/runtime';
+import { BufferEventTransaction, TransactionRunner } from '@causa/runtime';
 import { Logger } from '@causa/runtime/nestjs';
 import { Injectable } from '@nestjs/common';
-import { setTimeout } from 'timers/promises';
 import { PubSubPublisher } from '../../pubsub/index.js';
-import {
-  SpannerEntityManager,
-  TemporarySpannerError,
-} from '../../spanner/index.js';
+import { SpannerEntityManager } from '../../spanner/index.js';
 import { SpannerStateTransaction } from '../spanner-state-transaction.js';
 import { SpannerTransaction } from '../spanner-transaction.js';
-
-/**
- * The delay, in milliseconds, over which a timestamp issue is deemed irrecoverable.
- */
-const ACCEPTABLE_PAST_DATE_DELAY = 25000;
+import { throwRetryableInTransactionIfNeeded } from '../spanner-utils.js';
 
 /**
  * A {@link TransactionRunner} that uses Spanner for state and Pub/Sub for events.
@@ -64,23 +52,8 @@ export class SpannerPubSubTransactionRunner extends TransactionRunner<SpannerTra
           this.logger.info('Committing the Spanner transaction.');
           return { result, eventTransaction };
         } catch (error) {
-          // `TransactionOldTimestampError`s indicate that the transaction is using a timestamp older than what is
-          // observed in the state (Spanner).
-          // Throwing a `SpannerTransactionOldTimestampError` will cause the transaction to be retried with a newer
-          // timestamp.
-          if (!(error instanceof TransactionOldTimestampError)) {
-            throw error;
-          }
-
-          const delay = error.delay ?? Infinity;
-          if (delay >= ACCEPTABLE_PAST_DATE_DELAY) {
-            throw error;
-          }
-          if (delay > 0) {
-            await setTimeout(delay);
-          }
-
-          throw TemporarySpannerError.retryableInTransaction(error.message);
+          await throwRetryableInTransactionIfNeeded(error);
+          throw error;
         }
       },
     );
