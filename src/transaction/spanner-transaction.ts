@@ -2,13 +2,13 @@ import { type EventTransaction, Transaction } from '@causa/runtime';
 import {
   SpannerEntityManager,
   type SpannerReadWriteTransaction,
-} from '../../spanner/index.js';
-import { SpannerStateTransaction } from '../spanner-state-transaction.js';
+} from '../spanner/index.js';
+import { SpannerStateTransaction } from './spanner-state-transaction.js';
 
 /**
- * A {@link Transaction} that uses Spanner for state storage and Pub/Sub for event publishing.
+ * A {@link Transaction} that uses Spanner for state storage, and any available {@link EventTransaction} implementation.
  */
-export class SpannerPubSubTransaction<
+export class SpannerTransaction<
   ET extends EventTransaction = EventTransaction,
 > extends Transaction<SpannerStateTransaction, ET> {
   /**

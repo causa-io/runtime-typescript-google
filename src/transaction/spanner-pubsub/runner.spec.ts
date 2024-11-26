@@ -17,8 +17,8 @@ import {
   SpannerTable,
 } from '../../spanner/index.js';
 import { PubSubFixture, createDatabase } from '../../testing.js';
+import { SpannerTransaction } from '../spanner-transaction.js';
 import { SpannerPubSubTransactionRunner } from './runner.js';
-import { SpannerPubSubTransaction } from './transaction.js';
 
 @SpannerTable({ primaryKey: ['id'] })
 class MyEntity implements VersionedEntity {
@@ -79,10 +79,7 @@ describe('SpannerPubSubTransactionRunner', () => {
   let entityManager: SpannerEntityManager;
   let publisher: PubSubPublisher;
   let runner: SpannerPubSubTransactionRunner;
-  let myEntityManager: VersionedEntityManager<
-    SpannerPubSubTransaction,
-    MyEvent
-  >;
+  let myEntityManager: VersionedEntityManager<SpannerTransaction, MyEvent>;
 
   beforeAll(async () => {
     logger = new Logger({});

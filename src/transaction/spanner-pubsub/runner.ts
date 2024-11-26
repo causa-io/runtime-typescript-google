@@ -12,7 +12,7 @@ import {
   TemporarySpannerError,
 } from '../../spanner/index.js';
 import { SpannerStateTransaction } from '../spanner-state-transaction.js';
-import { SpannerPubSubTransaction } from './transaction.js';
+import { SpannerTransaction } from '../spanner-transaction.js';
 
 /**
  * The delay, in milliseconds, over which a timestamp issue is deemed irrecoverable.
@@ -24,7 +24,7 @@ const ACCEPTABLE_PAST_DATE_DELAY = 25000;
  * A Spanner transaction is used as the main transaction. If it succeeds, events are published to Pub/Sub outside of it.
  */
 @Injectable()
-export class SpannerPubSubTransactionRunner extends TransactionRunner<SpannerPubSubTransaction> {
+export class SpannerPubSubTransactionRunner extends TransactionRunner<SpannerTransaction> {
   /**
    * Creates a new {@link SpannerPubSubTransactionRunner}.
    *
@@ -41,7 +41,7 @@ export class SpannerPubSubTransactionRunner extends TransactionRunner<SpannerPub
   }
 
   async run<T>(
-    runFn: (transaction: SpannerPubSubTransaction) => Promise<T>,
+    runFn: (transaction: SpannerTransaction) => Promise<T>,
   ): Promise<[T]> {
     this.logger.info('Creating a Spanner Pub/Sub transaction.');
 
@@ -53,7 +53,7 @@ export class SpannerPubSubTransactionRunner extends TransactionRunner<SpannerPub
         );
         // This must be inside the Spanner transaction because staged messages should be cleared when the transaction is retried.
         const eventTransaction = new BufferEventTransaction(this.publisher);
-        const transaction = new SpannerPubSubTransaction(
+        const transaction = new SpannerTransaction(
           stateTransaction,
           eventTransaction,
         );
