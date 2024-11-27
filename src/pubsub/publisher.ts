@@ -3,6 +3,7 @@ import {
   type EventPublisher,
   JsonObjectSerializer,
   type ObjectSerializer,
+  type PreparedEvent,
   type PublishOptions,
   getDefaultLogger,
 } from '@causa/runtime';
@@ -154,22 +155,16 @@ export class PubSubPublisher implements EventPublisher, OnApplicationShutdown {
     return topic;
   }
 
-  async publish(
+  async prepare(
     topic: string,
     event: object,
     options: PublishOptions = {},
-  ): Promise<void> {
+  ): Promise<PreparedEvent> {
     const data = await this.serializer.serialize(event);
-    const pubSubTopic = this.getTopic(topic);
 
     const defaultAttributes: EventAttributes = {};
-    const baseLogData: Record<string, string> = {
-      topic,
-      pubSubTopic: pubSubTopic.name,
-    };
     if ('id' in event && typeof event.id === 'string') {
       defaultAttributes.eventId = event.id;
-      baseLogData.eventId = event.id;
     }
     if ('producedAt' in event && event.producedAt instanceof Date) {
       defaultAttributes.producedAt = event.producedAt.toISOString();
@@ -177,18 +172,42 @@ export class PubSubPublisher implements EventPublisher, OnApplicationShutdown {
     if ('name' in event && typeof event.name === 'string') {
       defaultAttributes.eventName = event.name;
     }
-    const attributes: EventAttributes = {
-      ...defaultAttributes,
-      ...options.attributes,
-    };
 
-    const orderingKey = options.key;
+    const attributes = {
+      ...defaultAttributes,
+      ...options?.attributes,
+    };
+    const key = options?.key;
+
+    return { topic, data, attributes, key };
+  }
+
+  async publish(
+    topicOrPreparedEvent: string | PreparedEvent,
+    event?: object,
+    options: PublishOptions = {},
+  ): Promise<void> {
+    const isPrepared = typeof topicOrPreparedEvent !== 'string';
+
+    const { topic, data, attributes, key } = isPrepared
+      ? topicOrPreparedEvent
+      : await this.prepare(topicOrPreparedEvent, event!, options);
+
+    const pubSubTopic = this.getTopic(topic);
+
+    const baseLogData: Record<string, string> = {
+      topic,
+      pubSubTopic: pubSubTopic.name,
+    };
+    if (attributes && 'eventId' in attributes) {
+      baseLogData.eventId = attributes.eventId;
+    }
 
     try {
       const pubSubMessageId = await pubSubTopic.publishMessage({
         data,
         attributes,
-        orderingKey,
+        orderingKey: key,
       });
 
       this.logger.info(
@@ -201,6 +220,7 @@ export class PubSubPublisher implements EventPublisher, OnApplicationShutdown {
           ...baseLogData,
           pubSubMessage: data.toString('base64'),
           pubSubAttributes: attributes,
+          pubSubOrderingKey: key,
           errorMessage: error.message,
           errorStack: error.stack,
         },

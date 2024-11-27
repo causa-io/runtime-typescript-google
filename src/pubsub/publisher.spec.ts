@@ -1,4 +1,4 @@
-import { type Event } from '@causa/runtime';
+import type { Event, PreparedEvent } from '@causa/runtime';
 import { getLoggedErrors, spyOnLogger } from '@causa/runtime/testing';
 import { Topic } from '@google-cloud/pubsub';
 import { jest } from '@jest/globals';
@@ -96,6 +96,48 @@ describe('PubSubPublisher', () => {
     });
   });
 
+  describe('prepare', () => {
+    it('should serialize the event and add default attributes', async () => {
+      const event = new MyEvent({
+        id: '1234',
+        producedAt: new Date(),
+        name: 'my-event',
+        data: new MyData({ someProp: 'HELLO' }),
+      });
+
+      const actual = await publisher.prepare('my.awesome-topic.v1', event);
+
+      expect(actual).toEqual({
+        topic: 'my.awesome-topic.v1',
+        data: Buffer.from(JSON.stringify(event)),
+        attributes: {
+          eventId: '1234',
+          producedAt: event.producedAt.toISOString(),
+          eventName: 'my-event',
+        },
+        key: undefined,
+      });
+    });
+
+    it('should ignore non-existing or invalid properties for default attributes', async () => {
+      const event = {
+        id: true,
+        producedAt: '📅',
+      };
+
+      const actual = await publisher.prepare('my.awesome-topic.v1', event, {
+        attributes: { custom: '🎉' },
+      });
+
+      expect(actual).toEqual({
+        topic: 'my.awesome-topic.v1',
+        data: Buffer.from(JSON.stringify(event)),
+        attributes: { custom: '🎉' },
+        key: undefined,
+      });
+    });
+  });
+
   describe('publish', () => {
     it('should fail to publish an event if the topic is not configured', async () => {
       const actualPromise = publisher.publish('my.unknown.topic', {} as any);
@@ -182,6 +224,28 @@ describe('PubSubPublisher', () => {
         orderingKey: undefined,
         // Not an equal match because the `MyEvent` constructor assigns default values to other fields.
         event: expect.objectContaining(event),
+      });
+    });
+
+    it('should publish a prepare event', async () => {
+      const event = new MyEvent({
+        id: '1234',
+        producedAt: new Date(),
+        name: 'my-event',
+        data: new MyData({ someProp: 'HELLO' }),
+      });
+      const preparedEvent: PreparedEvent = {
+        topic: 'my.awesome-topic.v1',
+        data: Buffer.from(JSON.stringify(event)),
+        attributes: { someAttributes: '🏷️' },
+      };
+
+      await publisher.publish(preparedEvent);
+
+      await fixture.expectMessageInTopic('my.awesome-topic.v1', {
+        attributes: { someAttributes: '🏷️' },
+        orderingKey: undefined,
+        event,
       });
     });
 

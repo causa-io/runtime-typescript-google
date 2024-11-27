@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+Breaking changes:
+
+- Move and rename the `SpannerTransaction` (from `SpannerPubSubTransaction`) for reuse.
+
+Features:
+
+- Implement new `PreparedEvent` feature for the `PubSubPublisher`.
+- Define the `SpannerReadWriteTransaction` type to avoid relying directly on the Spanner client.
+- Implement the `SpannerOutboxTransactionRunner`.
+
 ## v0.33.1 (2024-11-18)
 
 Fixes:
