@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.34.0 (2024-11-27)
+
 Breaking changes:
 
 - Move and rename the `SpannerTransaction` (from `SpannerPubSubTransaction`) for reuse.
