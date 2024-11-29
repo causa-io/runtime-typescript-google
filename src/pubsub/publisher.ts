@@ -5,15 +5,14 @@ import {
   type ObjectSerializer,
   type PreparedEvent,
   type PublishOptions,
-  getDefaultLogger,
 } from '@causa/runtime';
+import { Logger } from '@causa/runtime/nestjs';
 import {
   PubSub,
   Topic,
   type PublishOptions as TopicPublishOptions,
 } from '@google-cloud/pubsub';
 import type { OnApplicationShutdown } from '@nestjs/common';
-import type { Logger } from 'pino';
 import { getConfigurationKeyForTopic } from './configuration.js';
 import { PubSubTopicNotConfiguredError } from './errors.js';
 
@@ -60,12 +59,6 @@ export type PubSubPublisherOptions = {
    * This inherits and overrides the {@link PubSubPublisherOptions.publishOptions} for a given topic.
    */
   topicPublishOptions?: Record<string, TopicPublishOptions>;
-
-  /**
-   * The logger to use.
-   * Defaults to {@link getDefaultLogger}.
-   */
-  logger?: Logger;
 };
 
 /**
@@ -94,11 +87,6 @@ export class PubSubPublisher implements EventPublisher, OnApplicationShutdown {
   private readonly topicCache: Record<string, Topic> = {};
 
   /**
-   * The logger to use.
-   */
-  readonly logger: Logger;
-
-  /**
    * The options to use when publishing messages.
    * This is used to instantiate the Pub/Sub {@link Topic}s.
    */
@@ -114,16 +102,20 @@ export class PubSubPublisher implements EventPublisher, OnApplicationShutdown {
   /**
    * Creates a new {@link PubSubPublisher}.
    *
+   * @param logger The logger to use.
    * @param options Options for the publisher.
    */
-  constructor(options: PubSubPublisherOptions = {}) {
+  constructor(
+    private readonly logger: Logger,
+    options: PubSubPublisherOptions = {},
+  ) {
+    this.logger.setContext(PubSubPublisher.name);
     this.pubSub = options.pubSub ?? new PubSub();
     this.serializer = options.serializer ?? new JsonObjectSerializer();
     this.getConfiguration =
       options.configurationGetter ?? ((key) => process.env[key]);
     this.publishOptions = options.publishOptions ?? DEFAULT_PUBLISH_OPTIONS;
     this.topicPublishOptions = options.topicPublishOptions ?? {};
-    this.logger = options.logger ?? getDefaultLogger();
   }
 
   /**

@@ -2,7 +2,6 @@ import { type EventPublisher, JsonObjectSerializer } from '@causa/runtime';
 import {
   EVENT_PUBLISHER_INJECTION_NAME,
   InjectEventPublisher,
-  Logger,
   LoggerModule,
 } from '@causa/runtime/nestjs';
 import { createMockConfigService } from '@causa/runtime/nestjs/testing';
@@ -41,7 +40,6 @@ describe('PubSubPublisherModule', () => {
         }),
       )
       .compile();
-    const logger = await testModule.resolve(Logger);
 
     const actualPublisher = testModule.get(MyController).publisher;
 
@@ -49,7 +47,6 @@ describe('PubSubPublisherModule', () => {
     expect((actualPublisher as any).serializer).toBeInstanceOf(
       JsonObjectSerializer,
     );
-    expect((actualPublisher as any).logger).toBe(logger.logger);
     const actualTopic = (actualPublisher as any).getTopic('my.topic.v1');
     expect(actualTopic).toBeInstanceOf(Topic);
     expect(actualTopic.name).toEqual('projects/my-project/topics/my-topic');

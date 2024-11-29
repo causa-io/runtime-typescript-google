@@ -36,7 +36,7 @@ describe('SpannerOutboxTransactionRunner', () => {
     pubSubFixture = new PubSubFixture();
     const pubSubConf = await pubSubFixture.create('my-topic', MyEvent);
     entityManager = new SpannerEntityManager(database);
-    publisher = new PubSubPublisher({
+    publisher = new PubSubPublisher(logger, {
       configurationGetter: (key) => pubSubConf[key],
     });
     sender = new SpannerOutboxSender(

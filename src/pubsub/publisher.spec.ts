@@ -1,4 +1,9 @@
-import type { Event, PreparedEvent } from '@causa/runtime';
+import {
+  getDefaultLogger,
+  type Event,
+  type PreparedEvent,
+} from '@causa/runtime';
+import { Logger } from '@causa/runtime/nestjs';
 import { getLoggedErrors, spyOnLogger } from '@causa/runtime/testing';
 import { Topic } from '@google-cloud/pubsub';
 import { jest } from '@jest/globals';
@@ -42,6 +47,7 @@ class MyEvent implements Event {
 describe('PubSubPublisher', () => {
   let fixture: PubSubFixture;
   let configuration: Record<string, string>;
+  let logger: Logger;
   let publisher: PubSubPublisher;
 
   beforeAll(async () => {
@@ -50,11 +56,12 @@ describe('PubSubPublisher', () => {
       'my.awesome-topic.v1': MyEvent,
       'my.other-topic.v1': MyEvent,
     });
+    logger = new Logger({ pinoHttp: { logger: getDefaultLogger() } });
     spyOnLogger();
   });
 
   beforeEach(async () => {
-    publisher = new PubSubPublisher({
+    publisher = new PubSubPublisher(logger, {
       configurationGetter: (key) => configuration[key],
       topicPublishOptions: {
         'my.other-topic.v1': {
