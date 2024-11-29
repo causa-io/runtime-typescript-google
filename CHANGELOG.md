@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.35.0 (2024-11-29)
+
 Breaking changes:
 
 - Configure the `PubSubPublisher` using a Causa `(Pino)Logger`.
