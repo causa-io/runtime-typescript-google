@@ -10,6 +10,10 @@ Chores:
 
 - Set the context for all loggers.
 
+Fixes:
+
+- Fix suggested DDL for `SpannerOutboxEvent`.
+
 ## v0.34.0 (2024-11-27)
 
 Breaking changes:

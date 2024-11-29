@@ -14,7 +14,7 @@ import { SpannerColumn, SpannerTable } from '../../spanner/index.js';
  *   attributes JSON NOT NULL,
  *   leaseExpiration TIMESTAMP,
  *   -- 20 is the number of shards.
- *   shard INT64 NOT NULL AS (MOD(ABS(FARM_FINGERPRINT(id)), 20)),
+ *   shard INT64 AS (MOD(ABS(FARM_FINGERPRINT(id)), 20)),
  * ) PRIMARY KEY (id);
  * CREATE INDEX OutboxEventsByShardAndLeaseExpiration ON OutboxEvent(shard, leaseExpiration)
  * ```
