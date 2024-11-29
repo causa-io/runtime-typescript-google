@@ -38,13 +38,12 @@ export class PubSubPublisherModule {
           useFactory: (
             pubSub: PubSub,
             configurationGetter: (key: string) => string | undefined,
-            { logger }: Logger,
+            logger: Logger,
           ) =>
-            new PubSubPublisher({
+            new PubSubPublisher(logger, {
               ...options,
               pubSub,
               configurationGetter,
-              logger,
             }),
           inject: [
             PubSub,

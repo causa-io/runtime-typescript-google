@@ -19,7 +19,9 @@ export class AppCheckGuard implements CanActivate {
     private readonly appCheck: AppCheck,
     private readonly reflector: Reflector,
     private readonly logger: Logger,
-  ) {}
+  ) {
+    this.logger.setContext(AppCheckGuard.name);
+  }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const isDisabled = this.reflector.getAllAndOverride<boolean>(

@@ -26,6 +26,7 @@ export class FirestorePubSubTransactionRunner extends TransactionRunner<Firestor
     private readonly logger: Logger,
   ) {
     super();
+    this.logger.setContext(FirestorePubSubTransactionRunner.name);
   }
 
   async run<T>(

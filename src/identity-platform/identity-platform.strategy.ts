@@ -26,6 +26,7 @@ export class IdentityPlatformStrategy extends PassportStrategy(Strategy) {
   ) {
     super();
 
+    this.logger.setContext(IdentityPlatformStrategy.name);
     this.checkRevoked = this.configService.get<boolean>(
       'IDENTITY_PLATFORM_STRATEGY_CHECK_REVOKED_TOKEN',
       false,
