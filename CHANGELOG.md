@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+Breaking changes:
+
+- Configure the `PubSubPublisher` using a Causa `(Pino)Logger`.
+
+Chores:
+
+- Set the context for all loggers.
+
 ## v0.34.0 (2024-11-27)
 
 Breaking changes:
