@@ -26,6 +26,7 @@ export class SpannerPubSubTransactionRunner extends TransactionRunner<SpannerTra
     private readonly logger: Logger,
   ) {
     super();
+    this.logger.setContext(SpannerPubSubTransactionRunner.name);
   }
 
   async run<T>(
