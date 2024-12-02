@@ -1,6 +1,10 @@
 import type { OutboxEvent } from '@causa/runtime';
-import { LoggerModule } from '@causa/runtime/nestjs';
+import {
+  EVENT_PUBLISHER_INJECTION_NAME,
+  LoggerModule,
+} from '@causa/runtime/nestjs';
 import { createMockConfigService } from '@causa/runtime/nestjs/testing';
+import { Global, Module, type DynamicModule, type Type } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PubSubPublisherModule } from '../../pubsub/index.js';
@@ -26,6 +30,7 @@ describe('SpannerOutboxTransactionModule', () => {
     options: {
       config?: Record<string, any>;
       options?: SpannerOutboxTransactionModuleOptions;
+      publisherModule?: Type<any> | DynamicModule;
     } = {},
   ): Promise<void> {
     testModule = await Test.createTestingModule({
@@ -33,7 +38,7 @@ describe('SpannerOutboxTransactionModule', () => {
         LoggerModule.forRoot(),
         ConfigModule.forRoot({ isGlobal: true }),
         SpannerModule.forRoot(),
-        PubSubPublisherModule.forRoot(),
+        options.publisherModule ?? PubSubPublisherModule.forRoot(),
         SpannerOutboxTransactionModule.forRoot(options.options),
       ],
     })
@@ -52,7 +57,14 @@ describe('SpannerOutboxTransactionModule', () => {
   }
 
   it('should configure the module with default options', async () => {
-    await createModule();
+    @Global()
+    @Module({
+      providers: [{ provide: EVENT_PUBLISHER_INJECTION_NAME, useValue: {} }],
+      exports: [EVENT_PUBLISHER_INJECTION_NAME],
+    })
+    class MyPublisherModule {}
+
+    await createModule({ publisherModule: MyPublisherModule });
 
     expect(runner.outboxEventType).toBe(SpannerOutboxEvent);
     expect(runner.sender).toBe(sender);
@@ -64,6 +76,12 @@ describe('SpannerOutboxTransactionModule', () => {
     expect(sender.index).toBeUndefined();
     expect(sender.sharding).toBeUndefined();
     expect(sender.leaseDuration).toBe(30000);
+  });
+
+  it('should change the default lease duration when the publisher is Pub/Sub', async () => {
+    await createModule();
+
+    expect(sender.leaseDuration).toBe(70000);
   });
 
   it('should get the configuration from the configuration service', async () => {
