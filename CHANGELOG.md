@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.35.1 (2024-12-02)
+
 Chores:
 
 - Overwrite the default outbox lease duration when the publisher is Pub/Sub.
