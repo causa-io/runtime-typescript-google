@@ -2,6 +2,7 @@ import type { EventPublisher, OutboxEvent } from '@causa/runtime';
 import { EVENT_PUBLISHER_INJECTION_NAME, Logger } from '@causa/runtime/nestjs';
 import type { DynamicModule, Type } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { PubSubPublisher } from '../../pubsub/index.js';
 import { SpannerEntityManager } from '../../spanner/index.js';
 import { SpannerOutboxEvent } from './event.js';
 import { SpannerOutboxTransactionRunner } from './runner.js';
@@ -27,12 +28,14 @@ export type SpannerOutboxTransactionModuleOptions =
 /**
  * Combines options passed to the module with the configuration (from the environment).
  *
- * @param options Options passed to the module.
+ * @param defaultOptions Options inferred by the module itself.
+ * @param customOptions Options passed to the module by the caller.
  * @param config The {@link ConfigService} to use.
  * @returns The parsed {@link SpannerOutboxSenderOptions}.
  */
 function parseSenderOptions(
-  options: SpannerOutboxTransactionModuleOptions,
+  defaultOptions: SpannerOutboxTransactionModuleOptions,
+  customOptions: SpannerOutboxTransactionModuleOptions,
   config: ConfigService,
 ): SpannerOutboxSenderOptions {
   function validateIntOrUndefined(name: string): number | undefined {
@@ -67,7 +70,7 @@ function parseSenderOptions(
       ? { column: shardingColumn, count: shardingCount }
       : undefined;
 
-  const envOptions: SpannerOutboxSenderOptions = {
+  const envOptionsWithUndefined = {
     batchSize,
     pollingInterval,
     idColumn,
@@ -76,9 +79,19 @@ function parseSenderOptions(
     sharding,
     leaseDuration,
   };
+  const envOptions: SpannerOutboxSenderOptions = Object.fromEntries(
+    Object.entries(envOptionsWithUndefined).filter(([, v]) => v !== undefined),
+  );
 
-  return { ...envOptions, ...options };
+  return { ...defaultOptions, ...envOptions, ...customOptions };
 }
+
+/**
+ * The default lease duration, in milliseconds, when the publisher is Pub/Sub.
+ * Pub/Sub has a default retry/timeout of 60 seconds. This ensures the lease is long enough and the event doesn't get
+ * picked up by another instance.
+ */
+const DEFAULT_PUBSUB_LEASE_DURATION = 70000;
 
 /**
  * The module providing the {@link SpannerOutboxTransactionRunner}.
@@ -112,7 +125,16 @@ export class SpannerOutboxTransactionModule {
             logger: Logger,
             config: ConfigService,
           ) => {
-            const options = parseSenderOptions(senderOptions, config);
+            const defaultOptions =
+              publisher instanceof PubSubPublisher
+                ? { leaseDuration: DEFAULT_PUBSUB_LEASE_DURATION }
+                : {};
+            const options = parseSenderOptions(
+              defaultOptions,
+              senderOptions,
+              config,
+            );
+
             return new SpannerOutboxSender(
               entityManager,
               outboxEventType,
