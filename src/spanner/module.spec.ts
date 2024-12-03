@@ -1,7 +1,12 @@
 import { LoggerModule } from '@causa/runtime/nestjs';
 import { createMockConfigService } from '@causa/runtime/nestjs/testing';
-import { getLoggedInfos, spyOnLogger } from '@causa/runtime/testing';
+import {
+  getLoggedErrors,
+  getLoggedInfos,
+  spyOnLogger,
+} from '@causa/runtime/testing';
 import { Database, Spanner } from '@google-cloud/spanner';
+import { SessionLeakError } from '@google-cloud/spanner/build/src/session-pool.js';
 import { jest } from '@jest/globals';
 import { Injectable } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -93,6 +98,24 @@ describe('SpannerModule', () => {
 
     expect(database.close).toHaveBeenCalledExactlyOnceWith();
     expect(spanner.close).toHaveBeenCalledExactlyOnceWith();
+  });
+
+  it('should catch and log errors when closing the Spanner client', async () => {
+    const { database, spanner } = await createInjectedService();
+    jest.spyOn(spanner, 'close');
+    jest
+      .spyOn(database, 'close')
+      .mockRejectedValue(new SessionLeakError(['🚰', '💦']));
+
+    await testModule?.close();
+
+    expect(getLoggedErrors()).toEqual([
+      expect.objectContaining({
+        message: 'Failed to close Spanner client.',
+        error: expect.stringContaining('leak'),
+        spannerLeaks: ['🚰', '💦'],
+      }),
+    ]);
   });
 
   async function createInjectedService(
