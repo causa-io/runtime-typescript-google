@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.35.2 (2024-12-03)
+
 Chores:
 
 - Use the Causa `Logger` and set the context in the `PubSubEventHandlerInterceptor`.
