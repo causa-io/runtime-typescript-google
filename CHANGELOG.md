@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+Chores:
+
+- Use the Causa `Logger` and set the context in the `PubSubEventHandlerInterceptor`.
+- Change `PubSubPublisher` logs to avoid conflicting with the `PubSubEventHandlerInterceptor`.
+
 ## v0.35.1 (2024-12-02)
 
 Chores:
