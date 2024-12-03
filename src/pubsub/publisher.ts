@@ -187,34 +187,35 @@ export class PubSubPublisher implements EventPublisher, OnApplicationShutdown {
 
     const pubSubTopic = this.getTopic(topic);
 
-    const baseLogData: Record<string, string> = {
+    const messageInfo: Record<string, string> = {
       topic,
       pubSubTopic: pubSubTopic.name,
     };
     if (attributes && 'eventId' in attributes) {
-      baseLogData.eventId = attributes.eventId;
+      messageInfo.eventId = attributes.eventId;
     }
 
     try {
-      const pubSubMessageId = await pubSubTopic.publishMessage({
+      const messageId = await pubSubTopic.publishMessage({
         data,
         attributes,
         orderingKey: key,
       });
 
       this.logger.info(
-        { ...baseLogData, pubSubMessageId },
+        { publishedMessage: { ...messageInfo, messageId } },
         'Published message to Pub/Sub.',
       );
     } catch (error: any) {
       this.logger.error(
         {
-          ...baseLogData,
-          pubSubMessage: data.toString('base64'),
-          pubSubAttributes: attributes,
-          pubSubOrderingKey: key,
-          errorMessage: error.message,
-          errorStack: error.stack,
+          failedMessage: {
+            ...messageInfo,
+            data: data.toString('base64'),
+            attributes,
+            key,
+          },
+          error: error.stack,
         },
         'Failed to publish message to Pub/Sub.',
       );
