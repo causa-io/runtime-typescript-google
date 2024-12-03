@@ -10,13 +10,13 @@ import {
 import {
   BadRequestError,
   BaseEventHandlerInterceptor,
+  Logger,
   type ParsedEventRequest,
 } from '@causa/runtime/nestjs';
 import { type ExecutionContext, Injectable, type Type } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { IsBase64, IsObject, IsString } from 'class-validator';
 import type { Request } from 'express';
-import { PinoLogger } from 'nestjs-pino';
 import type { RequestWithPubSubInfo } from './request-with-pubsub-info.js';
 
 /**
@@ -80,9 +80,10 @@ export class PubSubEventHandlerInterceptor extends BaseEventHandlerInterceptor {
   constructor(
     protected readonly serializer: ObjectSerializer,
     reflector: Reflector,
-    logger: PinoLogger,
+    logger: Logger,
   ) {
     super(PUBSUB_EVENT_HANDLER_ID, reflector, logger);
+    this.logger.setContext(PubSubEventHandlerInterceptor.name);
   }
 
   /**
@@ -167,7 +168,7 @@ export class PubSubEventHandlerInterceptor extends BaseEventHandlerInterceptor {
   ): Type<PubSubEventHandlerInterceptor> {
     @Injectable()
     class PubSubEventHandlerInterceptorWithSerializer extends PubSubEventHandlerInterceptor {
-      constructor(reflector: Reflector, logger: PinoLogger) {
+      constructor(reflector: Reflector, logger: Logger) {
         super(serializer, reflector, logger);
       }
     }

@@ -285,22 +285,25 @@ describe('PubSubPublisher', () => {
       expect(getLoggedErrors()).toEqual([
         expect.objectContaining({
           message: 'Failed to publish message to Pub/Sub.',
-          topic: 'my.awesome-topic.v1',
-          eventId: '1234',
-          pubSubTopic: configuration['PUBSUB_TOPIC_MY_AWESOME_TOPIC_V1'],
-          pubSubMessage: Buffer.from(
-            JSON.stringify({
-              id: '1234',
-              producedAt: event.producedAt,
-              name: 'my-event',
-              data: { someProp: 'HELLO' },
-            }),
-          ).toString('base64'),
-          pubSubAttributes: {
-            producedAt: event.producedAt.toISOString(),
-            eventName: 'my-event',
+          failedMessage: {
+            topic: 'my.awesome-topic.v1',
             eventId: '1234',
+            pubSubTopic: configuration['PUBSUB_TOPIC_MY_AWESOME_TOPIC_V1'],
+            data: Buffer.from(
+              JSON.stringify({
+                id: '1234',
+                producedAt: event.producedAt,
+                name: 'my-event',
+                data: { someProp: 'HELLO' },
+              }),
+            ).toString('base64'),
+            attributes: {
+              producedAt: event.producedAt.toISOString(),
+              eventName: 'my-event',
+              eventId: '1234',
+            },
           },
+          error: expect.stringContaining('📫💥'),
         }),
       ]);
     });
