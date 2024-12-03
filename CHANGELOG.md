@@ -6,6 +6,7 @@ Chores:
 
 - Use the Causa `Logger` and set the context in the `PubSubEventHandlerInterceptor`.
 - Change `PubSubPublisher` logs to avoid conflicting with the `PubSubEventHandlerInterceptor`.
+- Catch and log errors when closing the Spanner client during shutdown.
 
 ## v0.35.1 (2024-12-02)
 
