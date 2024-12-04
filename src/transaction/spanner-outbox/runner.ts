@@ -32,7 +32,7 @@ export class SpannerOutboxTransactionRunner extends OutboxTransactionRunner<Span
   }
 
   protected async runStateTransaction<RT>(
-    eventTransaction: OutboxEventTransaction,
+    eventTransactionFactory: () => OutboxEventTransaction,
     runFn: (transaction: SpannerOutboxTransaction) => Promise<RT>,
   ): Promise<RT> {
     return await this.entityManager.transaction(async (dbTransaction) => {
@@ -40,6 +40,8 @@ export class SpannerOutboxTransactionRunner extends OutboxTransactionRunner<Span
         this.entityManager,
         dbTransaction,
       );
+      const eventTransaction = eventTransactionFactory();
+
       const transaction = new SpannerTransaction(
         stateTransaction,
         eventTransaction,
