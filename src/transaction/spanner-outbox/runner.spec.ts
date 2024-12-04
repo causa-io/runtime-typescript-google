@@ -199,12 +199,7 @@ describe('SpannerOutboxTransactionRunner', () => {
       );
       await transaction.publish(
         'my-topic',
-        new MyEvent({
-          id,
-          producedAt: new Date(),
-          name: '📫',
-          data: '💌',
-        }),
+        new MyEvent({ id, producedAt: new Date(), name: '📫', data: '💌' }),
       );
 
       if (numCalls === 1) {
@@ -229,6 +224,45 @@ describe('SpannerOutboxTransactionRunner', () => {
         data: '💌',
       }),
     );
+    await expectOutboxToEqual(entityManager, []);
+  });
+
+  it('should use a new event transaction on each retry', async () => {
+    let numCalls = 0;
+    const observedNumStagedEvents: number[] = [];
+
+    const actualResult = await runner.run(async (transaction) => {
+      numCalls += 1;
+      observedNumStagedEvents.push(transaction.eventTransaction.events.length);
+      const id = numCalls.toFixed();
+      await transaction.publish(
+        'my-topic',
+        new MyEvent({ id, producedAt: new Date(), name: '📫', data: '💌' }),
+      );
+
+      if (numCalls === 1) {
+        throw new TransactionOldTimestampError(transaction.timestamp, 10);
+      }
+
+      return '🎉';
+    });
+
+    expect(actualResult).toEqual(['🎉']);
+    expect(numCalls).toBe(2);
+    expect(observedNumStagedEvents).toEqual([0, 0]);
+    await pubSubFixture.expectEventInTopic(
+      'my-topic',
+      new MyEvent({
+        id: '2',
+        producedAt: expect.any(Date),
+        name: '📫',
+        data: '💌',
+      }),
+    );
+    // This could pass unexpectedly because we cannot guarantee all messages have been received.
+    // However, this in addition to `observedNumStagedEvents` should be enough to ensure that a new event transaction is
+    // used on each retry.
+    expect(pubSubFixture.fixtures['my-topic'].messages).toHaveLength(1);
     await expectOutboxToEqual(entityManager, []);
   });
 
