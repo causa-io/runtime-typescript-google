@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+Fixes:
+
+- Adapt to the Causa runtime breaking changes and avoid `OutboxEventTransaction` reuse.
+
 ## v0.35.2 (2024-12-03)
 
 Chores:
