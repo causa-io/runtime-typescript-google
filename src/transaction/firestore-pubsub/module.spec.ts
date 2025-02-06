@@ -55,7 +55,7 @@ describe('FirestorePubSubTransactionModule', () => {
       providers: [MyService],
       imports: [
         ConfigModule.forRoot({ isGlobal: true }),
-        LoggerModule,
+        LoggerModule.forRoot(),
         PubSubPublisherModule.forRoot(),
         FirebaseModule.forTesting(),
         FirestoreCollectionsModule.forRoot([MyDocument]),

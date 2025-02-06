@@ -25,7 +25,7 @@ describe('SpannerPubSubTransactionModule', () => {
       providers: [MyService],
       imports: [
         ConfigModule.forRoot({ isGlobal: true }),
-        LoggerModule,
+        LoggerModule.forRoot(),
         SpannerModule.forRoot(),
         PubSubPublisherModule.forRoot(),
         SpannerPubSubTransactionModule.forRoot(),
