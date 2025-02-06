@@ -188,6 +188,7 @@ describe('GoogleAppFixture', () => {
 
     sourceDatabase = database;
 
+    previousEnv = { ...process.env };
     process.env.SPANNER_DATABASE = 'test-google';
   });
 

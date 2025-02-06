@@ -29,7 +29,7 @@ describe('PubSubPublisherModule', () => {
       controllers: [MyController],
       imports: [
         ConfigModule.forRoot({ isGlobal: true }),
-        LoggerModule,
+        LoggerModule.forRoot(),
         PubSubPublisherModule.forRoot(),
       ],
     })
@@ -57,7 +57,7 @@ describe('PubSubPublisherModule', () => {
       controllers: [MyController],
       imports: [
         ConfigModule.forRoot({ isGlobal: true }),
-        LoggerModule,
+        LoggerModule.forRoot(),
         PubSubPublisherModule.forRoot(),
       ],
     }).compile();
@@ -73,7 +73,7 @@ describe('PubSubPublisherModule', () => {
       controllers: [MyController],
       imports: [
         ConfigModule.forRoot({ isGlobal: true }),
-        LoggerModule,
+        LoggerModule.forRoot(),
         PubSubPublisherModule.forRoot({
           serializer: expectedSerializer,
           publishOptions: { batching: { maxMessages: 5 } },
@@ -95,7 +95,7 @@ describe('PubSubPublisherModule', () => {
       controllers: [MyController],
       imports: [
         ConfigModule.forRoot({ isGlobal: true }),
-        LoggerModule,
+        LoggerModule.forRoot(),
         PubSubPublisherModule.forRoot(),
       ],
     }).compile();

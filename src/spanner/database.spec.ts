@@ -9,7 +9,7 @@ describe('database', () => {
 
   beforeAll(async () => {
     database = await createDatabase();
-    previousEnv = process.env;
+    previousEnv = { ...process.env };
     process.env.SPANNER_DATABASE = database.formattedName_.split('/').at(-1);
 
     spyOnLogger();

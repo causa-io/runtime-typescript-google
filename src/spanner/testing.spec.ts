@@ -22,7 +22,7 @@ describe('testing', () => {
     });
 
     beforeEach(() => {
-      previousEnv = process.env;
+      previousEnv = { ...process.env };
       delete process.env.SPANNER_DATABASE;
     });
 

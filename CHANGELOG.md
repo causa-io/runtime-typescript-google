@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+Chores:
+
+- Upgrade dependencies.
+
 ## v0.35.3 (2024-12-04)
 
 Fixes:

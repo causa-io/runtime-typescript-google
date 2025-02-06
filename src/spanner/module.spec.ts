@@ -125,7 +125,7 @@ describe('SpannerModule', () => {
       providers: [MyService],
       imports: [
         ConfigModule.forRoot({ isGlobal: true }),
-        LoggerModule,
+        LoggerModule.forRoot(),
         SpannerModule.forRoot(...args),
       ],
     })
