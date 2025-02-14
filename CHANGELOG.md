@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.36.0 (2025-02-14)
+
 Features:
 
 - Accept `nestApplicationOptions` when creating a `GoogleAppFixture`.
