@@ -6,7 +6,11 @@ import {
 } from '@causa/runtime/nestjs/testing';
 import { serializeAsJavaScriptObject } from '@causa/runtime/testing';
 import { Database, Spanner } from '@google-cloud/spanner';
-import type { INestApplication, Type } from '@nestjs/common';
+import type {
+  INestApplication,
+  NestApplicationOptions,
+  Type,
+} from '@nestjs/common';
 import { CollectionReference } from 'firebase-admin/firestore';
 import supertest, { Test } from 'supertest';
 import TestAgent from 'supertest/lib/agent.js';
@@ -303,6 +307,11 @@ export class GoogleAppFixture {
       appFactoryOptions?: MakeTestAppFactoryOptions;
 
       /**
+       * Options passed to the NestJS application factory.
+       */
+      nestApplicationOptions?: NestApplicationOptions;
+
+      /**
        * Whether the `AppCheckGuard` should be disabled.
        * Defaults to `true`.
        */
@@ -330,6 +339,7 @@ export class GoogleAppFixture {
         ? [appFactoryOptions.overrides]
         : (appFactoryOptions.overrides ?? []);
     const app = await createApp(appModule, {
+      nestApplicationOptions: options.nestApplicationOptions,
       appFactory: makeTestAppFactory({
         ...appFactoryOptions,
         overrides: [

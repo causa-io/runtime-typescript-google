@@ -197,6 +197,7 @@ describe('GoogleAppFixture', () => {
       entities: [MyEntity],
       pubSubTopics: { 'my.event.v1': MyEvent },
       firestoreDocuments: [MyDocument],
+      nestApplicationOptions: { cors: true },
       appFactoryOptions: {
         overrides: (builder) =>
           builder.overrideProvider(MyService).useClass(MyTestService),
@@ -234,6 +235,11 @@ describe('GoogleAppFixture', () => {
       const actualService = fixture.app.get(MyServiceWithDependency);
 
       expect(actualService.dependency.id).toEqual('✅');
+    });
+
+    it('should pass Nest application options', async () => {
+      // Returns 204 due to the `cors` option.
+      await fixture.request.options('/').expect(204);
     });
   });
 
