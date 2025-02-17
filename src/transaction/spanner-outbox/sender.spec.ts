@@ -123,6 +123,7 @@ describe('SpannerOutboxSender', () => {
       expect((sender as any).fetchEventsSql).toContain('`myIdColumn`');
       expect((sender as any).fetchEventsSql).toContain('`myLeaseColumn`');
       expect((sender as any).fetchEventsSql).toContain('FORCE_INDEX=`MyIndex`');
+      expect((sender as any).acquireLeaseSql).toContain('`myLeaseColumn`');
     });
   });
 
