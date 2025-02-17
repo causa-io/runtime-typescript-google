@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.37.0 (2025-02-17)
+
 Features:
 
 - Define common types for functions that optionally accept a transaction.
