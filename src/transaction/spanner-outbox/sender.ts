@@ -89,9 +89,16 @@ export class SpannerOutboxSender extends OutboxEventSender {
   readonly index: string | undefined;
 
   /**
-   * The SQL query used to fetch events from the outbox.
+   * The SQL query used to fetch (non-leased) events from the outbox.
+   * This should be run in a read-only transaction to avoid table-wide locking.
    */
   readonly fetchEventsSql: string;
+
+  /**
+   * The SQL query used to acquire a lease on events in the outbox.
+   * This is based on event IDs, that are checked again to have a null lease expiration.
+   */
+  readonly acquireLeaseSql: string;
 
   /**
    * The SQL query used to update events in the outbox after they have been successfully published.
@@ -129,6 +136,7 @@ export class SpannerOutboxSender extends OutboxEventSender {
 
     ({
       fetchEventsSql: this.fetchEventsSql,
+      acquireLeaseSql: this.acquireLeaseSql,
       successfulUpdateSql: this.successfulUpdateSql,
       failedUpdateSql: this.failedUpdateSql,
     } = this.buildSql());
@@ -141,7 +149,10 @@ export class SpannerOutboxSender extends OutboxEventSender {
    */
   protected buildSql(): Pick<
     SpannerOutboxSender,
-    'fetchEventsSql' | 'successfulUpdateSql' | 'failedUpdateSql'
+    | 'fetchEventsSql'
+    | 'acquireLeaseSql'
+    | 'successfulUpdateSql'
+    | 'failedUpdateSql'
   > {
     const table = this.entityManager.sqlTableName(this.outboxEventType);
     const tableWithIndex = this.entityManager.sqlTableName(
@@ -149,28 +160,34 @@ export class SpannerOutboxSender extends OutboxEventSender {
       { index: this.index },
     );
 
-    let filter = `${this.leaseExpirationColumn} IS NULL OR ${this.leaseExpirationColumn} < @currentTime`;
+    const noLeaseFilter = `\`${this.leaseExpirationColumn}\` IS NULL OR \`${this.leaseExpirationColumn}\` < @currentTime`;
+    let fetchFilter = noLeaseFilter;
     if (this.sharding) {
       const { column, count } = this.sharding;
-      filter = `${column} BETWEEN 0 AND ${count - 1} AND (${filter})`;
+      fetchFilter = `\`${column}\` BETWEEN 0 AND ${count - 1} AND (${fetchFilter})`;
     }
 
     const fetchEventsSql = `
+      SELECT
+        \`${this.idColumn}\` AS id,
+      FROM
+        ${tableWithIndex}
+      WHERE
+        ${fetchFilter}
+      LIMIT
+        @batchSize
+    `;
+
+    // This will not be run in the same transaction as `fetchEventsSql`. The `noLeaseFilter` is re-applied to avoid
+    // acquiring a lease on outbox events that have since been leased by another process.
+    const acquireLeaseSql = `
       UPDATE
         ${table}
       SET
         \`${this.leaseExpirationColumn}\` = @leaseExpiration
       WHERE
-        \`${this.idColumn}\` IN (
-          SELECT
-            \`${this.idColumn}\`
-          FROM
-            ${tableWithIndex}
-          WHERE
-            ${filter}
-          LIMIT
-            @batchSize
-        )
+        \`${this.idColumn}\` IN UNNEST(@ids)
+        AND (${noLeaseFilter})
       THEN RETURN
         ${this.entityManager.sqlColumns(this.outboxEventType)}`;
 
@@ -188,25 +205,37 @@ export class SpannerOutboxSender extends OutboxEventSender {
       WHERE
         \`${this.idColumn}\` IN UNNEST(@ids)`;
 
-    return { fetchEventsSql, successfulUpdateSql, failedUpdateSql };
+    return {
+      fetchEventsSql,
+      acquireLeaseSql,
+      successfulUpdateSql,
+      failedUpdateSql,
+    };
   }
 
   protected async fetchEvents(): Promise<OutboxEvent[]> {
+    // Event IDs are first acquired in an (implicit) read-only transaction, to avoid a lock on the entire table.
+    const currentTime = new Date();
+    const eventIds = await this.entityManager.query<{ id: string }>({
+      sql: this.fetchEventsSql,
+      params: { currentTime, batchSize: this.batchSize },
+    });
+    if (eventIds.length === 0) {
+      return [];
+    }
+
+    const ids = eventIds.map(({ id }) => id);
+
     return await this.entityManager.transaction(async (transaction) => {
       const currentTime = new Date();
       const leaseExpiration = new Date(
         currentTime.getTime() + this.leaseDuration,
       );
-
-      const params = {
-        leaseExpiration,
-        currentTime,
-        batchSize: this.batchSize,
-      };
+      const params = { ids, leaseExpiration, currentTime };
 
       return await this.entityManager.query(
         { transaction, entityType: this.outboxEventType },
-        { sql: this.fetchEventsSql, params },
+        { sql: this.acquireLeaseSql, params },
       );
     });
   }

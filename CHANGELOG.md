@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+Features:
+
+- Define common types for functions that optionally accept a transaction.
+
+Fixes:
+
+- Avoid locking the entire `OutboxEvent` table when fetching events.
+
 ## v0.36.0 (2025-02-14)
 
 Features:
