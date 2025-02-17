@@ -18,6 +18,16 @@ export type SpannerOutboxTransaction =
   SpannerTransaction<OutboxEventTransaction>;
 
 /**
+ * Option for a function that accepts a {@link SpannerOutboxTransaction}.
+ */
+export type SpannerOutboxTransactionOption = {
+  /**
+   * The transaction to use.
+   */
+  readonly transaction?: SpannerOutboxTransaction;
+};
+
+/**
  * An {@link OutboxTransactionRunner} that uses a {@link SpannerTransaction} to run transactions.
  * Events are stored in a Spanner table before being published.
  */
