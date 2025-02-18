@@ -25,7 +25,7 @@ export type SpannerReadOnlyTransactionOption = {
 /**
  * Option for a function that accepts a Spanner read-write transaction.
  */
-export type SpanerReadWriteTransactionOption = {
+export type SpannerReadWriteTransactionOption = {
   /**
    * The transaction to use.
    */
