@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.37.1 (2025-02-18)
+
 Fixes:
 
 - Fix `SpannerReadWriteTransactionOption` name.
