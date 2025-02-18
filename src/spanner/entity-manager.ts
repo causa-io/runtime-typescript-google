@@ -19,7 +19,11 @@ import {
   TransactionFinishedError,
 } from './errors.js';
 import { SpannerTableCache } from './table-cache.js';
-import type { RecursivePartialEntity } from './types.js';
+import type {
+  RecursivePartialEntity,
+  SpannerReadOnlyTransactionOption,
+  SpannerReadWriteTransactionOption,
+} from './types.js';
 
 /**
  * Any Spanner transaction that can be used for reading.
@@ -35,26 +39,6 @@ export type SpannerReadWriteTransaction = Transaction;
  * A key for a Spanner row.
  */
 export type SpannerKey = (string | null)[];
-
-/**
- * Base options for all write operations.
- */
-type WriteOperationOptions = {
-  /**
-   * The {@link SpannerReadWriteTransaction} to use.
-   */
-  transaction?: SpannerReadWriteTransaction;
-};
-
-/**
- * Base options for all read operations.
- */
-type ReadOperationOptions = {
-  /**
-   * The {@link SpannerReadOnlyTransaction} to use.
-   */
-  transaction?: SpannerReadOnlyTransaction;
-};
 
 /**
  * Options for {@link SpannerEntityManager.snapshot}.
@@ -96,7 +80,7 @@ export type SqlStatement = {
 /**
  * Options for {@link SpannerEntityManager.query}.
  */
-export type QueryOptions<T> = ReadOperationOptions & {
+export type QueryOptions<T> = SpannerReadOnlyTransactionOption & {
   /**
    * The type of entity to return in the list of results.
    */
@@ -106,7 +90,7 @@ export type QueryOptions<T> = ReadOperationOptions & {
 /**
  * Options when reading entities.
  */
-type FindOptions = ReadOperationOptions & {
+type FindOptions = SpannerReadOnlyTransactionOption & {
   /**
    * The index to use to look up the entity.
    */
@@ -466,7 +450,7 @@ export class SpannerEntityManager {
    */
   async clear(
     entityType: Type,
-    options: WriteOperationOptions = {},
+    options: SpannerReadWriteTransactionOption = {},
   ): Promise<void> {
     const { quotedTableName } = this.tableCache.getMetadata(entityType);
 
@@ -596,7 +580,7 @@ export class SpannerEntityManager {
    */
   async insert(
     entity: object | object[],
-    options: WriteOperationOptions = {},
+    options: SpannerReadWriteTransactionOption = {},
   ): Promise<void> {
     const objs = this.entitiesToSpannerObjects(entity);
 
@@ -622,7 +606,7 @@ export class SpannerEntityManager {
    */
   async replace(
     entity: object | object[],
-    options: WriteOperationOptions = {},
+    options: SpannerReadWriteTransactionOption = {},
   ): Promise<void> {
     const objs = this.entitiesToSpannerObjects(entity);
 
@@ -655,7 +639,7 @@ export class SpannerEntityManager {
   async update<T>(
     entityType: Type<T>,
     update: RecursivePartialEntity<T>,
-    options: WriteOperationOptions &
+    options: SpannerReadWriteTransactionOption &
       Pick<FindOptions, 'includeSoftDeletes'> & {
         /**
          * A function that will be called with the entity before it is updated.
@@ -719,7 +703,7 @@ export class SpannerEntityManager {
   async delete<T>(
     entityType: Type<T>,
     key: SpannerKey | SpannerKey[number],
-    options: WriteOperationOptions &
+    options: SpannerReadWriteTransactionOption &
       Pick<FindOptions, 'includeSoftDeletes'> & {
         /**
          * A function that will be called with the entity before it is deleted.
