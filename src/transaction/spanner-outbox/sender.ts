@@ -84,6 +84,11 @@ export class SpannerOutboxSender extends OutboxEventSender {
   readonly leaseExpirationColumn: string;
 
   /**
+   * The name of the column used for the {@link OutboxEvent.publishedAt} property.
+   */
+  readonly publishedAtColumn: string;
+
+  /**
    * The index used to fetch events.
    */
   readonly index: string | undefined;
@@ -132,6 +137,7 @@ export class SpannerOutboxSender extends OutboxEventSender {
     this.idColumn = options.idColumn ?? DEFAULT_ID_COLUMN;
     this.leaseExpirationColumn =
       options.leaseExpirationColumn ?? DEFAULT_LEASE_EXPIRATION_COLUMN;
+    this.publishedAtColumn = 'publishedAt';
     this.index = options.index;
 
     ({
@@ -160,7 +166,11 @@ export class SpannerOutboxSender extends OutboxEventSender {
       { index: this.index },
     );
 
-    const noLeaseFilter = `\`${this.leaseExpirationColumn}\` IS NULL OR \`${this.leaseExpirationColumn}\` < @currentTime`;
+    const noLeaseFilter = `(
+        \`${this.leaseExpirationColumn}\` IS NULL OR
+        \`${this.leaseExpirationColumn}\` < @currentTime
+      ) AND
+      \`${this.publishedAtColumn}\` IS NULL`;
     let fetchFilter = noLeaseFilter;
     if (this.sharding) {
       const { column, count } = this.sharding;
@@ -192,8 +202,11 @@ export class SpannerOutboxSender extends OutboxEventSender {
         ${this.entityManager.sqlColumns(this.outboxEventType)}`;
 
     const successfulUpdateSql = `
-      DELETE FROM
+      UPDATE
         ${table}
+      SET
+        \`${this.leaseExpirationColumn}\` = '9999-12-31T00:00:00.000Z',
+        \`${this.publishedAtColumn}\` = @currentTime
       WHERE
         \`${this.idColumn}\` IN UNNEST(@ids)`;
 
@@ -253,7 +266,7 @@ export class SpannerOutboxSender extends OutboxEventSender {
     if (successfulSends.length > 0) {
       batchUpdates.push({
         sql: this.successfulUpdateSql,
-        params: { ids: successfulSends },
+        params: { ids: successfulSends, currentTime: new Date() },
       });
     }
     if (failedSends.length > 0) {

@@ -20,9 +20,10 @@ const SPANNER_SCHEMA = [
     data BYTES(MAX) NOT NULL,
     attributes JSON NOT NULL,
     leaseExpiration TIMESTAMP,
+    publishedAt TIMESTAMP,
     shard INT64 NOT NULL,
   ) PRIMARY KEY (id)`,
-  `CREATE INDEX OutboxEventsByShardAndLeaseExpiration ON OutboxEvent(shard, leaseExpiration)`,
+  `CREATE INDEX OutboxEventsByShardAndLeaseExpiration ON OutboxEvent(shard, leaseExpiration) STORING (publishedAt)`,
 ];
 
 @SpannerTable({ name: 'OutboxEvent', primaryKey: ['id'] })
@@ -48,6 +49,9 @@ class SpannerOutboxEventWithShard {
 
   @SpannerColumn()
   readonly leaseExpiration!: Date | null;
+
+  @SpannerColumn()
+  readonly publishedAt!: Date | null;
 
   @SpannerColumn({ isInt: true })
   readonly shard!: number;
@@ -135,6 +139,7 @@ describe('SpannerOutboxSender', () => {
         data: Buffer.from('🎉'),
         attributes: {},
         leaseExpiration: new Date('2021-01-01'),
+        publishedAt: null,
       });
       const event2 = new SpannerOutboxEventWithShard({
         id: '2',
@@ -142,6 +147,7 @@ describe('SpannerOutboxSender', () => {
         data: Buffer.from('🎉'),
         attributes: {},
         leaseExpiration: null,
+        publishedAt: null,
       });
       // Should not be retrieved, as the lease is not expired.
       const event3 = new SpannerOutboxEventWithShard({
@@ -150,8 +156,19 @@ describe('SpannerOutboxSender', () => {
         data: Buffer.from('🎉'),
         attributes: {},
         leaseExpiration: new Date(Date.now() + 60000),
+        publishedAt: null,
       });
-      await entityManager.insert([event1, event2, event3]);
+      // Should not be retried, as it is marked as published. Such events should not exist as a successful update both
+      // sets the lease expiration to a far future date and the published at date.
+      const event4 = new SpannerOutboxEventWithShard({
+        id: '4',
+        topic: 'my-topic',
+        data: Buffer.from('🎉'),
+        attributes: {},
+        leaseExpiration: null,
+        publishedAt: new Date(),
+      });
+      await entityManager.insert([event1, event2, event3, event4]);
 
       const actualEvents = await sender.fetchEvents();
 
@@ -167,6 +184,10 @@ describe('SpannerOutboxSender', () => {
         SpannerOutboxEventWithShard,
         '3',
       );
+      const actualEvent4 = await entityManager.findOneByKeyOrFail(
+        SpannerOutboxEventWithShard,
+        '4',
+      );
       const leaseExpectation = expect.toBeBetween(
         new Date(Date.now() + 1900),
         new Date(Date.now() + 2100),
@@ -180,6 +201,7 @@ describe('SpannerOutboxSender', () => {
         leaseExpiration: leaseExpectation,
       });
       expect(actualEvent3).toEqual(event3);
+      expect(actualEvent4).toEqual(event4);
       expect(actualEvents).toContainAllValues([actualEvent1, actualEvent2]);
     });
 
@@ -195,6 +217,7 @@ describe('SpannerOutboxSender', () => {
             data: expectedData,
             attributes: expectedAttributes,
             leaseExpiration: null,
+            publishedAt: null,
           }),
       );
       await entityManager.insert(events);
@@ -210,6 +233,7 @@ describe('SpannerOutboxSender', () => {
           new Date(Date.now() + 1900),
           new Date(Date.now() + 2100),
         ),
+        publishedAt: null,
         shard: 0,
       };
       expect(actualEvents).toEqual([
@@ -249,6 +273,7 @@ describe('SpannerOutboxSender', () => {
         data: Buffer.from('🎉'),
         attributes: {},
         leaseExpiration: new Date('2024-11-26T14:19:01.253Z'),
+        publishedAt: null,
         shard: 13,
       });
       await entityManager.insert(event);
@@ -260,13 +285,14 @@ describe('SpannerOutboxSender', () => {
   });
 
   describe('updateOutbox', () => {
-    it('should delete successfully published events and update failed ones', async () => {
+    it('should update successfully published events and failed ones', async () => {
       const event1 = new SpannerOutboxEventWithShard({
         id: '1',
         topic: 'my-topic',
         data: Buffer.from('🎉'),
         attributes: {},
         leaseExpiration: new Date(Date.now() + 1000),
+        publishedAt: null,
       });
       const event2 = new SpannerOutboxEventWithShard({
         id: '2',
@@ -274,6 +300,7 @@ describe('SpannerOutboxSender', () => {
         data: Buffer.from('🎉'),
         attributes: {},
         leaseExpiration: new Date(Date.now() + 1000),
+        publishedAt: null,
       });
       const event3 = new SpannerOutboxEventWithShard({
         id: '3',
@@ -281,6 +308,7 @@ describe('SpannerOutboxSender', () => {
         data: Buffer.from('🎉'),
         attributes: {},
         leaseExpiration: new Date(Date.now() + 1000),
+        publishedAt: null,
       });
       await entityManager.insert([event1, event2, event3]);
 
@@ -301,7 +329,11 @@ describe('SpannerOutboxSender', () => {
         SpannerOutboxEventWithShard,
         '3',
       );
-      expect(actualEvent1).toBeUndefined();
+      expect(actualEvent1).toEqual({
+        ...event1,
+        leaseExpiration: new Date('9999-12-31T00:00:00.000Z'),
+        publishedAt: expect.toBeBeforeOrEqualTo(new Date()),
+      });
       expect(actualEvent2).toEqual({
         ...event2,
         leaseExpiration: null,
