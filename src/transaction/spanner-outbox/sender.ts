@@ -48,6 +48,12 @@ export type SpannerOutboxSenderOptions = OutboxEventSenderOptions & {
   readonly leaseExpirationColumn?: string;
 
   /**
+   * The name of the column used to store the timestamp at which the event was published.
+   * Defaults to `publishedAt`.
+   */
+  readonly publishedAtColumn?: string;
+
+  /**
    * The index used to fetch events.
    */
   readonly index?: string;
@@ -62,6 +68,11 @@ const DEFAULT_ID_COLUMN = 'id';
  * The default name for the {@link OutboxEvent.leaseExpiration} column.
  */
 const DEFAULT_LEASE_EXPIRATION_COLUMN = 'leaseExpiration';
+
+/**
+ * The default name for the {@link OutboxEvent.publishedAt} column.
+ */
+const DEFAULT_PUBLISHED_AT_COLUMN = 'publishedAt';
 
 /**
  * An {@link OutboxEventSender} that uses a Spanner table to store events.
@@ -137,7 +148,8 @@ export class SpannerOutboxSender extends OutboxEventSender {
     this.idColumn = options.idColumn ?? DEFAULT_ID_COLUMN;
     this.leaseExpirationColumn =
       options.leaseExpirationColumn ?? DEFAULT_LEASE_EXPIRATION_COLUMN;
-    this.publishedAtColumn = 'publishedAt';
+    this.publishedAtColumn =
+      options.publishedAtColumn ?? DEFAULT_PUBLISHED_AT_COLUMN;
     this.index = options.index;
 
     ({
