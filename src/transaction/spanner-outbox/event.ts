@@ -20,6 +20,15 @@ import { SpannerColumn, SpannerTable } from '../../spanner/index.js';
  * ROW DELETION POLICY (OLDER_THAN(publishedAt, INTERVAL 0 DAY));
  * CREATE INDEX OutboxEventsByShardAndLeaseExpiration ON OutboxEvent(shard, leaseExpiration) STORING (publishedAt);
  * ```
+ *
+ * Compared to the {@link OutboxEvent} interface, this requires a `publishedAt` column to be defined, on which the row
+ * deletion policy should be set. This allows updating published events rather than deleting them directly.
+ * Updating published events allows setting the `leaseExpiration` column to a distant date, such that those events are
+ * not scanned when fetching events to publish.
+ * Because Spanner allows for version retention, recently deleted rows are still scanned (even as part of an efficient
+ * index scan). This can affect performances if the rows are not updated before being deleted, because the
+ * `leaseExpiration` date of published events would end up back in the scanned range - in the past (although rows are
+ * deleted and not returned).
  */
 @SpannerTable({ name: 'OutboxEvent', primaryKey: ['id'] })
 export class SpannerOutboxEvent implements OutboxEvent {
