@@ -12,6 +12,7 @@ import { SpannerOutboxEvent } from './event.js';
 import { SpannerOutboxTransactionRunner } from './runner.js';
 import { SpannerOutboxSender } from './sender.js';
 import {
+  expectedOutboxEvent,
   expectOutboxToEqual,
   getSpannerOutboxEvents,
   MyEvent,
@@ -97,15 +98,21 @@ describe('SpannerOutboxTransactionRunner', () => {
     expect(actualResult).toEqual(['🎉']);
     const actualRow = await entityManager.findOneByKey(MyTable, '1');
     expect(actualRow).toEqual(expectedRow);
+    const expectedAttributes = {
+      eventId: '1',
+      eventName: '📫',
+      producedAt: expectedEvent.producedAt.toISOString(),
+      myAttr: '🏷️',
+    };
     await pubSubFixture.expectEventInTopic('my-topic', expectedEvent, {
-      attributes: {
-        eventId: '1',
-        eventName: '📫',
-        producedAt: expectedEvent.producedAt.toISOString(),
-        myAttr: '🏷️',
-      },
+      attributes: expectedAttributes,
     });
-    await expectOutboxToEqual(entityManager, []);
+    await expectOutboxToEqual(entityManager, [
+      expectedOutboxEvent(expectedEvent, {
+        attributes: expectedAttributes,
+        published: true,
+      }),
+    ]);
   });
 
   it('should not commit the events nor publish them if an error is thrown within the transaction', async () => {
@@ -133,7 +140,7 @@ describe('SpannerOutboxTransactionRunner', () => {
     await expectOutboxToEqual(entityManager, []);
   });
 
-  it('should leave the events in the outbox and remove the lease if publishing fails', async () => {
+  it('should remove the lease if publishing fails', async () => {
     const expectedRow = new MyTable({ id: '1', value: '🗃️' });
     const expectedEvent1 = new MyEvent({
       id: '1',
@@ -147,21 +154,7 @@ describe('SpannerOutboxTransactionRunner', () => {
       name: '📫',
       data: '💌',
     });
-    const expectedOutboxEvents = [expectedEvent1, expectedEvent2].map(
-      (event) =>
-        new SpannerOutboxEvent({
-          id: expect.any(String),
-          topic: 'my-topic',
-          data: Buffer.from(JSON.stringify(event)),
-          attributes: {
-            eventId: event.id,
-            eventName: '📫',
-            producedAt: event.producedAt.toISOString(),
-          },
-          leaseExpiration: expect.toBeAfter(new Date()),
-        }),
-    );
-    const actualOutboxEvents = new Promise((resolve) => {
+    const actualOutboxEventsDuringPublishing = new Promise((resolve) => {
       jest.spyOn(publisher, 'publish').mockImplementationOnce(async () => {
         // During publishing, events should still be in the outbox.
         resolve(await getSpannerOutboxEvents(entityManager));
@@ -181,26 +174,33 @@ describe('SpannerOutboxTransactionRunner', () => {
     const actualRow = await entityManager.findOneByKey(MyTable, '1');
     expect(actualRow).toEqual(expectedRow);
     await pubSubFixture.expectEventInTopic('my-topic', expectedEvent2);
-    expect(await actualOutboxEvents).toContainAllValues(expectedOutboxEvents);
-    // The failed event should still be in the outbox, with the lease removed.
+    expect(await actualOutboxEventsDuringPublishing).toContainAllValues([
+      expectedOutboxEvent(expectedEvent1, { leased: true }),
+      expectedOutboxEvent(expectedEvent2, { leased: true }),
+    ]);
     await expectOutboxToEqual(entityManager, [
-      { ...expectedOutboxEvents[0], leaseExpiration: null },
+      expectedOutboxEvent(expectedEvent1),
+      expectedOutboxEvent(expectedEvent2, { published: true }),
     ]);
   });
 
   it('should retry the transaction when a TransactionOldTimestampError is thrown', async () => {
     let numCalls = 0;
+    let event!: MyEvent;
 
     const actualResult = await runner.run(async (transaction) => {
       numCalls += 1;
       const id = numCalls.toFixed();
+      event = new MyEvent({
+        id,
+        producedAt: new Date(),
+        name: '📫',
+        data: '💌',
+      });
       await transaction.stateTransaction.replace(
         new MyTable({ id, value: '🗃' }),
       );
-      await transaction.publish(
-        'my-topic',
-        new MyEvent({ id, producedAt: new Date(), name: '📫', data: '💌' }),
-      );
+      await transaction.publish('my-topic', event);
 
       if (numCalls === 1) {
         throw new TransactionOldTimestampError(transaction.timestamp, 10);
@@ -224,21 +224,27 @@ describe('SpannerOutboxTransactionRunner', () => {
         data: '💌',
       }),
     );
-    await expectOutboxToEqual(entityManager, []);
+    await expectOutboxToEqual(entityManager, [
+      expectedOutboxEvent(event, { published: true }),
+    ]);
   });
 
   it('should use a new event transaction on each retry', async () => {
     let numCalls = 0;
+    let event!: MyEvent;
     const observedNumStagedEvents: number[] = [];
 
     const actualResult = await runner.run(async (transaction) => {
       numCalls += 1;
       observedNumStagedEvents.push(transaction.eventTransaction.events.length);
       const id = numCalls.toFixed();
-      await transaction.publish(
-        'my-topic',
-        new MyEvent({ id, producedAt: new Date(), name: '📫', data: '💌' }),
-      );
+      event = new MyEvent({
+        id,
+        producedAt: new Date(),
+        name: '📫',
+        data: '💌',
+      });
+      await transaction.publish('my-topic', event);
 
       if (numCalls === 1) {
         throw new TransactionOldTimestampError(transaction.timestamp, 10);
@@ -263,7 +269,9 @@ describe('SpannerOutboxTransactionRunner', () => {
     // However, this in addition to `observedNumStagedEvents` should be enough to ensure that a new event transaction is
     // used on each retry.
     expect(pubSubFixture.fixtures['my-topic'].messages).toHaveLength(1);
-    await expectOutboxToEqual(entityManager, []);
+    await expectOutboxToEqual(entityManager, [
+      expectedOutboxEvent(event, { published: true }),
+    ]);
   });
 
   it('should not retry the transaction when a TransactionOldTimestampError is thrown with a delay that is too high', async () => {

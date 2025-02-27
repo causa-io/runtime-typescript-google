@@ -1,4 +1,3 @@
-import type { OutboxEvent } from '@causa/runtime';
 import {
   EVENT_PUBLISHER_INJECTION_NAME,
   LoggerModule,
@@ -73,6 +72,7 @@ describe('SpannerOutboxTransactionModule', () => {
     expect(sender.pollingInterval).toBe(10000);
     expect(sender.idColumn).toBe('id');
     expect(sender.leaseExpirationColumn).toBe('leaseExpiration');
+    expect(sender.publishedAtColumn).toBe('publishedAt');
     expect(sender.index).toBeUndefined();
     expect(sender.sharding).toBeUndefined();
     expect(sender.leaseDuration).toBe(30000);
@@ -91,6 +91,7 @@ describe('SpannerOutboxTransactionModule', () => {
         SPANNER_OUTBOX_POLLING_INTERVAL: '0',
         SPANNER_OUTBOX_ID_COLUMN: 'myId',
         SPANNER_OUTBOX_LEASE_EXPIRATION_COLUMN: 'myLease',
+        SPANNER_OUTBOX_PUBLISHED_AT_COLUMN: 'myPublished',
         SPANNER_OUTBOX_INDEX: 'MyIndex',
         SPANNER_OUTBOX_SHARDING_COLUMN: 'myColumn',
         SPANNER_OUTBOX_SHARDING_COUNT: '5',
@@ -105,6 +106,7 @@ describe('SpannerOutboxTransactionModule', () => {
     expect(sender.pollingInterval).toBe(0);
     expect(sender.idColumn).toBe('myId');
     expect(sender.leaseExpirationColumn).toBe('myLease');
+    expect(sender.publishedAtColumn).toBe('myPublished');
     expect(sender.index).toBe('MyIndex');
     expect(sender.sharding).toEqual({
       column: 'myColumn',
@@ -115,12 +117,13 @@ describe('SpannerOutboxTransactionModule', () => {
 
   it('should use the passed options', async () => {
     @SpannerTable({ primaryKey: ['id'] })
-    class MyEvent implements OutboxEvent {
+    class MyEvent implements SpannerOutboxEvent {
       readonly id!: string;
       readonly topic!: string;
       readonly data!: Buffer;
       readonly attributes!: Record<string, string>;
       readonly leaseExpiration!: Date | null;
+      readonly publishedAt!: Date | null;
     }
 
     await createModule({
@@ -129,6 +132,7 @@ describe('SpannerOutboxTransactionModule', () => {
         pollingInterval: 40000,
         idColumn: 'myIdColumn',
         leaseExpirationColumn: 'myLeaseColumn',
+        publishedAtColumn: 'myPublishedColumn',
         index: 'MyFetchIndex',
         sharding: {
           column: 'myShardColumn',
@@ -146,6 +150,7 @@ describe('SpannerOutboxTransactionModule', () => {
     expect(sender.pollingInterval).toBe(40000);
     expect(sender.idColumn).toBe('myIdColumn');
     expect(sender.leaseExpirationColumn).toBe('myLeaseColumn');
+    expect(sender.publishedAtColumn).toBe('myPublishedColumn');
     expect(sender.index).toBe('MyFetchIndex');
     expect(sender.sharding).toEqual({
       column: 'myShardColumn',

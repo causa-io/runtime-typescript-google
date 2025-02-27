@@ -42,12 +42,42 @@ export const SPANNER_SCHEMA = [
     data BYTES(MAX) NOT NULL,
     attributes JSON NOT NULL,
     leaseExpiration TIMESTAMP,
+    publishedAt TIMESTAMP,
   ) PRIMARY KEY (id)`,
   `CREATE TABLE MyTable (
     id STRING(MAX) NOT NULL,
     value STRING(MAX) NOT NULL,
   ) PRIMARY KEY (id)`,
 ];
+
+export function expectedOutboxEvent(
+  event: MyEvent,
+  options: Partial<SpannerOutboxEvent> & {
+    published?: boolean;
+    leased?: boolean;
+  } = {},
+): SpannerOutboxEvent {
+  const { published, leased, ...data } = options;
+  return new SpannerOutboxEvent({
+    id: expect.any(String),
+    topic: 'my-topic',
+    data: Buffer.from(JSON.stringify(event)),
+    attributes: {
+      eventId: event.id,
+      eventName: event.name,
+      producedAt: event.producedAt.toISOString(),
+    },
+    leaseExpiration: published
+      ? new Date('9999-12-31T00:00:00.000Z')
+      : leased
+        ? expect.toBeAfter(new Date())
+        : null,
+    publishedAt: published
+      ? expect.toSatisfy((d) => d.getTime() < Date.now())
+      : null,
+    ...data,
+  });
+}
 
 export async function expectOutboxToEqual(
   entityManager: SpannerEntityManager,
@@ -61,7 +91,7 @@ export async function expectOutboxToEqual(
     const events = await getSpannerOutboxEvents(entityManager);
 
     try {
-      expect(events).toEqual(expected);
+      expect(events).toContainAllValues(expected);
       return;
     } catch (error) {
       if (attempt >= maxAttempts) {
