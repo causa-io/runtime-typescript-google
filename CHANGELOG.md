@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.38.0 (2025-02-27)
+
 Breaking changes:
 
 - Require the Spanner outbox table to have a `publishedAt` column. This optimizes the fetching of events by avoiding the scan of recently deleted rows (kept by Spanner before garbage collection). The `publishedAt` is used as a TTL column, instead of directly deleting the rows.
