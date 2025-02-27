@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.39.0 (2025-02-27)
+
 Breaking changes:
 
 - Revert inefficient Spanner outbox optimization part of the previous release.
