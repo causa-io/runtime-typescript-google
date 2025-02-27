@@ -1,5 +1,6 @@
 import {
   OutboxTransactionRunner,
+  type OutboxEvent,
   type OutboxEventTransaction,
 } from '@causa/runtime';
 import { Logger } from '@causa/runtime/nestjs';
@@ -8,7 +9,6 @@ import { SpannerEntityManager } from '../../spanner/index.js';
 import { SpannerStateTransaction } from '../spanner-state-transaction.js';
 import { SpannerTransaction } from '../spanner-transaction.js';
 import { throwRetryableInTransactionIfNeeded } from '../spanner-utils.js';
-import type { SpannerOutboxEvent } from './event.js';
 import { SpannerOutboxSender } from './sender.js';
 
 /**
@@ -34,7 +34,7 @@ export type SpannerOutboxTransactionOption = {
 export class SpannerOutboxTransactionRunner extends OutboxTransactionRunner<SpannerOutboxTransaction> {
   constructor(
     readonly entityManager: SpannerEntityManager,
-    outboxEventType: Type<SpannerOutboxEvent>,
+    outboxEventType: Type<OutboxEvent>,
     sender: SpannerOutboxSender,
     logger: Logger,
   ) {

@@ -1,4 +1,4 @@
-import type { EventPublisher } from '@causa/runtime';
+import type { EventPublisher, OutboxEvent } from '@causa/runtime';
 import { EVENT_PUBLISHER_INJECTION_NAME, Logger } from '@causa/runtime/nestjs';
 import type { DynamicModule, Type } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -22,7 +22,7 @@ export type SpannerOutboxTransactionModuleOptions =
      * This should be a valid class decorated with `@SpannerTable`.
      * Defaults to {@link SpannerOutboxEvent}.
      */
-    outboxEventType?: Type<SpannerOutboxEvent>;
+    outboxEventType?: Type<OutboxEvent>;
   };
 
 /**
@@ -60,9 +60,6 @@ function parseSenderOptions(
   const leaseExpirationColumn = config.get<string>(
     'SPANNER_OUTBOX_LEASE_EXPIRATION_COLUMN',
   );
-  const publishedAtColumn = config.get<string>(
-    'SPANNER_OUTBOX_PUBLISHED_AT_COLUMN',
-  );
   const index = config.get<string>('SPANNER_OUTBOX_INDEX');
   const shardingColumn = config.get<string>('SPANNER_OUTBOX_SHARDING_COLUMN');
   const shardingCount = validateIntOrUndefined('SPANNER_OUTBOX_SHARDING_COUNT');
@@ -78,7 +75,6 @@ function parseSenderOptions(
     pollingInterval,
     idColumn,
     leaseExpirationColumn,
-    publishedAtColumn,
     index,
     sharding,
     leaseDuration,
