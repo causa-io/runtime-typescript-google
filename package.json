@@ -29,20 +29,20 @@
     "test:cov": "npm run test -- --coverage"
   },
   "dependencies": {
-    "@causa/runtime": ">= 0.27.0 < 1.0.0",
+    "@causa/runtime": ">= 0.27.1 < 1.0.0",
     "@google-cloud/precise-date": "^4.0.0",
     "@google-cloud/pubsub": "^4.10.0",
     "@google-cloud/spanner": "^7.18.1",
     "@google-cloud/tasks": "^5.5.2",
     "@grpc/grpc-js": "^1.12.6",
-    "@nestjs/common": "^11.0.10",
-    "@nestjs/config": "^4.0.0",
-    "@nestjs/core": "^11.0.10",
+    "@nestjs/common": "^11.0.11",
+    "@nestjs/config": "^4.0.1",
+    "@nestjs/core": "^11.0.11",
     "@nestjs/passport": "^11.0.5",
     "@nestjs/terminus": "^11.0.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
-    "express": "^4.21.2",
+    "express": "^5.0.1",
     "firebase-admin": "^13.1.0",
     "jsonwebtoken": "^9.0.2",
     "passport-http-bearer": "^1.0.1",
@@ -50,13 +50,13 @@
     "reflect-metadata": "^0.2.2"
   },
   "devDependencies": {
-    "@nestjs/testing": "^11.0.10",
-    "@swc/core": "^1.11.4",
+    "@nestjs/testing": "^11.0.11",
+    "@swc/core": "^1.11.7",
     "@swc/jest": "^0.2.37",
     "@tsconfig/node22": "^22.0.0",
     "@types/jest": "^29.5.14",
     "@types/jsonwebtoken": "^9.0.9",
-    "@types/node": "^22.13.5",
+    "@types/node": "^22.13.9",
     "@types/passport-http-bearer": "^1.0.41",
     "@types/supertest": "^6.0.2",
     "@types/uuid": "^10.0.0",
@@ -70,8 +70,8 @@
     "supertest": "^7.0.0",
     "ts-jest": "^29.2.6",
     "ts-node": "^10.9.2",
-    "typescript": "^5.7.3",
-    "typescript-eslint": "^8.25.0",
+    "typescript": "^5.8.2",
+    "typescript-eslint": "^8.26.0",
     "uuid": "^11.1.0"
   }
 }
