@@ -181,7 +181,7 @@ describe('SpannerOutboxTransactionRunner', () => {
     const actualRow = await entityManager.findOneByKey(MyTable, '1');
     expect(actualRow).toEqual(expectedRow);
     await pubSubFixture.expectEventInTopic('my-topic', expectedEvent2);
-    expect(await actualOutboxEvents).toContainAllValues(expectedOutboxEvents);
+    expect(await actualOutboxEvents).toIncludeAllMembers(expectedOutboxEvents);
     // The failed event should still be in the outbox, with the lease removed.
     await expectOutboxToEqual(entityManager, [
       { ...expectedOutboxEvents[0], leaseExpiration: null },

@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+Breaking changes:
+
+- Set `ignoreUndefinedProperties: true` as the default in Firestore settings.
+
+Features:
+
+- Expose Firestore settings through the `FirebaseModule`.
+
 ## v0.39.1 (2025-03-05)
 
 Chores:

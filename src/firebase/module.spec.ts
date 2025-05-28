@@ -63,10 +63,13 @@ describe('FirebaseModule', () => {
     expect(service.app.name).toBeString();
   });
 
-  it('should inject the Firestore client', async () => {
+  it('should inject the Firestore client and configure it with default options', async () => {
     await createInjectedService();
 
     expect(service.firestore).toBeInstanceOf(Firestore);
+    expect((service.firestore as any)._settings).toMatchObject({
+      ignoreUndefinedProperties: true,
+    });
   });
 
   it('should inject the Auth client', async () => {
@@ -94,11 +97,18 @@ describe('FirebaseModule', () => {
   });
 
   it('should use options when initializing the app', async () => {
-    await createInjectedService({ appName: '🤖', projectId: 'demo-project' });
+    await createInjectedService({
+      appName: '🤖',
+      projectId: 'demo-project',
+      firestore: { ignoreUndefinedProperties: false },
+    });
 
     expect(service.app).toBeDefined();
     expect(service.app.name).toEqual('🤖');
     expect(service.app.options.projectId).toEqual('demo-project');
+    expect((service.firestore as any)._settings).toMatchObject({
+      ignoreUndefinedProperties: false,
+    });
   });
 
   it('should create a global module', async () => {
