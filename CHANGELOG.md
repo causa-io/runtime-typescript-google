@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.40.0 (2025-05-28)
+
 Breaking changes:
 
 - Set `ignoreUndefinedProperties: true` as the default in Firestore settings.
