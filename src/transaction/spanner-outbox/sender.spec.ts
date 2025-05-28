@@ -180,7 +180,7 @@ describe('SpannerOutboxSender', () => {
         leaseExpiration: leaseExpectation,
       });
       expect(actualEvent3).toEqual(event3);
-      expect(actualEvents).toContainAllValues([actualEvent1, actualEvent2]);
+      expect(actualEvents).toIncludeAllMembers([actualEvent1, actualEvent2]);
     });
 
     it('should acquire at most the batch size', async () => {
@@ -222,7 +222,7 @@ describe('SpannerOutboxSender', () => {
         entityManager,
         SpannerOutboxEventWithShard,
       );
-      expect(storedEvents).toContainAllValues([
+      expect(storedEvents).toIncludeAllMembers([
         ...actualEvents,
         ...events.filter(({ id }) => !acquiredEventIds.includes(id)),
       ]);
