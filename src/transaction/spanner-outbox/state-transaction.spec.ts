@@ -1,14 +1,12 @@
 import { EntityNotFoundError } from '@causa/runtime';
-import { PreciseDate } from '@google-cloud/precise-date';
 import { Database } from '@google-cloud/spanner';
-import { setTimeout } from 'timers/promises';
 import {
   SpannerColumn,
   SpannerEntityManager,
   SpannerTable,
-} from '../spanner/index.js';
-import { createDatabase } from '../testing.js';
-import { SpannerStateTransaction } from './spanner-state-transaction.js';
+} from '../../spanner/index.js';
+import { createDatabase } from '../../testing.js';
+import { SpannerStateTransaction } from './state-transaction.js';
 
 @SpannerTable({ primaryKey: ['id1', 'id2'] })
 class MyEntity {
@@ -58,8 +56,8 @@ describe('SpannerStateTransaction', () => {
     await database.delete();
   });
 
-  describe('replace', () => {
-    it('should replace the entity', async () => {
+  describe('set', () => {
+    it('should set the entity', async () => {
       const entity = new MyEntity({
         id1: 'id1',
         id2: 'id2',
@@ -73,7 +71,7 @@ describe('SpannerStateTransaction', () => {
           entityManager,
           spannerTransaction,
         );
-        await transaction.replace(new MyEntity({ id1: 'id1', id2: 'id2' }));
+        await transaction.set(new MyEntity({ id1: 'id1', id2: 'id2' }));
       });
 
       const actualEntity = await entityManager.findOneByKey(MyEntity, [
@@ -102,7 +100,7 @@ describe('SpannerStateTransaction', () => {
           entityManager,
           spannerTransaction,
         );
-        await transaction.replace(new MyEntity({ id1: 'id1', id2: 'id2' }));
+        await transaction.set(new MyEntity({ id1: 'id1', id2: 'id2' }));
         spannerTransaction.end();
       });
 
@@ -114,7 +112,7 @@ describe('SpannerStateTransaction', () => {
     });
   });
 
-  describe('deleteWithSameKeyAs', () => {
+  describe('delete', () => {
     it('should delete the entity', async () => {
       const entity = new MyEntity({ id1: 'id1', id2: 'id2', value: '🌠' });
       await entityManager.insert(entity);
@@ -124,10 +122,26 @@ describe('SpannerStateTransaction', () => {
           entityManager,
           spannerTransaction,
         );
-        await transaction.deleteWithSameKeyAs(MyEntity, {
-          id1: 'id1',
-          id2: 'id2',
-        });
+        await transaction.delete(MyEntity, { id1: 'id1', id2: 'id2' });
+      });
+
+      const actualEntity = await entityManager.findOneByKey(MyEntity, [
+        'id1',
+        'id2',
+      ]);
+      expect(actualEntity).toBeUndefined();
+    });
+
+    it('should delete the entity when provided with the entity', async () => {
+      const entity = new MyEntity({ id1: 'id1', id2: 'id2', value: '🌠' });
+      await entityManager.insert(entity);
+
+      await entityManager.transaction(async (spannerTransaction) => {
+        const transaction = new SpannerStateTransaction(
+          entityManager,
+          spannerTransaction,
+        );
+        await transaction.delete(entity);
       });
 
       const actualEntity = await entityManager.findOneByKey(MyEntity, [
@@ -144,10 +158,7 @@ describe('SpannerStateTransaction', () => {
             entityManager,
             spannerTransaction,
           );
-          await transaction.deleteWithSameKeyAs(MyEntity, {
-            id1: 'id1',
-            id2: 'id2',
-          });
+          await transaction.delete(MyEntity, { id1: 'id1', id2: 'id2' });
         },
       );
 
@@ -168,10 +179,7 @@ describe('SpannerStateTransaction', () => {
           entityManager,
           spannerTransaction,
         );
-        await transaction.deleteWithSameKeyAs(MyEntity, {
-          id1: 'id1',
-          id2: 'id2',
-        });
+        await transaction.delete(MyEntity, { id1: 'id1', id2: 'id2' });
       });
 
       const actualEntity = await entityManager.findOneByKey(MyEntity, [
@@ -195,10 +203,7 @@ describe('SpannerStateTransaction', () => {
           entityManager,
           spannerTransaction,
         );
-        await transaction.deleteWithSameKeyAs(MyEntity, {
-          id1: 'id1',
-          id2: 'id2',
-        });
+        await transaction.delete(MyEntity, { id1: 'id1', id2: 'id2' });
         spannerTransaction.end();
       });
 
@@ -207,103 +212,6 @@ describe('SpannerStateTransaction', () => {
         'id2',
       ]);
       expect(actualEntity).toEqual(entity);
-    });
-  });
-
-  describe('findOneWithSameKeyAs', () => {
-    it('should find the entity', async () => {
-      const entity = new MyEntity({
-        id1: 'id1',
-        id2: 'id2',
-        value: '🌠',
-        deletedAt: null,
-      });
-      await entityManager.insert(entity);
-
-      const actualEntity = await entityManager.transaction(
-        async (spannerTransaction) => {
-          const transaction = new SpannerStateTransaction(
-            entityManager,
-            spannerTransaction,
-          );
-          return await transaction.findOneWithSameKeyAs(MyEntity, {
-            id1: 'id1',
-            id2: 'id2',
-          });
-        },
-      );
-
-      expect(actualEntity).toEqual(entity);
-    });
-
-    it('should return undefined if the entity does not exist', async () => {
-      const actualEntity = await entityManager.transaction(
-        async (spannerTransaction) => {
-          const transaction = new SpannerStateTransaction(
-            entityManager,
-            spannerTransaction,
-          );
-          return await transaction.findOneWithSameKeyAs(MyEntity, {
-            id1: 'id1',
-            id2: 'id2',
-          });
-        },
-      );
-
-      expect(actualEntity).toBeUndefined();
-    });
-
-    it('should return a soft deleted entity', async () => {
-      const entity = new MyEntity({
-        id1: 'id1',
-        id2: 'id2',
-        value: '🌠',
-        deletedAt: new Date(),
-      });
-      await entityManager.insert(entity);
-
-      const actualEntity = await entityManager.transaction(
-        async (spannerTransaction) => {
-          const transaction = new SpannerStateTransaction(
-            entityManager,
-            spannerTransaction,
-          );
-          return await transaction.findOneWithSameKeyAs(MyEntity, {
-            id1: 'id1',
-            id2: 'id2',
-          });
-        },
-      );
-
-      expect(actualEntity).toEqual(entity);
-    });
-
-    it('should use the transaction', async () => {
-      // Ensures `beforeInsertDate` is after the database creation...
-      const beforeInsertDate = new PreciseDate();
-      // ...but is in the distant past relative to the insert.
-      await setTimeout(100);
-
-      const entity = new MyEntity({ id1: '🕰️', id2: '🔮', value: '🌠' });
-      await entityManager.insert(entity);
-
-      const actualEntity = await entityManager.snapshot(
-        // Making it look like the entity does not exist.
-        { timestampBounds: { readTimestamp: beforeInsertDate } },
-        async (snapshot) => {
-          const transaction = new SpannerStateTransaction(
-            entityManager,
-            // This is not a valid transaction, but it is enough to call `findOneWithSameKeyAs`.
-            snapshot as any,
-          );
-          return await transaction.findOneWithSameKeyAs(MyEntity, {
-            id1: '🕰️',
-            id2: '🔮',
-          });
-        },
-      );
-
-      expect(actualEntity).toBeUndefined();
     });
   });
 });

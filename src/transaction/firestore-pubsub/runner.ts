@@ -1,14 +1,18 @@
-import { BufferEventTransaction, TransactionRunner } from '@causa/runtime';
+import {
+  OutboxEventTransaction,
+  TransactionRunner,
+  type ReadWriteTransactionOptions,
+  type TransactionFn,
+} from '@causa/runtime';
 import { Logger } from '@causa/runtime/nestjs';
 import { Firestore } from '@google-cloud/firestore';
 import { Injectable } from '@nestjs/common';
 import { wrapFirestoreOperation } from '../../firestore/index.js';
 import { PubSubPublisher } from '../../pubsub/index.js';
-import {
-  type FirestoreCollectionResolver,
-  FirestoreStateTransaction,
-} from './state-transaction.js';
+import { FirestoreReadOnlyStateTransaction } from './readonly-state-transaction.js';
+import { FirestoreStateTransaction } from './state-transaction.js';
 import { FirestorePubSubTransaction } from './transaction.js';
+import type { FirestoreCollectionResolver } from './types.js';
 
 /**
  * A {@link TransactionRunner} that uses Firestore for state and Pub/Sub for events.
@@ -18,7 +22,10 @@ import { FirestorePubSubTransaction } from './transaction.js';
  * entities that are written to the state should be decorated with the `SoftDeletedFirestoreCollection` decorator.
  */
 @Injectable()
-export class FirestorePubSubTransactionRunner extends TransactionRunner<FirestorePubSubTransaction> {
+export class FirestorePubSubTransactionRunner extends TransactionRunner<
+  FirestorePubSubTransaction,
+  FirestoreReadOnlyStateTransaction
+> {
   constructor(
     readonly firestore: Firestore,
     readonly pubSubPublisher: PubSubPublisher,
@@ -29,9 +36,10 @@ export class FirestorePubSubTransactionRunner extends TransactionRunner<Firestor
     this.logger.setContext(FirestorePubSubTransactionRunner.name);
   }
 
-  async run<T>(
-    runFn: (transaction: FirestorePubSubTransaction) => Promise<T>,
-  ): Promise<[T]> {
+  protected async runReadWrite<RT>(
+    options: ReadWriteTransactionOptions,
+    runFn: TransactionFn<FirestorePubSubTransaction, RT>,
+  ): Promise<RT> {
     this.logger.info('Creating a Firestore Pub/Sub transaction.');
 
     const { result, eventTransaction } = await wrapFirestoreOperation(() =>
@@ -40,8 +48,9 @@ export class FirestorePubSubTransactionRunner extends TransactionRunner<Firestor
           firestoreTransaction,
           this.collectionResolver,
         );
-        const eventTransaction = new BufferEventTransaction(
+        const eventTransaction = new OutboxEventTransaction(
           this.pubSubPublisher,
+          options.publishOptions,
         );
         const transaction = new FirestorePubSubTransaction(
           stateTransaction,
@@ -55,9 +64,31 @@ export class FirestorePubSubTransactionRunner extends TransactionRunner<Firestor
       }),
     );
 
-    this.logger.info('Publishing Pub/Sub events.');
-    await eventTransaction.commit();
+    if (eventTransaction.events.length > 0) {
+      this.logger.info('Publishing Pub/Sub events.');
+      await Promise.all(
+        eventTransaction.events.map((e) => this.pubSubPublisher.publish(e)),
+      );
+    }
 
-    return [result];
+    return result;
+  }
+
+  protected async runReadOnly<RT>(
+    runFn: TransactionFn<FirestoreReadOnlyStateTransaction, RT>,
+  ): Promise<RT> {
+    return await wrapFirestoreOperation(() =>
+      this.firestore.runTransaction(
+        async (firestoreTransaction) => {
+          const transaction = new FirestoreReadOnlyStateTransaction(
+            firestoreTransaction,
+            this.collectionResolver,
+          );
+
+          return await runFn(transaction);
+        },
+        { readOnly: true },
+      ),
+    );
   }
 }

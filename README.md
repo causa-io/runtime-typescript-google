@@ -104,19 +104,14 @@ For testing, the `createDatabase` utility creates a temporary database, copying 
 
 This package provides the following `TransactionRunner`s:
 
-- `SpannerPubSubTransactionRunner`
 - `FirestorePubSubTransactionRunner`
 - `SpannerOutboxTransactionRunner`
 
-The first two use Pub/Sub and a `BufferEventTransaction` to publish events. They only differ by the service used to store the state.
-
-The `SpannerPubSubTransactionRunner` uses a Spanner transaction as the underlying transaction for the `SpannerTransaction`, while the `FirestorePubSubTransactionRunner` uses a Firestore transaction for the `FirestorePubSubTransaction`. Both state transactions implement the `FindReplaceStateTransaction` interface, and therefore the runners can be used with the `VersionedEntityManager`.
-
-One feature sets the `FirestorePubSubTransactionRunner` and its `FirestoreStateTransaction` apart: the handling of deleted entities using a separate, "soft-deleted document collection". Entities with a non-null `deletedAt` property are moved to a collection suffixed with `$deleted`, and an `_expirationDate` field is added to them. A TTL is expected to be set on this field. The `@SoftDeletedFirestoreCollection` decorator must be added to document classes that are meant to be handled using the `FirestorePubSubTransactionRunner`.
+The `FirestorePubSubTransactionRunner` uses a Firestore transaction as the underlying state transaction for the `FirestorePubSubTransaction`. One feature sets the `FirestorePubSubTransactionRunner` and its `FirestoreStateTransaction` apart: the handling of deleted entities using a separate, "soft-deleted document collection". Entities with a non-null `deletedAt` property are moved to a collection suffixed with `$deleted`, and an `_expirationDate` field is added to them. A TTL is expected to be set on this field. The `@SoftDeletedFirestoreCollection` decorator must be added to document classes that are meant to be handled using the `FirestorePubSubTransactionRunner`.
 
 > [!CAUTION]
 >
-> `SpannerPubSubTransactionRunner` and `FirestorePubSubTransactionRunner` do not provide atomic guarantees between the state and the events being committed. This could result in events being lost, as they are published once the state transaction successfully committed. Prefer the `SpannerOutboxTransactionRunner` when applicable.
+> `FirestorePubSubTransactionRunner` does not provide atomic guarantees between the state and the events being committed. This could result in events being lost, as they are published once the state transaction successfully committed. Prefer the `SpannerOutboxTransactionRunner` when applicable.
 
 `SpannerOutboxTransactionRunner` implements the outbox pattern (from the base runtime's `OutboxTransactionRunner`), and uses the default injected `EventPublisher` (which can be the `PubSubPublisher`, if the corresponding module is imported). It requires an outbox table to be created in each database using the runner. See the documentation of the `SpannerOutboxEvent` for more information.
 

@@ -5,6 +5,12 @@
 Breaking changes:
 
 - Upgrade the minimum Node.js version to `20`.
+- Remove the `SpannerPubSubTransactionRunner` in favor of the `SpannerOutboxTransactionRunner`.
+- Adapt and define the `SpannerStateTransaction` and `SpannerReadOnlyStateTransaction` to new transaction semantics.
+- Replace the `SpannerTransaction` by the `SpannerOutboxTransaction`.
+- Adapt the `SpannerOutboxTransactionRunner` to the new `OutboxTransactionRunner` base class.
+- Adapt and define the `FirestoreStateTransaction` and `FirestoreReadOnlyStateTransaction` to new transaction semantics.
+- Adapt the `FirestorePubSubTransactionRunner` to the new `OutboxTransactionRunner` base class.
 
 ## v0.40.0 (2025-05-28)
 
