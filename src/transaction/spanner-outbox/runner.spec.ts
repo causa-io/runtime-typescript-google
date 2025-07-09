@@ -3,11 +3,12 @@ import {
   TransactionOldTimestampError,
 } from '@causa/runtime';
 import { Logger } from '@causa/runtime/nestjs';
-import type { Database } from '@google-cloud/spanner';
+import { Snapshot, type Database } from '@google-cloud/spanner';
 import { jest } from '@jest/globals';
 import { PubSubPublisher } from '../../pubsub/index.js';
 import { SpannerEntityManager } from '../../spanner/index.js';
 import { createDatabase, PubSubFixture } from '../../testing.js';
+import { SpannerReadOnlyStateTransaction } from '../spanner-readonly-transaction.js';
 import { SpannerOutboxEvent } from './event.js';
 import { SpannerOutboxTransactionRunner } from './runner.js';
 import { SpannerOutboxSender } from './sender.js';
@@ -77,28 +78,32 @@ describe('SpannerOutboxTransactionRunner', () => {
       data: '💌',
     });
 
-    const actualResult = await runner.run(async (transaction) => {
-      expect(transaction.spannerTransaction).toBe(
-        transaction.stateTransaction.transaction,
-      );
-      expect(transaction.entityManager).toBe(entityManager);
-      expect(transaction.eventTransaction).toBeInstanceOf(
-        OutboxEventTransaction,
-      );
+    const actualResult = await runner.run(
+      { publishOptions: { attributes: { default: '🫥' } } },
+      async (transaction) => {
+        expect(transaction.spannerTransaction).toBe(
+          transaction.stateTransaction.spannerTransaction,
+        );
+        expect(transaction.entityManager).toBe(entityManager);
+        expect(transaction.eventTransaction).toBeInstanceOf(
+          OutboxEventTransaction,
+        );
 
-      await transaction.stateTransaction.replace(expectedRow);
-      await transaction.publish('my-topic', expectedEvent, {
-        attributes: { myAttr: '🏷️' },
-      });
+        await transaction.set(expectedRow);
+        await transaction.publish('my-topic', expectedEvent, {
+          attributes: { myAttr: '🏷️' },
+        });
 
-      return '🎉';
-    });
+        return '🎉';
+      },
+    );
 
-    expect(actualResult).toEqual(['🎉']);
+    expect(actualResult).toEqual('🎉');
     const actualRow = await entityManager.findOneByKey(MyTable, '1');
     expect(actualRow).toEqual(expectedRow);
     await pubSubFixture.expectEventInTopic('my-topic', expectedEvent, {
       attributes: {
+        default: '🫥',
         eventId: '1',
         eventName: '📫',
         producedAt: expectedEvent.producedAt.toISOString(),
@@ -110,9 +115,7 @@ describe('SpannerOutboxTransactionRunner', () => {
 
   it('should not commit the events nor publish them if an error is thrown within the transaction', async () => {
     const actualPromise = runner.run(async (transaction) => {
-      await transaction.stateTransaction.replace(
-        new MyTable({ id: '1', value: '🗃️' }),
-      );
+      await transaction.set(new MyTable({ id: '1', value: '🗃️' }));
       await transaction.publish(
         'my-topic',
         new MyEvent({
@@ -170,14 +173,14 @@ describe('SpannerOutboxTransactionRunner', () => {
     });
 
     const actualResult = await runner.run(async (transaction) => {
-      await transaction.stateTransaction.replace(expectedRow);
+      await transaction.set(expectedRow);
       await transaction.publish('my-topic', expectedEvent1);
       await transaction.publish('my-topic', expectedEvent2);
 
       return '🎉';
     });
 
-    expect(actualResult).toEqual(['🎉']);
+    expect(actualResult).toEqual('🎉');
     const actualRow = await entityManager.findOneByKey(MyTable, '1');
     expect(actualRow).toEqual(expectedRow);
     await pubSubFixture.expectEventInTopic('my-topic', expectedEvent2);
@@ -194,9 +197,7 @@ describe('SpannerOutboxTransactionRunner', () => {
     const actualResult = await runner.run(async (transaction) => {
       numCalls += 1;
       const id = numCalls.toFixed();
-      await transaction.stateTransaction.replace(
-        new MyTable({ id, value: '🗃' }),
-      );
+      await transaction.set(new MyTable({ id, value: '🗃' }));
       await transaction.publish(
         'my-topic',
         new MyEvent({ id, producedAt: new Date(), name: '📫', data: '💌' }),
@@ -209,7 +210,7 @@ describe('SpannerOutboxTransactionRunner', () => {
       return '🎉';
     });
 
-    expect(actualResult).toEqual(['🎉']);
+    expect(actualResult).toEqual('🎉');
     expect(numCalls).toBe(2);
     const actualRow1 = await entityManager.findOneByKey(MyTable, '1');
     expect(actualRow1).toBeUndefined();
@@ -247,7 +248,7 @@ describe('SpannerOutboxTransactionRunner', () => {
       return '🎉';
     });
 
-    expect(actualResult).toEqual(['🎉']);
+    expect(actualResult).toEqual('🎉');
     expect(numCalls).toBe(2);
     expect(observedNumStagedEvents).toEqual([0, 0]);
     await pubSubFixture.expectEventInTopic(
@@ -268,9 +269,7 @@ describe('SpannerOutboxTransactionRunner', () => {
 
   it('should not retry the transaction when a TransactionOldTimestampError is thrown with a delay that is too high', async () => {
     const actualPromise = runner.run(async (transaction) => {
-      await transaction.stateTransaction.replace(
-        new MyTable({ id: '1', value: '🗃' }),
-      );
+      await transaction.set(new MyTable({ id: '1', value: '🗃' }));
       await transaction.publish(
         'my-topic',
         new MyEvent({
@@ -289,5 +288,19 @@ describe('SpannerOutboxTransactionRunner', () => {
     expect(actualRow).toBeUndefined();
     await pubSubFixture.expectNoMessageInTopic('my-topic');
     await expectOutboxToEqual(entityManager, []);
+  });
+
+  it('should run a readonly transaction', async () => {
+    const actualResult = await runner.run(
+      { readOnly: true },
+      async (transaction) => {
+        expect(transaction).toBeInstanceOf(SpannerReadOnlyStateTransaction);
+        expect(transaction.entityManager).toBe(entityManager);
+        expect(transaction.spannerTransaction).toBeInstanceOf(Snapshot);
+        return '🎉';
+      },
+    );
+
+    expect(actualResult).toEqual('🎉');
   });
 });
