@@ -1,4 +1,4 @@
-import type { FindReplaceStateTransaction } from '@causa/runtime';
+import type { StateTransaction } from '@causa/runtime';
 import type { Type } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { CollectionReference, Transaction } from 'firebase-admin/firestore';
@@ -49,32 +49,37 @@ export interface FirestoreCollectionResolver {
 }
 
 /**
- * A {@link FindReplaceStateTransaction} that uses Firestore for state storage.
+ * A {@link StateTransaction} that uses Firestore for state storage.
  *
  * This transaction handles soft-deleted documents if the class is decorated with `SoftDeletedFirestoreCollection`,
  * which means that documents with a `deletedAt` field set to a non-null value are considered deleted.
  * Soft-deleted documents are moved to a separate collection, where they are kept for a configurable amount of time
  * before being permanently deleted. See the `SoftDeletedFirestoreCollection` decorator for more information.
  *
- * {@link FirestoreStateTransaction.deleteWithSameKeyAs} will delete the document from any of the regular or soft-delete
- * collections. It does not throw an error if the document does not exist.
+ * {@link FirestoreStateTransaction.delete} will delete the document from any of the regular or soft-delete collections.
+ * It does not throw an error if the document does not exist.
  *
- * {@link FirestoreStateTransaction.findOneWithSameKeyAs} will return the document from either the regular or
- * soft-delete collection, as expected by {@link FindReplaceStateTransaction.findOneWithSameKeyAs}.
+ * {@link FirestoreStateTransaction.get} will return the document from either the regular or soft-delete collection, as
+ * expected by {@link StateTransaction.get}.
  *
- * {@link FirestoreStateTransaction.replace} will set the document in the relevant collection, either the regular or
+ * {@link FirestoreStateTransaction.set} will set the document in the relevant collection, either the regular or
  * soft-delete collection depending on the value of the `deletedAt` field.
  */
-export class FirestoreStateTransaction implements FindReplaceStateTransaction {
+export class FirestoreStateTransaction implements StateTransaction {
   constructor(
     readonly transaction: Transaction,
     readonly collectionResolver: FirestoreCollectionResolver,
   ) {}
 
-  async deleteWithSameKeyAs<T extends object>(
-    type: Type<T>,
-    key: Partial<T>,
+  async delete<T extends object>(
+    typeOrEntity: Type<T> | T,
+    key?: Partial<T>,
   ): Promise<void> {
+    const type = (
+      key === undefined ? typeOrEntity.constructor : typeOrEntity
+    ) as Type<T>;
+    key ??= typeOrEntity as Partial<T>;
+
     const { activeCollection, softDelete } =
       this.collectionResolver.getCollectionsForType(type);
 
@@ -97,7 +102,7 @@ export class FirestoreStateTransaction implements FindReplaceStateTransaction {
     this.transaction.delete(deletedDocRef);
   }
 
-  async findOneWithSameKeyAs<T extends object>(
+  async get<T extends object>(
     type: Type<T>,
     entity: Partial<T>,
   ): Promise<T | undefined> {
@@ -133,7 +138,7 @@ export class FirestoreStateTransaction implements FindReplaceStateTransaction {
     return deletedDocument;
   }
 
-  async replace<T extends object>(entity: T): Promise<void> {
+  async set<T extends object>(entity: T): Promise<void> {
     const documentType = entity.constructor as Type<T>;
     const { activeCollection, softDelete } =
       this.collectionResolver.getCollectionsForType(documentType);

@@ -121,7 +121,7 @@ describe('FirestoreStateTransaction', () => {
     });
   });
 
-  describe('deleteWithSameKeyAs', () => {
+  describe('delete', () => {
     it('should delete the document from the active collection', async () => {
       const document = new MyDocument();
       await activeCollection.doc(document.id).set(document);
@@ -132,7 +132,7 @@ describe('FirestoreStateTransaction', () => {
           resolver,
         );
 
-        await stateTransaction.deleteWithSameKeyAs(MyDocument, {
+        await stateTransaction.delete(MyDocument, {
           id: document.id,
         });
       });
@@ -157,7 +157,7 @@ describe('FirestoreStateTransaction', () => {
           resolver,
         );
 
-        await stateTransaction.deleteWithSameKeyAs(MyDocument, {
+        await stateTransaction.delete(MyDocument, {
           id: document.id,
         });
       });
@@ -179,7 +179,7 @@ describe('FirestoreStateTransaction', () => {
           resolver,
         );
 
-        await stateTransaction.deleteWithSameKeyAs(MyDocument, {
+        await stateTransaction.delete(MyDocument, {
           id: '🎁',
         });
       });
@@ -200,7 +200,7 @@ describe('FirestoreStateTransaction', () => {
           resolver,
         );
 
-        await stateTransaction.deleteWithSameKeyAs(MyNonSoftDeletedDocument, {
+        await stateTransaction.delete(MyNonSoftDeletedDocument, {
           id: document.id,
         });
       });
@@ -210,9 +210,28 @@ describe('FirestoreStateTransaction', () => {
         .get();
       expect(actualDocument.exists).toBeFalse();
     });
+
+    it('should delete the document when provided with the full entity', async () => {
+      const document = new MyNonSoftDeletedDocument();
+      await nonSoftDeleteCollection.doc(document.id).set(document);
+
+      await firestore.runTransaction(async (transaction) => {
+        const stateTransaction = new FirestoreStateTransaction(
+          transaction,
+          resolver,
+        );
+
+        await stateTransaction.delete(document);
+      });
+
+      const actualDocument = await nonSoftDeleteCollection
+        .doc(document.id)
+        .get();
+      expect(actualDocument.exists).toBeFalse();
+    });
   });
 
-  describe('findWithSameKeyAs', () => {
+  describe('get', () => {
     it('should return the document from the active collection', async () => {
       const document = new MyDocument();
       await activeCollection.doc(document.id).set(document);
@@ -224,7 +243,7 @@ describe('FirestoreStateTransaction', () => {
             resolver,
           );
 
-          return stateTransaction.findOneWithSameKeyAs(MyDocument, {
+          return stateTransaction.get(MyDocument, {
             id: document.id,
           });
         },
@@ -248,7 +267,7 @@ describe('FirestoreStateTransaction', () => {
             resolver,
           );
 
-          return stateTransaction.findOneWithSameKeyAs(MyDocument, {
+          return stateTransaction.get(MyDocument, {
             id: document.id,
           });
         },
@@ -277,7 +296,7 @@ describe('FirestoreStateTransaction', () => {
             resolver,
           );
 
-          return stateTransaction.findOneWithSameKeyAs(MyDocument, {
+          return stateTransaction.get(MyDocument, {
             id: activeDocument.id,
           });
         },
@@ -295,7 +314,7 @@ describe('FirestoreStateTransaction', () => {
             resolver,
           );
 
-          return stateTransaction.findOneWithSameKeyAs(MyDocument, {
+          return stateTransaction.get(MyDocument, {
             id: '🎁',
           });
         },
@@ -315,10 +334,9 @@ describe('FirestoreStateTransaction', () => {
             resolver,
           );
 
-          return stateTransaction.findOneWithSameKeyAs(
-            MyNonSoftDeletedDocument,
-            { id: document.id },
-          );
+          return stateTransaction.get(MyNonSoftDeletedDocument, {
+            id: document.id,
+          });
         },
       );
 
@@ -327,7 +345,7 @@ describe('FirestoreStateTransaction', () => {
     });
   });
 
-  describe('replace', () => {
+  describe('set', () => {
     it('should insert the document into the active collection', async () => {
       const document = new MyDocument();
 
@@ -337,7 +355,7 @@ describe('FirestoreStateTransaction', () => {
           resolver,
         );
 
-        await stateTransaction.replace(document);
+        await stateTransaction.set(document);
       });
 
       const actualDocument = await activeCollection.doc(document.id).get();
@@ -358,7 +376,7 @@ describe('FirestoreStateTransaction', () => {
           resolver,
         );
 
-        await stateTransaction.replace(document);
+        await stateTransaction.set(document);
       });
 
       const actualDocument = await deletedCollection.doc(document.id).get();
@@ -387,7 +405,7 @@ describe('FirestoreStateTransaction', () => {
           resolver,
         );
 
-        await stateTransaction.replace(document);
+        await stateTransaction.set(document);
       });
 
       const actualDocument = await activeCollection.doc(document.id).get();
@@ -411,7 +429,7 @@ describe('FirestoreStateTransaction', () => {
           resolver,
         );
 
-        await stateTransaction.replace(document);
+        await stateTransaction.set(document);
       });
 
       const actualDocument = await deletedCollection.doc(document.id).get();
@@ -434,7 +452,7 @@ describe('FirestoreStateTransaction', () => {
           resolver,
         );
 
-        await stateTransaction.replace(document);
+        await stateTransaction.set(document);
       });
 
       const actualDocument = await nonSoftDeleteCollection
