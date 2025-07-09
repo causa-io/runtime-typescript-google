@@ -1,4 +1,4 @@
-import type { FindReplaceStateTransaction } from '@causa/runtime';
+import type { StateTransaction } from '@causa/runtime';
 import type { Type } from '@nestjs/common';
 import {
   SpannerEntityManager,
@@ -6,9 +6,9 @@ import {
 } from '../spanner/index.js';
 
 /**
- * A {@link FindReplaceStateTransaction} that uses Spanner for state storage.
+ * A {@link StateTransaction} that uses Spanner for state storage.
  */
-export class SpannerStateTransaction implements FindReplaceStateTransaction {
+export class SpannerStateTransaction implements StateTransaction {
   /**
    * Creates a new {@link SpannerStateTransaction}.
    *
@@ -20,14 +20,18 @@ export class SpannerStateTransaction implements FindReplaceStateTransaction {
     readonly transaction: SpannerReadWriteTransaction,
   ) {}
 
-  async replace<T extends object>(entity: T): Promise<void> {
+  async set<T extends object>(entity: T): Promise<void> {
     await this.entityManager.replace(entity, { transaction: this.transaction });
   }
 
-  async deleteWithSameKeyAs<T extends object>(
-    type: Type<T>,
-    key: Partial<T>,
+  async delete<T extends object>(
+    typeOrEntity: Type<T> | T,
+    key?: Partial<T>,
   ): Promise<void> {
+    const type = (
+      key === undefined ? typeOrEntity.constructor : typeOrEntity
+    ) as Type<T>;
+    key ??= typeOrEntity as Partial<T>;
     const primaryKey = this.entityManager.getPrimaryKey(key, type);
 
     await this.entityManager.delete(type, primaryKey, {
@@ -36,7 +40,7 @@ export class SpannerStateTransaction implements FindReplaceStateTransaction {
     });
   }
 
-  async findOneWithSameKeyAs<T extends object>(
+  async get<T extends object>(
     type: Type<T>,
     entity: Partial<T>,
   ): Promise<T | undefined> {

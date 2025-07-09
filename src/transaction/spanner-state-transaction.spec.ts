@@ -58,8 +58,8 @@ describe('SpannerStateTransaction', () => {
     await database.delete();
   });
 
-  describe('replace', () => {
-    it('should replace the entity', async () => {
+  describe('set', () => {
+    it('should set the entity', async () => {
       const entity = new MyEntity({
         id1: 'id1',
         id2: 'id2',
@@ -73,7 +73,7 @@ describe('SpannerStateTransaction', () => {
           entityManager,
           spannerTransaction,
         );
-        await transaction.replace(new MyEntity({ id1: 'id1', id2: 'id2' }));
+        await transaction.set(new MyEntity({ id1: 'id1', id2: 'id2' }));
       });
 
       const actualEntity = await entityManager.findOneByKey(MyEntity, [
@@ -102,7 +102,7 @@ describe('SpannerStateTransaction', () => {
           entityManager,
           spannerTransaction,
         );
-        await transaction.replace(new MyEntity({ id1: 'id1', id2: 'id2' }));
+        await transaction.set(new MyEntity({ id1: 'id1', id2: 'id2' }));
         spannerTransaction.end();
       });
 
@@ -114,7 +114,7 @@ describe('SpannerStateTransaction', () => {
     });
   });
 
-  describe('deleteWithSameKeyAs', () => {
+  describe('delete', () => {
     it('should delete the entity', async () => {
       const entity = new MyEntity({ id1: 'id1', id2: 'id2', value: '🌠' });
       await entityManager.insert(entity);
@@ -124,10 +124,26 @@ describe('SpannerStateTransaction', () => {
           entityManager,
           spannerTransaction,
         );
-        await transaction.deleteWithSameKeyAs(MyEntity, {
-          id1: 'id1',
-          id2: 'id2',
-        });
+        await transaction.delete(MyEntity, { id1: 'id1', id2: 'id2' });
+      });
+
+      const actualEntity = await entityManager.findOneByKey(MyEntity, [
+        'id1',
+        'id2',
+      ]);
+      expect(actualEntity).toBeUndefined();
+    });
+
+    it('should delete the entity when provided with the entity', async () => {
+      const entity = new MyEntity({ id1: 'id1', id2: 'id2', value: '🌠' });
+      await entityManager.insert(entity);
+
+      await entityManager.transaction(async (spannerTransaction) => {
+        const transaction = new SpannerStateTransaction(
+          entityManager,
+          spannerTransaction,
+        );
+        await transaction.delete(entity);
       });
 
       const actualEntity = await entityManager.findOneByKey(MyEntity, [
@@ -144,10 +160,7 @@ describe('SpannerStateTransaction', () => {
             entityManager,
             spannerTransaction,
           );
-          await transaction.deleteWithSameKeyAs(MyEntity, {
-            id1: 'id1',
-            id2: 'id2',
-          });
+          await transaction.delete(MyEntity, { id1: 'id1', id2: 'id2' });
         },
       );
 
@@ -168,10 +181,7 @@ describe('SpannerStateTransaction', () => {
           entityManager,
           spannerTransaction,
         );
-        await transaction.deleteWithSameKeyAs(MyEntity, {
-          id1: 'id1',
-          id2: 'id2',
-        });
+        await transaction.delete(MyEntity, { id1: 'id1', id2: 'id2' });
       });
 
       const actualEntity = await entityManager.findOneByKey(MyEntity, [
@@ -195,10 +205,7 @@ describe('SpannerStateTransaction', () => {
           entityManager,
           spannerTransaction,
         );
-        await transaction.deleteWithSameKeyAs(MyEntity, {
-          id1: 'id1',
-          id2: 'id2',
-        });
+        await transaction.delete(MyEntity, { id1: 'id1', id2: 'id2' });
         spannerTransaction.end();
       });
 
@@ -210,7 +217,7 @@ describe('SpannerStateTransaction', () => {
     });
   });
 
-  describe('findOneWithSameKeyAs', () => {
+  describe('get', () => {
     it('should find the entity', async () => {
       const entity = new MyEntity({
         id1: 'id1',
@@ -226,10 +233,7 @@ describe('SpannerStateTransaction', () => {
             entityManager,
             spannerTransaction,
           );
-          return await transaction.findOneWithSameKeyAs(MyEntity, {
-            id1: 'id1',
-            id2: 'id2',
-          });
+          return await transaction.get(MyEntity, { id1: 'id1', id2: 'id2' });
         },
       );
 
@@ -243,10 +247,7 @@ describe('SpannerStateTransaction', () => {
             entityManager,
             spannerTransaction,
           );
-          return await transaction.findOneWithSameKeyAs(MyEntity, {
-            id1: 'id1',
-            id2: 'id2',
-          });
+          return await transaction.get(MyEntity, { id1: 'id1', id2: 'id2' });
         },
       );
 
@@ -268,10 +269,7 @@ describe('SpannerStateTransaction', () => {
             entityManager,
             spannerTransaction,
           );
-          return await transaction.findOneWithSameKeyAs(MyEntity, {
-            id1: 'id1',
-            id2: 'id2',
-          });
+          return await transaction.get(MyEntity, { id1: 'id1', id2: 'id2' });
         },
       );
 
@@ -296,10 +294,7 @@ describe('SpannerStateTransaction', () => {
             // This is not a valid transaction, but it is enough to call `findOneWithSameKeyAs`.
             snapshot as any,
           );
-          return await transaction.findOneWithSameKeyAs(MyEntity, {
-            id1: '🕰️',
-            id2: '🔮',
-          });
+          return await transaction.get(MyEntity, { id1: '🕰️', id2: '🔮' });
         },
       );
 
