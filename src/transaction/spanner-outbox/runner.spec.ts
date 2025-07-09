@@ -8,8 +8,8 @@ import { jest } from '@jest/globals';
 import { PubSubPublisher } from '../../pubsub/index.js';
 import { SpannerEntityManager } from '../../spanner/index.js';
 import { createDatabase, PubSubFixture } from '../../testing.js';
-import { SpannerReadOnlyStateTransaction } from '../spanner-readonly-transaction.js';
 import { SpannerOutboxEvent } from './event.js';
+import { SpannerReadOnlyStateTransaction } from './readonly-transaction.js';
 import { SpannerOutboxTransactionRunner } from './runner.js';
 import { SpannerOutboxSender } from './sender.js';
 import {

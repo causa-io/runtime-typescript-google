@@ -5,9 +5,9 @@ import {
   SpannerColumn,
   SpannerEntityManager,
   SpannerTable,
-} from '../spanner/index.js';
-import { createDatabase } from '../testing.js';
-import { SpannerReadOnlyStateTransaction } from './spanner-readonly-transaction.js';
+} from '../../spanner/index.js';
+import { createDatabase } from '../../testing.js';
+import { SpannerReadOnlyStateTransaction } from './readonly-transaction.js';
 
 @SpannerTable({ primaryKey: ['id1', 'id2'] })
 class MyEntity {

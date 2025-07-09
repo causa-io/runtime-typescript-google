@@ -3,8 +3,8 @@ import type { Type } from '@nestjs/common';
 import {
   SpannerEntityManager,
   type SpannerReadWriteTransaction,
-} from '../spanner/index.js';
-import { SpannerReadOnlyStateTransaction } from './spanner-readonly-transaction.js';
+} from '../../spanner/index.js';
+import { SpannerReadOnlyStateTransaction } from './readonly-transaction.js';
 
 /**
  * A {@link StateTransaction} that uses Spanner for state storage.

@@ -10,7 +10,7 @@ import {
   SpannerEntityManager,
   type SpannerReadWriteTransaction,
 } from '../../spanner/index.js';
-import type { SpannerStateTransaction } from '../spanner-state-transaction.js';
+import type { SpannerStateTransaction } from './state-transaction.js';
 
 /**
  * Option for a function that accepts a {@link SpannerOutboxTransaction}.

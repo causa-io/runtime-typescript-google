@@ -7,7 +7,7 @@ import {
   SpannerEntityManager,
   type SpannerReadOnlyTransaction,
   type SpannerReadWriteTransaction,
-} from '../spanner/index.js';
+} from '../../spanner/index.js';
 
 /**
  * Option for a function that accepts a {@link SpannerReadOnlyStateTransaction}.

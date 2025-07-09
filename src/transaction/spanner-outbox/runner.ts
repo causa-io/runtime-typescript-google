@@ -8,10 +8,10 @@ import {
 import { Logger } from '@causa/runtime/nestjs';
 import type { Type } from '@nestjs/common';
 import { SpannerEntityManager } from '../../spanner/index.js';
-import { SpannerReadOnlyStateTransaction } from '../spanner-readonly-transaction.js';
-import { SpannerStateTransaction } from '../spanner-state-transaction.js';
-import { throwRetryableInTransactionIfNeeded } from '../spanner-utils.js';
+import { SpannerReadOnlyStateTransaction } from './readonly-transaction.js';
 import { SpannerOutboxSender } from './sender.js';
+import { throwRetryableInTransactionIfNeeded } from './spanner-utils.js';
+import { SpannerStateTransaction } from './state-transaction.js';
 import { SpannerOutboxTransaction } from './transaction.js';
 
 /**
