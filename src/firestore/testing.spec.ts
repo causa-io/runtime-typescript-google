@@ -1,16 +1,13 @@
-import { createApp } from '@causa/runtime/nestjs';
-import { makeTestAppFactory } from '@causa/runtime/nestjs/testing';
+import { AppFixture } from '@causa/runtime/nestjs/testing';
 import { Injectable, Module } from '@nestjs/common';
 import { CollectionReference } from 'firebase-admin/firestore';
 import 'jest-extended';
+import { FirebaseFixture } from '../firebase/testing.js';
 import { FirebaseModule } from '../index.js';
 import { FirestoreCollection } from './collection.decorator.js';
 import { FirestoreCollectionsModule } from './collections.module.js';
 import { InjectFirestoreCollection } from './inject-collection.decorator.js';
-import {
-  getFirestoreCollectionFromModule,
-  overrideFirestoreCollections,
-} from './testing.js';
+import { FirestoreFixture } from './testing.js';
 
 @FirestoreCollection({ name: 'myCol', path: (doc) => doc.id })
 class MyDocument {
@@ -34,18 +31,25 @@ class TestService {
 })
 class MyModule {}
 
-describe('testing', () => {
-  describe('overrideFirestoreCollections', () => {
+describe('FirestoreFixture', () => {
+  let appFixture: AppFixture;
+  let fixture: FirestoreFixture;
+  let service: TestService;
+
+  beforeAll(async () => {
+    fixture = new FirestoreFixture([MyDocument]);
+    appFixture = new AppFixture(MyModule, {
+      fixtures: [new FirebaseFixture(), fixture],
+    });
+    await appFixture.init();
+    service = appFixture.get(TestService);
+  });
+
+  describe('init', () => {
     it('should override the collection name with a prefix during tests', async () => {
-      const testApp = await createApp(MyModule, {
-        appFactory: makeTestAppFactory({
-          overrides: overrideFirestoreCollections(MyDocument),
-        }),
-      });
-      const testService = testApp.get(TestService);
       const document = new MyDocument('❄️');
 
-      const actualCollection = testService.myCol;
+      const actualCollection = service.myCol;
       await actualCollection.doc('someDoc').set(document);
       const actualDocument = (
         await actualCollection.doc('someDoc').get()
@@ -59,22 +63,23 @@ describe('testing', () => {
     });
   });
 
-  describe('getFirestoreCollectionFromModule', () => {
+  describe('clear', () => {
+    it('should clear the collection', async () => {
+      const actualCollection = fixture.collection(MyDocument);
+      await actualCollection.doc('test').set(new MyDocument('test'));
+
+      await fixture.clear();
+
+      const actualDocument = await actualCollection.doc('test').get();
+      expect(actualDocument.exists).toBeFalse();
+    });
+  });
+
+  describe('collection', () => {
     it('should retrieve the collection from the test module', async () => {
-      const testApp = await createApp(MyModule, {
-        appFactory: makeTestAppFactory({
-          overrides: overrideFirestoreCollections(MyDocument),
-        }),
-      });
-      const testService = testApp.get(TestService);
-      const expectedCollection = testService.myCol;
+      const actualCollection = fixture.collection(MyDocument);
 
-      const actualCollection = getFirestoreCollectionFromModule(
-        testApp,
-        MyDocument,
-      );
-
-      expect(actualCollection).toBe(expectedCollection);
+      expect(actualCollection).toBe(service.myCol);
     });
   });
 });

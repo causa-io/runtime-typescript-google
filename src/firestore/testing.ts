@@ -1,5 +1,9 @@
-import type { NestJsModuleOverrider } from '@causa/runtime/nestjs/testing';
-import type { INestApplicationContext, Type } from '@nestjs/common';
+import type {
+  AppFixture,
+  Fixture,
+  NestJsModuleOverrider,
+} from '@causa/runtime/nestjs/testing';
+import type { Type } from '@nestjs/common';
 import { CollectionReference, Firestore } from 'firebase-admin/firestore';
 import * as uuid from 'uuid';
 import { getFirestoreCollectionMetadataForType } from './collection.decorator.js';
@@ -34,50 +38,70 @@ export async function clearFirestoreCollection(
   collectionRef: CollectionReference,
 ): Promise<void> {
   const batch = collectionRef.firestore.batch();
-
   const documents = await collectionRef.listDocuments();
-
-  documents.forEach((document) => batch.delete(document));
-
+  documents.forEach((d) => batch.delete(d));
   await batch.commit();
 }
 
 /**
- * Overrides the providers for Firestore collections with temporary collections.
- *
- * @param documentTypes The types of documents corresponding to Firestore collections, for which collections should be
- *   overridden.
- * @returns The {@link NestJsModuleOverrider} that can be used to override the Firestore collections.
+ * A {@link Fixture} that replaces Firestore collections with temporary collections, and clears them when requested.
  */
-export function overrideFirestoreCollections(
-  ...documentTypes: Type[]
-): NestJsModuleOverrider {
-  return (builder) => {
-    documentTypes.forEach((documentType) => {
-      builder = builder
-        .overrideProvider(getFirestoreCollectionInjectionName(documentType))
-        .useFactory({
-          factory: (firestore: Firestore) =>
-            createFirestoreTemporaryCollection(firestore, documentType),
-          inject: [Firestore],
-        });
-    });
+export class FirestoreFixture implements Fixture {
+  /**
+   * The parent {@link AppFixture}.
+   */
+  private appFixture!: AppFixture;
 
-    return builder;
-  };
-}
+  constructor(
+    /**
+     * The types of documents that should be stored in temporary collections and cleared.
+     */
+    readonly types: Type[],
+  ) {}
 
-/**
- * Returns the {@link CollectionReference} of the Firestore collection corresponding to the given class.
- * Retrieving it from the module or application ensures the "mocked" collection is used.
- *
- * @param context The NestJS module or application from which the Firestore collection should be retrieved.
- * @param documentType The type of document stored in the collection.
- * @returns The {@link CollectionReference} of the Firestore collection.
- */
-export function getFirestoreCollectionFromModule<T>(
-  context: INestApplicationContext,
-  documentType: Type<T>,
-): CollectionReference<T> {
-  return context.get(getFirestoreCollectionInjectionName(documentType));
+  async init(appFixture: AppFixture): Promise<NestJsModuleOverrider> {
+    this.appFixture = appFixture;
+
+    return (builder) =>
+      this.types.reduce(
+        (builder, t) =>
+          builder
+            .overrideProvider(getFirestoreCollectionInjectionName(t))
+            .useFactory({
+              factory: (f: Firestore) =>
+                createFirestoreTemporaryCollection(f, t),
+              inject: [Firestore],
+            }),
+        builder,
+      );
+  }
+
+  async clear(): Promise<void> {
+    await Promise.all(
+      this.types.map((t) => clearFirestoreCollection(this.collection(t))),
+    );
+  }
+
+  async delete(): Promise<void> {
+    this.appFixture = undefined as any;
+  }
+
+  /**
+   * The underlying {@link Firestore} instance used by this fixture.
+   */
+  get firestore(): Firestore {
+    return this.appFixture.get(Firestore);
+  }
+
+  /**
+   * Returns the (temporary) collection for the given document type.
+   *
+   * @param documentType The type of the document.
+   * @returns The {@link CollectionReference} for the given document type.
+   */
+  collection<T>(documentType: Type<T>): CollectionReference<T> {
+    return this.appFixture.get(
+      getFirestoreCollectionInjectionName(documentType),
+    );
+  }
 }
