@@ -16,6 +16,7 @@ import {
   CollectionReference,
   Firestore,
   getFirestore,
+  Transaction,
 } from 'firebase-admin/firestore';
 import 'jest-extended';
 import { getDefaultFirebaseApp } from '../../firebase/index.js';
@@ -29,13 +30,14 @@ import {
 } from '../../firestore/testing.js';
 import { PubSubPublisher } from '../../pubsub/index.js';
 import { PubSubFixture } from '../../pubsub/testing/index.js';
+import { FirestoreReadOnlyStateTransaction } from './readonly-state-transaction.js';
 import { FirestorePubSubTransactionRunner } from './runner.js';
 import { SoftDeletedFirestoreCollection } from './soft-deleted-collection.decorator.js';
+import { FirestorePubSubTransaction } from './transaction.js';
 import type {
   FirestoreCollectionResolver,
   FirestoreCollectionsForDocumentType,
-} from './state-transaction.js';
-import { FirestorePubSubTransaction } from './transaction.js';
+} from './types.js';
 
 @FirestoreCollection({ name: 'myDocuments', path: (doc) => doc.id })
 @SoftDeletedFirestoreCollection()
@@ -93,6 +95,7 @@ describe('FirestorePubSubTransactionRunner', () => {
   let runner: FirestorePubSubTransactionRunner;
   let myEntityManager: VersionedEntityManager<
     FirestorePubSubTransaction,
+    FirestoreReadOnlyStateTransaction,
     MyEvent
   >;
 
@@ -169,9 +172,9 @@ describe('FirestorePubSubTransactionRunner', () => {
     );
     await activeDocRef.set(document);
 
-    const [actualEvent] = await runner.run(async (transaction) => {
+    const actualEvent = await runner.run(async (transaction) => {
       expect(transaction.firestoreTransaction).toBe(
-        transaction.stateTransaction.transaction,
+        transaction.stateTransaction.firestoreTransaction,
       );
 
       return await myEntityManager.delete(
@@ -235,5 +238,24 @@ describe('FirestorePubSubTransactionRunner', () => {
     });
 
     await expect(actualPromise).rejects.toThrow(EntityNotFoundError);
+  });
+
+  it('should run a readonly transaction', async () => {
+    jest.spyOn(firestore, 'runTransaction');
+
+    const actualResult = await runner.run(
+      { readOnly: true },
+      async (transaction) => {
+        expect(transaction).toBeInstanceOf(FirestoreReadOnlyStateTransaction);
+        expect(transaction.firestoreTransaction).toBeInstanceOf(Transaction);
+        return '🎉';
+      },
+    );
+
+    expect(actualResult).toEqual('🎉');
+    expect(firestore.runTransaction).toHaveBeenCalledExactlyOnceWith(
+      expect.any(Function),
+      { readOnly: true },
+    );
   });
 });
