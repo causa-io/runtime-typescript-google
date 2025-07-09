@@ -1,7 +1,5 @@
 import { EntityNotFoundError } from '@causa/runtime';
-import { PreciseDate } from '@google-cloud/precise-date';
 import { Database } from '@google-cloud/spanner';
-import { setTimeout } from 'timers/promises';
 import {
   SpannerColumn,
   SpannerEntityManager,
@@ -214,91 +212,6 @@ describe('SpannerStateTransaction', () => {
         'id2',
       ]);
       expect(actualEntity).toEqual(entity);
-    });
-  });
-
-  describe('get', () => {
-    it('should find the entity', async () => {
-      const entity = new MyEntity({
-        id1: 'id1',
-        id2: 'id2',
-        value: '🌠',
-        deletedAt: null,
-      });
-      await entityManager.insert(entity);
-
-      const actualEntity = await entityManager.transaction(
-        async (spannerTransaction) => {
-          const transaction = new SpannerStateTransaction(
-            entityManager,
-            spannerTransaction,
-          );
-          return await transaction.get(MyEntity, { id1: 'id1', id2: 'id2' });
-        },
-      );
-
-      expect(actualEntity).toEqual(entity);
-    });
-
-    it('should return undefined if the entity does not exist', async () => {
-      const actualEntity = await entityManager.transaction(
-        async (spannerTransaction) => {
-          const transaction = new SpannerStateTransaction(
-            entityManager,
-            spannerTransaction,
-          );
-          return await transaction.get(MyEntity, { id1: 'id1', id2: 'id2' });
-        },
-      );
-
-      expect(actualEntity).toBeUndefined();
-    });
-
-    it('should return a soft deleted entity', async () => {
-      const entity = new MyEntity({
-        id1: 'id1',
-        id2: 'id2',
-        value: '🌠',
-        deletedAt: new Date(),
-      });
-      await entityManager.insert(entity);
-
-      const actualEntity = await entityManager.transaction(
-        async (spannerTransaction) => {
-          const transaction = new SpannerStateTransaction(
-            entityManager,
-            spannerTransaction,
-          );
-          return await transaction.get(MyEntity, { id1: 'id1', id2: 'id2' });
-        },
-      );
-
-      expect(actualEntity).toEqual(entity);
-    });
-
-    it('should use the transaction', async () => {
-      // Ensures `beforeInsertDate` is after the database creation...
-      const beforeInsertDate = new PreciseDate();
-      // ...but is in the distant past relative to the insert.
-      await setTimeout(100);
-
-      const entity = new MyEntity({ id1: '🕰️', id2: '🔮', value: '🌠' });
-      await entityManager.insert(entity);
-
-      const actualEntity = await entityManager.snapshot(
-        // Making it look like the entity does not exist.
-        { timestampBounds: { readTimestamp: beforeInsertDate } },
-        async (snapshot) => {
-          const transaction = new SpannerStateTransaction(
-            entityManager,
-            // This is not a valid transaction, but it is enough to call `findOneWithSameKeyAs`.
-            snapshot as any,
-          );
-          return await transaction.get(MyEntity, { id1: '🕰️', id2: '🔮' });
-        },
-      );
-
-      expect(actualEntity).toBeUndefined();
     });
   });
 });

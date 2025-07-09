@@ -4,24 +4,32 @@ import {
   SpannerEntityManager,
   type SpannerReadWriteTransaction,
 } from '../spanner/index.js';
+import { SpannerReadOnlyStateTransaction } from './spanner-readonly-transaction.js';
 
 /**
  * A {@link StateTransaction} that uses Spanner for state storage.
  */
-export class SpannerStateTransaction implements StateTransaction {
+export class SpannerStateTransaction
+  extends SpannerReadOnlyStateTransaction
+  implements StateTransaction
+{
   /**
    * Creates a new {@link SpannerStateTransaction}.
    *
    * @param entityManager The {@link SpannerEntityManager} to use to access entities in the state.
-   * @param transaction The {@link SpannerReadWriteTransaction} to use for the transaction.
+   * @param spannerTransaction The {@link SpannerReadWriteTransaction} to use for the transaction.
    */
   constructor(
     readonly entityManager: SpannerEntityManager,
-    readonly transaction: SpannerReadWriteTransaction,
-  ) {}
+    readonly spannerTransaction: SpannerReadWriteTransaction,
+  ) {
+    super(entityManager, spannerTransaction);
+  }
 
   async set<T extends object>(entity: T): Promise<void> {
-    await this.entityManager.replace(entity, { transaction: this.transaction });
+    await this.entityManager.replace(entity, {
+      transaction: this.spannerTransaction,
+    });
   }
 
   async delete<T extends object>(
@@ -35,19 +43,7 @@ export class SpannerStateTransaction implements StateTransaction {
     const primaryKey = this.entityManager.getPrimaryKey(key, type);
 
     await this.entityManager.delete(type, primaryKey, {
-      transaction: this.transaction,
-      includeSoftDeletes: true,
-    });
-  }
-
-  async get<T extends object>(
-    type: Type<T>,
-    entity: Partial<T>,
-  ): Promise<T | undefined> {
-    const primaryKey = this.entityManager.getPrimaryKey(entity, type);
-
-    return await this.entityManager.findOneByKey(type, primaryKey, {
-      transaction: this.transaction,
+      transaction: this.spannerTransaction,
       includeSoftDeletes: true,
     });
   }
