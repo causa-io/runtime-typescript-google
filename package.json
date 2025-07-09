@@ -2,7 +2,10 @@
   "name": "@causa/runtime-google",
   "version": "0.40.0",
   "description": "An extension to the Causa runtime SDK (`@causa/runtime`), providing Google-specific features.",
-  "repository": "github:causa-io/runtime-typescript-google",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/causa-io/runtime-typescript-google.git"
+  },
   "license": "ISC",
   "type": "module",
   "engines": {
