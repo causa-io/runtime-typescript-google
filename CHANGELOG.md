@@ -11,6 +11,16 @@ Breaking changes:
 - Adapt the `SpannerOutboxTransactionRunner` to the new `OutboxTransactionRunner` base class.
 - Adapt and define the `FirestoreStateTransaction` and `FirestoreReadOnlyStateTransaction` to new transaction semantics.
 - Adapt the `FirestorePubSubTransactionRunner` to the new `OutboxTransactionRunner` base class.
+- Replace the `overrideFirebaseApp` test utility with `FirebaseFixture`.
+- Replace the `overrideFirestoreCollections` and `getFirestoreCollectionFromModule` by the `FirestoreFixture`.
+- Adapt the `AuthUsersFixture` to the `Fixture` interface.
+- Adapt the `PubSubFixture` to the `Fixture` and `EventFixture` interfaces.
+- Replace the `overrideAppCheck` test utility with the `AppCheckFixture`.
+- Replace the `GoogleAppFixture` with `createGoogleFixtures`.
+
+Features:
+
+- Create the `SpannerFixture` using the existing `createDatabase` utility.
 
 ## v0.40.0 (2025-05-28)
 
