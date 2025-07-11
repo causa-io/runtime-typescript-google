@@ -4,31 +4,15 @@ import {
   JsonObjectSerializer,
   ValidateNestedType,
 } from '@causa/runtime';
-import {
-  EventAttributes,
-  EventBody,
-  Logger,
-  createApp,
-} from '@causa/runtime/nestjs';
-import {
-  getLoggedErrors,
-  getLoggedInfos,
-  spyOnLogger,
-} from '@causa/runtime/testing';
-import {
-  Controller,
-  HttpCode,
-  HttpStatus,
-  type INestApplication,
-  Module,
-  Post,
-} from '@nestjs/common';
+import { EventAttributes, EventBody, Logger } from '@causa/runtime/nestjs';
+import { AppFixture, LoggingFixture } from '@causa/runtime/nestjs/testing';
+import { getLoggedInfos } from '@causa/runtime/testing';
+import { Controller, HttpCode, HttpStatus, Module, Post } from '@nestjs/common';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { IsString } from 'class-validator';
-import supertest from 'supertest';
 import { PubSubEventHandlerInterceptor } from './interceptor.js';
 import { PubSubEventPublishTime } from './publish-time.decorator.js';
-import { type EventRequester, makePubSubRequester } from './testing/index.js';
+import { type EventRequester, PubSubFixture } from './testing.js';
 
 class MyData {
   constructor(data: Partial<MyData> = {}) {
@@ -99,41 +83,37 @@ class MyController {
 class MyModule {}
 
 describe('PubSubEventHandlerInterceptor', () => {
-  let app: INestApplication;
+  let appFixture: AppFixture;
   let request: EventRequester;
 
   beforeAll(async () => {
-    app = await createApp(MyModule, {});
-    request = makePubSubRequester(app);
-    spyOnLogger();
+    appFixture = new AppFixture(MyModule, {
+      fixtures: [new PubSubFixture({})],
+    });
+    await appFixture.init();
+    request = appFixture.get(PubSubFixture).makeRequester('/');
   });
 
-  afterAll(async () => {
-    await app.close();
-  });
+  afterEach(() => appFixture.clear());
+
+  afterAll(() => appFixture.delete());
 
   it('should return 400 when the payload is invalid', async () => {
-    await supertest(app.getHttpServer())
-      .post('/')
-      .send({ nope: '🙅' })
-      .expect(400);
+    await appFixture.request.post('/').send({ nope: '🙅' }).expect(400);
 
-    expect(getLoggedErrors()).toEqual([
-      expect.objectContaining({
-        message: 'Received invalid Pub/Sub message.',
-        validationMessages: expect.arrayContaining([
-          'message should not be null or undefined',
-          'subscription must be a string',
-        ]),
-      }),
-    ]);
+    appFixture.get(LoggingFixture).expectErrors({
+      message: 'Received invalid Pub/Sub message.',
+      validationMessages: expect.arrayContaining([
+        'message should not be null or undefined',
+        'subscription must be a string',
+      ]),
+    });
   });
 
   it('should deserialize the message data and return it', async () => {
     const expectedDate = new Date();
 
-    await request('/', new MyEvent(), {
-      expectedStatus: 200,
+    await request(new MyEvent(), {
       attributes: { someAttribute: '🌻' },
       publishTime: expectedDate,
     });
@@ -152,14 +132,12 @@ describe('PubSubEventHandlerInterceptor', () => {
   it('should return 200 and log an error when the event is invalid', async () => {
     const event = new MyEvent({ data: new MyData({ someProp: 1234 as any }) });
 
-    await request('/', event, { expectedStatus: 200 });
+    await request(event);
 
-    expect(getLoggedErrors()).toEqual([
-      expect.objectContaining({
-        eventId: event.id,
-        message: 'Received an invalid event.',
-        validationMessages: ['someProp must be a string'],
-      }),
-    ]);
+    appFixture.get(LoggingFixture).expectErrors({
+      eventId: event.id,
+      message: 'Received an invalid event.',
+      validationMessages: ['someProp must be a string'],
+    });
   });
 });

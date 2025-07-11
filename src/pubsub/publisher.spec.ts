@@ -1,17 +1,14 @@
-import {
-  getDefaultLogger,
-  type Event,
-  type PreparedEvent,
-} from '@causa/runtime';
-import { Logger } from '@causa/runtime/nestjs';
-import { getLoggedErrors, spyOnLogger } from '@causa/runtime/testing';
+import { type Event, type PreparedEvent } from '@causa/runtime';
+import { AppFixture, LoggingFixture } from '@causa/runtime/nestjs/testing';
 import { Topic } from '@google-cloud/pubsub';
 import { jest } from '@jest/globals';
+import { Module } from '@nestjs/common';
 import { Transform, Type } from 'class-transformer';
 import 'jest-extended';
 import { PubSubTopicNotConfiguredError } from './errors.js';
 import { PubSubPublisher } from './publisher.js';
-import { PubSubFixture } from './testing/index.js';
+import { PubSubPublisherModule } from './publisher.module.js';
+import { PubSubFixture } from './testing.js';
 
 class MyData {
   constructor(data: Partial<MyData>) {
@@ -44,40 +41,35 @@ class MyEvent implements Event {
   data!: MyData;
 }
 
+@Module({
+  imports: [
+    PubSubPublisherModule.forRoot({
+      topicPublishOptions: {
+        'my.other-topic.v1': { batching: { maxMessages: 100, maxBytes: 1000 } },
+      },
+    }),
+  ],
+})
+class MyModule {}
+
 describe('PubSubPublisher', () => {
+  let appFixture: AppFixture;
   let fixture: PubSubFixture;
-  let configuration: Record<string, string>;
-  let logger: Logger;
   let publisher: PubSubPublisher;
 
   beforeAll(async () => {
-    fixture = new PubSubFixture();
-    configuration = await fixture.createMany({
+    fixture = new PubSubFixture({
       'my.awesome-topic.v1': MyEvent,
       'my.other-topic.v1': MyEvent,
     });
-    logger = new Logger({ pinoHttp: { logger: getDefaultLogger() } });
-    spyOnLogger();
+    appFixture = new AppFixture(MyModule, { fixtures: [fixture] });
+    await appFixture.init();
+    publisher = appFixture.get(PubSubPublisher);
   });
 
-  beforeEach(async () => {
-    publisher = new PubSubPublisher(logger, {
-      configurationGetter: (key) => configuration[key],
-      topicPublishOptions: {
-        'my.other-topic.v1': {
-          batching: { maxMessages: 100, maxBytes: 1000 },
-        },
-      },
-    });
-  });
+  afterEach(() => appFixture.clear());
 
-  afterEach(() => {
-    fixture.clear();
-  });
-
-  afterAll(async () => {
-    await fixture.deleteAll();
-  });
+  afterAll(() => appFixture.delete());
 
   describe('constructor', () => {
     it('should default to disable batching', () => {
@@ -164,7 +156,7 @@ describe('PubSubPublisher', () => {
 
       await publisher.publish('my.awesome-topic.v1', event);
 
-      await fixture.expectMessageInTopic('my.awesome-topic.v1', {
+      await fixture.expectMessage('my.awesome-topic.v1', {
         attributes: {
           producedAt: event.producedAt.toISOString(),
           eventName: 'my-event',
@@ -179,7 +171,7 @@ describe('PubSubPublisher', () => {
         },
       });
       // Tests the same thing using the simpler `expectEventInTopic`.
-      await fixture.expectEventInTopic(
+      await fixture.expectEvent(
         'my.awesome-topic.v1',
         {
           id: '1234',
@@ -204,7 +196,7 @@ describe('PubSubPublisher', () => {
         key: '🔑',
       });
 
-      await fixture.expectMessageInTopic('my.awesome-topic.v1', {
+      await fixture.expectMessage('my.awesome-topic.v1', {
         attributes: {
           producedAt: event.producedAt.toISOString(),
           eventName: 'my-event',
@@ -226,7 +218,7 @@ describe('PubSubPublisher', () => {
 
       await publisher.publish('my.awesome-topic.v1', event);
 
-      await fixture.expectMessageInTopic('my.awesome-topic.v1', {
+      await fixture.expectMessage('my.awesome-topic.v1', {
         attributes: {},
         orderingKey: undefined,
         // Not an equal match because the `MyEvent` constructor assigns default values to other fields.
@@ -249,7 +241,7 @@ describe('PubSubPublisher', () => {
 
       await publisher.publish(preparedEvent);
 
-      await fixture.expectMessageInTopic('my.awesome-topic.v1', {
+      await fixture.expectMessage('my.awesome-topic.v1', {
         attributes: { someAttributes: '🏷️' },
         orderingKey: undefined,
         event,
@@ -265,47 +257,42 @@ describe('PubSubPublisher', () => {
       });
       // This creates the `my.awesome-topic.v1` `Topic` in the cache.
       await publisher.publish('my.awesome-topic.v1', new MyEvent());
-      await fixture.expectMessageInTopic(
-        'my.awesome-topic.v1',
-        expect.anything(),
-      );
+      await fixture.expectMessage('my.awesome-topic.v1', expect.anything());
       fixture.clear();
       jest
         .spyOn(
           publisher['topicCache']['my.awesome-topic.v1'] as any,
           'publishMessage',
         )
-        .mockRejectedValue(new Error('📫💥'));
+        .mockRejectedValueOnce(new Error('📫💥'));
 
       const actualPromise = publisher.publish('my.awesome-topic.v1', event);
 
       await expect(actualPromise).rejects.toThrow('📫💥');
 
-      await fixture.expectNoMessageInTopic('my.awesome-topic.v1');
-      expect(getLoggedErrors()).toEqual([
-        expect.objectContaining({
-          message: 'Failed to publish message to Pub/Sub.',
-          failedMessage: {
-            topic: 'my.awesome-topic.v1',
+      await fixture.expectNoMessage('my.awesome-topic.v1');
+      appFixture.get(LoggingFixture).expectErrors({
+        message: 'Failed to publish message to Pub/Sub.',
+        failedMessage: {
+          topic: 'my.awesome-topic.v1',
+          eventId: '1234',
+          pubSubTopic: fixture.topics['my.awesome-topic.v1'].topic.name,
+          data: Buffer.from(
+            JSON.stringify({
+              id: '1234',
+              producedAt: event.producedAt,
+              name: 'my-event',
+              data: { someProp: 'HELLO' },
+            }),
+          ).toString('base64'),
+          attributes: {
+            producedAt: event.producedAt.toISOString(),
+            eventName: 'my-event',
             eventId: '1234',
-            pubSubTopic: configuration['PUBSUB_TOPIC_MY_AWESOME_TOPIC_V1'],
-            data: Buffer.from(
-              JSON.stringify({
-                id: '1234',
-                producedAt: event.producedAt,
-                name: 'my-event',
-                data: { someProp: 'HELLO' },
-              }),
-            ).toString('base64'),
-            attributes: {
-              producedAt: event.producedAt.toISOString(),
-              eventName: 'my-event',
-              eventId: '1234',
-            },
           },
-          error: expect.stringContaining('📫💥'),
-        }),
-      ]);
+        },
+        error: expect.stringContaining('📫💥'),
+      });
     });
   });
 
@@ -316,10 +303,7 @@ describe('PubSubPublisher', () => {
 
       await publisher.flush();
 
-      await fixture.expectMessageInTopic(
-        'my.awesome-topic.v1',
-        expect.anything(),
-      );
+      await fixture.expectMessage('my.awesome-topic.v1', expect.anything());
       expect(
         publisher['topicCache']['my.awesome-topic.v1'].flush,
       ).toHaveBeenCalledOnce();
