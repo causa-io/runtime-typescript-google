@@ -104,7 +104,7 @@ describe('SpannerColumn', () => {
       const actualParentColumns = getSpannerColumns(Test);
       const actualChildColumns = getSpannerColumns(Child);
 
-      expect(actualParentColumns).toIncludeAllMembers([
+      expect(actualParentColumns).toIncludeSameMembers([
         'defaultName',
         'providedName',
         'nestedColumn_otherColumn',
@@ -117,7 +117,7 @@ describe('SpannerColumn', () => {
         'jsonColumn',
         'jsonArrayColumn',
       ]);
-      expect(actualChildColumns).toIncludeAllMembers([
+      expect(actualChildColumns).toIncludeSameMembers([
         'defaultName',
         'providedName',
         'nestedColumn_otherColumn',
