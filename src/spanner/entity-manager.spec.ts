@@ -69,18 +69,6 @@ class IndexedEntity {
   static readonly ByValue = 'IndexedEntitiesByValue';
 }
 
-class ChildEntity {
-  constructor(data: Partial<ChildEntity> = {}) {
-    Object.assign(this, data);
-  }
-
-  @SpannerColumn({ isJson: true })
-  someJson!: any | null;
-
-  @SpannerColumn({ name: 'otherValue' })
-  other!: string | null;
-}
-
 @SpannerTable({ primaryKey: ['id'] })
 class ParentEntity {
   constructor(data: Partial<ParentEntity> = {}) {
@@ -89,9 +77,6 @@ class ParentEntity {
 
   @SpannerColumn()
   id!: string;
-
-  @SpannerColumn({ nestedType: ChildEntity })
-  child!: ChildEntity | null;
 }
 
 @SpannerTable({ primaryKey: ['id'] })
@@ -129,8 +114,6 @@ const TEST_SCHEMA = [
   `CREATE INDEX IndexedEntitiesByValue ON IndexedEntity(value) STORING (otherValue)`,
   `CREATE TABLE ParentEntity (
     id STRING(MAX) NOT NULL,
-    child_someJson JSON,
-    child_otherValue STRING(MAX)
   ) PRIMARY KEY (id)`,
   `CREATE TABLE SoftDeleteEntity (
     id STRING(MAX) NOT NULL,
@@ -1199,34 +1182,6 @@ describe('SpannerEntityManager', () => {
       });
       expect(actualRows).toEqual([actualEntity]);
     });
-
-    it('should update a partial nested field', async () => {
-      await database.table('ParentEntity').insert({
-        id: '1',
-        child_someJson: JSON.stringify([{ value: '🎁' }, { other: '😍' }]),
-        child_otherValue: '🙈',
-      });
-
-      const actualEntity = await manager.update(ParentEntity, {
-        id: '1',
-        child: { someJson: [{ new: '🎉' }] },
-      });
-
-      expect(actualEntity).toEqual({
-        id: '1',
-        child: { someJson: [{ new: '🎉' }], other: '🙈' },
-      });
-      expect(actualEntity).toBeInstanceOf(ParentEntity);
-      expect(actualEntity.child).toBeInstanceOf(ChildEntity);
-      const [actualRows] = await database.table('ParentEntity').read({
-        keys: ['1'],
-        columns: ['id', 'child_someJson', 'child_otherValue'],
-        json: true,
-      });
-      expect(actualRows).toEqual([
-        { id: '1', child_someJson: [{ new: '🎉' }], child_otherValue: '🙈' },
-      ]);
-    });
   });
 
   describe('delete', () => {
@@ -1365,14 +1320,6 @@ describe('SpannerEntityManager', () => {
       const actualColumns = manager.sqlColumns(SomeEntity);
 
       expect(actualColumns).toEqual('`id`, `value`');
-    });
-
-    it('should return all columns for a table with a nested type', () => {
-      const actualColumns = manager.sqlColumns(ParentEntity);
-
-      expect(actualColumns).toEqual(
-        '`id`, `child_someJson`, `child_otherValue`',
-      );
     });
 
     it('should return the quoted column names for a list of columns', () => {

@@ -20,7 +20,6 @@ import {
 } from './errors.js';
 import { SpannerTableCache } from './table-cache.js';
 import type {
-  RecursivePartialEntity,
   SpannerReadOnlyTransactionOption,
   SpannerReadWriteTransactionOption,
 } from './types.js';
@@ -135,10 +134,7 @@ export class SpannerEntityManager {
    *   constructor).
    * @returns The primary key of the entity.
    */
-  getPrimaryKey<T>(
-    entity: T | RecursivePartialEntity<T>,
-    entityType?: Type<T>,
-  ): SpannerKey {
+  getPrimaryKey<T>(entity: T | Partial<T>, entityType?: Type<T>): SpannerKey {
     entityType ??= (entity as any).constructor as Type<T>;
     const obj = instanceToSpannerObject(entity, entityType);
     return this.getPrimaryKeyForSpannerObject(obj, entityType);
@@ -283,7 +279,7 @@ export class SpannerEntityManager {
           jsonOptions: { wrapNumbers: true },
           index: options.index,
         });
-        const row: Record<string, any> = rows[0];
+        const row: Record<string, any> | undefined = rows[0];
 
         if (row && options.index && !options.columns) {
           const primaryKey = this.getPrimaryKeyForSpannerObject(
@@ -638,7 +634,7 @@ export class SpannerEntityManager {
    */
   async update<T>(
     entityType: Type<T>,
-    update: RecursivePartialEntity<T>,
+    update: Partial<T>,
     options: SpannerReadWriteTransactionOption &
       Pick<FindOptions, 'includeSoftDeletes'> & {
         /**
