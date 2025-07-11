@@ -8,33 +8,30 @@ import {
   type VersionedEntity,
   VersionedEntityManager,
 } from '@causa/runtime';
-import { Logger } from '@causa/runtime/nestjs';
+import { AppFixture } from '@causa/runtime/nestjs/testing';
 import { status } from '@grpc/grpc-js';
 import { jest } from '@jest/globals';
+import { Injectable, Module } from '@nestjs/common';
 import { IsString, IsUUID } from 'class-validator';
 import {
   CollectionReference,
   Firestore,
-  getFirestore,
+  Transaction,
 } from 'firebase-admin/firestore';
 import 'jest-extended';
-import { getDefaultFirebaseApp } from '../../firebase/index.js';
+import { FirebaseModule } from '../../firebase/module.js';
 import {
   FirestoreCollection,
+  FirestoreCollectionsModule,
   getReferenceForFirestoreDocument,
 } from '../../firestore/index.js';
-import {
-  clearFirestoreCollection,
-  createFirestoreTemporaryCollection,
-} from '../../firestore/testing.js';
-import { PubSubPublisher } from '../../pubsub/index.js';
-import { PubSubFixture } from '../../pubsub/testing/index.js';
+import { FirestoreFixture } from '../../firestore/testing.js';
+import { PubSubPublisherModule } from '../../pubsub/publisher.module.js';
+import { FirebaseFixture, PubSubFixture } from '../../testing.js';
+import { FirestorePubSubTransactionModule } from './module.js';
+import { FirestoreReadOnlyStateTransaction } from './readonly-state-transaction.js';
 import { FirestorePubSubTransactionRunner } from './runner.js';
 import { SoftDeletedFirestoreCollection } from './soft-deleted-collection.decorator.js';
-import type {
-  FirestoreCollectionResolver,
-  FirestoreCollectionsForDocumentType,
-} from './state-transaction.js';
 import { FirestorePubSubTransaction } from './transaction.js';
 
 @FirestoreCollection({ name: 'myDocuments', path: (doc) => doc.id })
@@ -82,80 +79,63 @@ class MyEvent implements Event {
   readonly data!: MyDocument;
 }
 
+@Injectable()
+class MyEntityManager extends VersionedEntityManager<
+  FirestorePubSubTransaction,
+  FirestoreReadOnlyStateTransaction,
+  MyEvent
+> {
+  constructor(runner: FirestorePubSubTransactionRunner) {
+    super('my.entity.v1', MyEvent, MyDocument, runner);
+  }
+}
+
+@Module({
+  imports: [
+    FirebaseModule.forRoot(),
+    FirestoreCollectionsModule.forRoot([MyDocument]),
+    PubSubPublisherModule.forRoot(),
+    FirestorePubSubTransactionModule.forRoot(),
+  ],
+  providers: [MyEntityManager],
+})
+class MyModule {}
+
 describe('FirestorePubSubTransactionRunner', () => {
-  let logger: Logger;
+  let appFixture: AppFixture;
   let pubSubFixture: PubSubFixture;
   let firestore: Firestore;
   let activeCollection: CollectionReference<MyDocument>;
   let deletedCollection: CollectionReference<MyDocument>;
-  let publisher: PubSubPublisher;
-  let resolver: FirestoreCollectionResolver;
   let runner: FirestorePubSubTransactionRunner;
   let myEntityManager: VersionedEntityManager<
     FirestorePubSubTransaction,
+    FirestoreReadOnlyStateTransaction,
     MyEvent
   >;
 
   beforeAll(async () => {
-    logger = new Logger({});
-    firestore = getFirestore(getDefaultFirebaseApp());
-    pubSubFixture = new PubSubFixture();
-    const pubSubConf = await pubSubFixture.create('my.entity.v1', MyEvent);
-    publisher = new PubSubPublisher(logger, {
-      configurationGetter: (key) => pubSubConf[key],
+    pubSubFixture = new PubSubFixture({ 'my.entity.v1': MyEvent });
+    appFixture = new AppFixture(MyModule, {
+      fixtures: [
+        new FirebaseFixture(),
+        new FirestoreFixture([MyDocument]),
+        pubSubFixture,
+      ],
     });
-    activeCollection = createFirestoreTemporaryCollection(
-      firestore,
-      MyDocument,
-    );
-    deletedCollection = createFirestoreTemporaryCollection(
-      firestore,
-      MyDocument,
-    );
-    resolver = {
-      getCollectionsForType<T>(documentType: {
-        new (): T;
-      }): FirestoreCollectionsForDocumentType<any> {
-        if (documentType !== MyDocument) {
-          throw new Error('Unexpected document type.');
-        }
-
-        return {
-          activeCollection,
-          softDelete: {
-            collection: deletedCollection,
-            expirationDelay: 24 * 3600 * 1000,
-            expirationField: '_expirationDate',
-          },
-        };
-      },
-    };
+    await appFixture.init();
+    firestore = appFixture.get(Firestore);
+    runner = appFixture.get(FirestorePubSubTransactionRunner);
+    myEntityManager = appFixture.get(MyEntityManager);
+    activeCollection = appFixture.get(FirestoreFixture).collection(MyDocument);
+    deletedCollection =
+      runner.collectionResolver.getCollectionsForType(MyDocument).softDelete!
+        .collection;
   });
 
-  beforeEach(() => {
-    runner = new FirestorePubSubTransactionRunner(
-      firestore,
-      publisher,
-      resolver,
-      logger,
-    );
-    myEntityManager = new VersionedEntityManager(
-      'my.entity.v1',
-      MyEvent,
-      MyDocument,
-      runner,
-    );
-  });
+  afterEach(() => appFixture.clear());
 
-  afterEach(async () => {
-    pubSubFixture.clear();
-    await clearFirestoreCollection(activeCollection);
-    await clearFirestoreCollection(deletedCollection);
-  });
-
-  afterAll(async () => {
-    await pubSubFixture.deleteAll();
-  });
+  afterAll(() => appFixture.delete());
 
   it('should commit the transaction and publish the events', async () => {
     const document = new MyDocument();
@@ -169,9 +149,9 @@ describe('FirestorePubSubTransactionRunner', () => {
     );
     await activeDocRef.set(document);
 
-    const [actualEvent] = await runner.run(async (transaction) => {
+    const actualEvent = await runner.run(async (transaction) => {
       expect(transaction.firestoreTransaction).toBe(
-        transaction.stateTransaction.transaction,
+        transaction.stateTransaction.firestoreTransaction,
       );
 
       return await myEntityManager.delete(
@@ -192,7 +172,7 @@ describe('FirestorePubSubTransactionRunner', () => {
     });
     const actualActiveDocument = await activeDocRef.get();
     expect(actualActiveDocument.exists).toBeFalse();
-    await pubSubFixture.expectMessageInTopic(
+    await pubSubFixture.expectMessage(
       'my.entity.v1',
       expect.objectContaining({ event: actualEvent }),
     );
@@ -212,7 +192,7 @@ describe('FirestorePubSubTransactionRunner', () => {
     await expect(actualPromise).rejects.toThrow('💥');
     const actualDocument = await activeCollection.doc('id').get();
     expect(actualDocument.exists).toBeFalse();
-    await pubSubFixture.expectNoMessageInTopic('my.entity.v1');
+    await pubSubFixture.expectNoMessage('my.entity.v1');
   });
 
   it('should rethrow transient Firestore errors as retryable errors', async () => {
@@ -235,5 +215,24 @@ describe('FirestorePubSubTransactionRunner', () => {
     });
 
     await expect(actualPromise).rejects.toThrow(EntityNotFoundError);
+  });
+
+  it('should run a readonly transaction', async () => {
+    jest.spyOn(firestore, 'runTransaction');
+
+    const actualResult = await runner.run(
+      { readOnly: true },
+      async (transaction) => {
+        expect(transaction).toBeInstanceOf(FirestoreReadOnlyStateTransaction);
+        expect(transaction.firestoreTransaction).toBeInstanceOf(Transaction);
+        return '🎉';
+      },
+    );
+
+    expect(actualResult).toEqual('🎉');
+    expect(firestore.runTransaction).toHaveBeenCalledExactlyOnceWith(
+      expect.any(Function),
+      { readOnly: true },
+    );
   });
 });

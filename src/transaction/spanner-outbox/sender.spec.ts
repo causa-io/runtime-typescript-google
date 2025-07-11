@@ -1,13 +1,17 @@
 import type { EventAttributes, OutboxEventPublishResult } from '@causa/runtime';
 import { Logger } from '@causa/runtime/nestjs';
-import type { Database } from '@google-cloud/spanner';
-import { PubSubPublisher } from '../../pubsub/index.js';
+import { AppFixture } from '@causa/runtime/nestjs/testing';
+import { Database } from '@google-cloud/spanner';
+import { Module } from '@nestjs/common';
+import { PubSubPublisher, PubSubPublisherModule } from '../../pubsub/index.js';
 import {
   SpannerColumn,
   SpannerEntityManager,
+  SpannerModule,
   SpannerTable,
 } from '../../spanner/index.js';
-import { createDatabase, PubSubFixture } from '../../testing.js';
+import { PubSubFixture, SpannerFixture } from '../../testing.js';
+import { SpannerOutboxTransactionModule } from './module.js';
 import { SpannerOutboxSender } from './sender.js';
 import { getSpannerOutboxEvents, MyEvent } from './utils.test.js';
 
@@ -58,48 +62,55 @@ type PublicSpannerOutboxSender = SpannerOutboxSender & {
   updateOutbox(result: OutboxEventPublishResult): Promise<void>;
 };
 
+const defaultOptions = {
+  pollingInterval: 0,
+  batchSize: 3,
+  leaseDuration: 2000,
+};
+
+@Module({
+  imports: [
+    SpannerModule.forRoot(),
+    PubSubPublisherModule.forRoot(),
+    SpannerOutboxTransactionModule.forRoot({
+      ...defaultOptions,
+      outboxEventType: SpannerOutboxEventWithShard,
+    }),
+  ],
+})
+class MyModule {}
+
 describe('SpannerOutboxSender', () => {
-  const defaultOptions = {
-    pollingInterval: 0,
-    batchSize: 3,
-    leaseDuration: 2000,
-  };
+  let appFixture: AppFixture;
   let logger: Logger;
-  let database: Database;
   let pubSubFixture: PubSubFixture;
   let entityManager: SpannerEntityManager;
   let publisher: PubSubPublisher;
   let sender: PublicSpannerOutboxSender;
 
   beforeAll(async () => {
-    logger = new Logger({});
-    database = await createDatabase();
+    pubSubFixture = new PubSubFixture({ 'my-topic': MyEvent });
+    appFixture = new AppFixture(MyModule, {
+      fixtures: [
+        new SpannerFixture({ types: [SpannerOutboxEventWithShard] }),
+        pubSubFixture,
+      ],
+    });
+    await appFixture.init();
+
+    const database = appFixture.get(Database);
     const [operation] = await database.updateSchema(SPANNER_SCHEMA);
     await operation.promise();
-    pubSubFixture = new PubSubFixture();
-    const pubSubConf = await pubSubFixture.create('my-topic', MyEvent);
-    entityManager = new SpannerEntityManager(database);
-    publisher = new PubSubPublisher(logger, {
-      configurationGetter: (key) => pubSubConf[key],
-    });
-    sender = new SpannerOutboxSender(
-      entityManager,
-      SpannerOutboxEventWithShard,
-      publisher,
-      logger,
-      defaultOptions,
-    ) as any;
+
+    logger = await appFixture.app.resolve(Logger);
+    entityManager = appFixture.get(SpannerEntityManager);
+    publisher = appFixture.get(PubSubPublisher);
+    sender = appFixture.get(SpannerOutboxSender);
   });
 
-  afterEach(async () => {
-    pubSubFixture.clear();
-    await entityManager.clear(SpannerOutboxEventWithShard);
-  });
+  afterEach(() => appFixture.clear());
 
-  afterAll(async () => {
-    await pubSubFixture.deleteAll();
-    await database.delete();
-  });
+  afterAll(() => appFixture.delete());
 
   describe('configuration', () => {
     it('should use the passed options', () => {
@@ -180,7 +191,7 @@ describe('SpannerOutboxSender', () => {
         leaseExpiration: leaseExpectation,
       });
       expect(actualEvent3).toEqual(event3);
-      expect(actualEvents).toIncludeAllMembers([actualEvent1, actualEvent2]);
+      expect(actualEvents).toIncludeSameMembers([actualEvent1, actualEvent2]);
     });
 
     it('should acquire at most the batch size', async () => {
@@ -222,7 +233,7 @@ describe('SpannerOutboxSender', () => {
         entityManager,
         SpannerOutboxEventWithShard,
       );
-      expect(storedEvents).toIncludeAllMembers([
+      expect(storedEvents).toIncludeSameMembers([
         ...actualEvents,
         ...events.filter(({ id }) => !acquiredEventIds.includes(id)),
       ]);

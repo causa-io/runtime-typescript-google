@@ -4,10 +4,10 @@ import { CollectionReference } from 'firebase-admin/firestore';
 import { makeFirestoreDataConverter } from '../../firestore/index.js';
 import { getFirestoreCollectionInjectionName } from '../../firestore/inject-collection.decorator.js';
 import { getSoftDeletedFirestoreCollectionMetadataForType } from './soft-deleted-collection.decorator.js';
-import {
-  type FirestoreCollectionResolver,
-  type FirestoreCollectionsForDocumentType,
-} from './state-transaction.js';
+import type {
+  FirestoreCollectionResolver,
+  FirestoreCollectionsForDocumentType,
+} from './types.js';
 
 /**
  * A {@link FirestoreCollectionResolver} that uses NestJS dependency injection to resolve Firestore collections.

@@ -1,34 +1,30 @@
-import { createApp } from '@causa/runtime/nestjs';
-import { makeTestAppFactory } from '@causa/runtime/nestjs/testing';
-import { type INestApplication, Module } from '@nestjs/common';
+import { AppFixture } from '@causa/runtime/nestjs/testing';
+import { Module } from '@nestjs/common';
 import type { App } from 'firebase-admin/app';
 import { getDefaultFirebaseApp } from './app.js';
 import { FIREBASE_APP_TOKEN } from './inject-firebase-app.decorator.js';
 import { FirebaseModule } from './module.js';
-import { overrideFirebaseApp } from './testing.js';
+import { FirebaseFixture } from './testing.js';
 
-describe('testing', () => {
-  describe('overrideFirebaseApp', () => {
-    it('should override a custom Firebase App with the default app', async () => {
-      @Module({ imports: [FirebaseModule.forRoot()] })
-      class MyModule {}
+@Module({ imports: [FirebaseModule.forRoot()] })
+class MyModule {}
 
-      let app: INestApplication | undefined;
-      let actualFirebaseApp: App;
-      try {
-        app = await createApp(MyModule, {
-          appFactory: makeTestAppFactory({
-            overrides: overrideFirebaseApp,
-          }),
-        });
-        actualFirebaseApp = app.get(FIREBASE_APP_TOKEN);
-      } finally {
-        await app?.close();
-      }
-
-      // If `FirebaseLifecycleService` is not overridden, this throws because `app.close()` has deleted the app.
-      const expectedApp = getDefaultFirebaseApp();
-      expect(actualFirebaseApp).toBe(expectedApp);
+describe('FirebaseFixture', () => {
+  it('should override a custom Firebase App with the default app', async () => {
+    const appFixture = new AppFixture(MyModule, {
+      fixtures: [new FirebaseFixture()],
     });
+    await appFixture.init();
+
+    let actualFirebaseApp: App;
+    try {
+      actualFirebaseApp = appFixture.app.get(FIREBASE_APP_TOKEN);
+    } finally {
+      await appFixture.delete();
+    }
+
+    // If `FirebaseLifecycleService` is not overridden, this throws because `app.close()` has deleted the app.
+    const expectedApp = getDefaultFirebaseApp();
+    expect(actualFirebaseApp).toBe(expectedApp);
   });
 });

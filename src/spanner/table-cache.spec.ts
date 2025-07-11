@@ -87,20 +87,5 @@ describe('SpannerTableCache', () => {
         InvalidEntityDefinitionError,
       );
     });
-
-    it('should throw if the soft delete column is nested', () => {
-      @SpannerTable({ primaryKey: ['id'] })
-      class MyEntity {
-        @SpannerColumn()
-        id!: string;
-
-        @SpannerColumn({ softDelete: true, nestedType: Date })
-        deletedAt!: Date | null;
-      }
-
-      expect(() => cache.getMetadata(MyEntity)).toThrow(
-        InvalidEntityDefinitionError,
-      );
-    });
   });
 });

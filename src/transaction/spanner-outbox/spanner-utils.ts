@@ -1,6 +1,6 @@
 import { TransactionOldTimestampError } from '@causa/runtime';
 import { setTimeout } from 'timers/promises';
-import { TemporarySpannerError } from '../spanner/index.js';
+import { TemporarySpannerError } from '../../spanner/index.js';
 
 /**
  * The delay, in milliseconds, over which a timestamp issue is deemed irrecoverable.

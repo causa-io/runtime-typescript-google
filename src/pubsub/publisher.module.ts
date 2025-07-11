@@ -21,7 +21,10 @@ export class PubSubPublisherModule {
    * @returns The module.
    */
   static forRoot(
-    options: Pick<PubSubPublisherOptions, 'publishOptions' | 'serializer'> = {},
+    options: Omit<
+      PubSubPublisherOptions,
+      'pubSub' | 'configurationGetter'
+    > = {},
   ): DynamicModule {
     return {
       module: PubSubPublisherModule,

@@ -1,18 +1,18 @@
 import type { User } from '@causa/runtime';
-import { Auth, getAuth } from 'firebase-admin/auth';
+import type { AppFixture, Fixture } from '@causa/runtime/nestjs/testing';
+import { Auth } from 'firebase-admin/auth';
 import jwt from 'jsonwebtoken';
 import * as uuid from 'uuid';
-import { getDefaultFirebaseApp } from '../firebase/index.js';
 
 /**
- * A helper to create and delete Identity Platform users in the emulator.
+ * A {@link Fixture} to create and delete Identity Platform users in the emulator.
  * It also creates an ID token for them.
  */
-export class AuthUsersFixture {
+export class AuthUsersFixture implements Fixture {
   /**
-   * The Firebase Auth client to use.
+   * The parent {@link AppFixture}.
    */
-  readonly auth: Auth;
+  private appFixture!: AppFixture;
 
   /**
    * The list of created users.
@@ -25,16 +25,36 @@ export class AuthUsersFixture {
   private readonly jwtBasePayload: Record<string, string>;
 
   /**
+   * The Firebase Auth client to use.
+   * This is lazily initialized when the `auth` property is accessed, which avoids trying to fetch it during
+   * {@link AuthUsersFixture.init} and / or {@link AuthUsersFixture.delete}.
+   */
+  private lazyAuth?: Auth;
+
+  /**
    * Creates a new {@link AuthUsersFixture}.
    */
   constructor() {
-    this.auth = getAuth(getDefaultFirebaseApp());
-
     const projectId = process.env.GOOGLE_CLOUD_PROJECT ?? '';
     this.jwtBasePayload = {
       aud: projectId,
       iss: `https://securetoken.google.com/${projectId}`,
     };
+  }
+
+  async init(appFixture: AppFixture): Promise<undefined> {
+    this.appFixture = appFixture;
+  }
+
+  /**
+   * The Firebase Auth client to use.
+   */
+  get auth(): Auth {
+    if (!this.lazyAuth) {
+      this.lazyAuth = this.appFixture.get(Auth);
+    }
+
+    return this.lazyAuth;
   }
 
   /**
@@ -71,11 +91,23 @@ export class AuthUsersFixture {
     return { user, token };
   }
 
+  async clear(): Promise<void> {}
+
   /**
-   * Deletes users created by this fixture from the Identity Platform emulator.
+   * Deletes all users created by this fixture.
+   * This does not delete the fixture itself.
    */
-  async deleteAll(): Promise<void> {
-    await this.auth.deleteUsers(this.users.map((user) => user.id));
+  async deleteUsers(): Promise<void> {
+    if (this.users.length === 0) {
+      return;
+    }
+
+    await this.auth.deleteUsers(this.users.map(({ id }) => id));
     this.users.length = 0;
+  }
+
+  async delete(): Promise<void> {
+    await this.deleteUsers();
+    this.appFixture = undefined as any;
   }
 }

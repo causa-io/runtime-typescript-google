@@ -1,6 +1,6 @@
 import type { VersionedEntity } from '@causa/runtime';
+import { AppFixture } from '@causa/runtime/nestjs/testing';
 import { Module } from '@nestjs/common';
-import { Test, TestingModule } from '@nestjs/testing';
 import { Transform } from 'class-transformer';
 import {
   CollectionReference,
@@ -15,10 +15,10 @@ import {
   getReferenceForFirestoreDocument,
   makeFirestoreDataConverter,
 } from '../../firestore/index.js';
-import { getFirestoreCollectionInjectionName } from '../../firestore/inject-collection.decorator.js';
 import {
   clearFirestoreCollection,
-  overrideFirestoreCollections,
+  FirebaseFixture,
+  FirestoreFixture,
 } from '../../testing.js';
 import { NestJsFirestoreCollectionResolver } from './nestjs-collection-resolver.js';
 import { SoftDeletedFirestoreCollection } from './soft-deleted-collection.decorator.js';
@@ -52,33 +52,32 @@ class GlobalModule {}
 })
 class MyModule {}
 
+@Module({ imports: [GlobalModule, MyModule] })
+class TestModule {}
+
 describe('NestJsFirestoreCollectionResolver', () => {
-  let testModule: TestingModule;
+  let appFixture: AppFixture;
   let firestore: Firestore;
   let resolver: NestJsFirestoreCollectionResolver;
   let activeCollection: CollectionReference<MyDocument>;
   let deletedCollection: CollectionReference<MyDocument>;
 
   beforeEach(async () => {
-    let builder = Test.createTestingModule({
-      imports: [GlobalModule, MyModule],
+    appFixture = new AppFixture(TestModule, {
+      fixtures: [new FirebaseFixture(), new FirestoreFixture([MyDocument])],
     });
-    builder = overrideFirestoreCollections(MyDocument)(builder);
-    testModule = await builder.compile();
-    firestore = testModule.get(Firestore);
-    activeCollection = testModule.get(
-      getFirestoreCollectionInjectionName(MyDocument),
-    );
+    await appFixture.init();
+    firestore = appFixture.get(Firestore);
+    activeCollection = appFixture.get(FirestoreFixture).collection(MyDocument);
     deletedCollection = firestore
       .collection(`${activeCollection.path}$🗑️`)
       .withConverter(makeFirestoreDataConverter(MyDocument));
-    resolver = testModule.get(NestJsFirestoreCollectionResolver);
+    resolver = appFixture.get(NestJsFirestoreCollectionResolver);
   });
 
   afterEach(async () => {
-    await clearFirestoreCollection(activeCollection);
     await clearFirestoreCollection(deletedCollection);
-    await testModule.close();
+    await appFixture.delete();
   });
 
   describe('getCollectionsForType', () => {

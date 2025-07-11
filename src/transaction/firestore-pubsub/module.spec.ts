@@ -1,18 +1,17 @@
 import type { EventPublisher, VersionedEntity } from '@causa/runtime';
 import { InjectEventPublisher, LoggerModule } from '@causa/runtime/nestjs';
-import { Injectable } from '@nestjs/common';
+import { AppFixture } from '@causa/runtime/nestjs/testing';
+import { Injectable, Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { Test, TestingModule } from '@nestjs/testing';
+import type { CollectionReference } from 'firebase-admin/firestore';
 import { FirebaseModule } from '../../firebase/index.js';
 import {
   FirestoreCollection,
   FirestoreCollectionsModule,
 } from '../../firestore/index.js';
-import {
-  getFirestoreCollectionFromModule,
-  overrideFirestoreCollections,
-} from '../../firestore/testing.js';
+import { FirestoreFixture } from '../../firestore/testing.js';
 import { PubSubPublisherModule } from '../../pubsub/index.js';
+import { FirebaseFixture } from '../../testing.js';
 import { FirestorePubSubTransactionModule } from './module.js';
 import { FirestorePubSubTransactionRunner } from './runner.js';
 import { SoftDeletedFirestoreCollection } from './soft-deleted-collection.decorator.js';
@@ -47,38 +46,40 @@ class MyService {
   ) {}
 }
 
+@Module({
+  providers: [MyService],
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
+    LoggerModule.forRoot(),
+    PubSubPublisherModule.forRoot(),
+    FirebaseModule.forTesting(),
+    FirestoreCollectionsModule.forRoot([MyDocument]),
+    FirestorePubSubTransactionModule.forRoot(),
+  ],
+})
+export class MyModule {}
+
 describe('FirestorePubSubTransactionModule', () => {
-  let testModule: TestingModule;
+  let appFixture: AppFixture;
+  let collection: CollectionReference<MyDocument>;
 
   beforeEach(async () => {
-    let builder = Test.createTestingModule({
-      providers: [MyService],
-      imports: [
-        ConfigModule.forRoot({ isGlobal: true }),
-        LoggerModule.forRoot(),
-        PubSubPublisherModule.forRoot(),
-        FirebaseModule.forTesting(),
-        FirestoreCollectionsModule.forRoot([MyDocument]),
-        FirestorePubSubTransactionModule.forRoot(),
-      ],
+    appFixture = new AppFixture(MyModule, {
+      fixtures: [new FirebaseFixture(), new FirestoreFixture([MyDocument])],
     });
-    builder = overrideFirestoreCollections(MyDocument)(builder);
-    testModule = await builder.compile();
+    await appFixture.init();
+    collection = appFixture.get(FirestoreFixture).collection(MyDocument);
   });
 
-  afterEach(async () => {
-    await testModule.close();
-  });
+  afterEach(() => appFixture.delete());
 
   it('should expose the runner', async () => {
-    const { runner: actualRunner } = testModule.get(MyService);
+    const { runner: actualRunner } = appFixture.get(MyService);
     const actualCollections =
       actualRunner.collectionResolver.getCollectionsForType(MyDocument);
 
     expect(actualRunner).toBeInstanceOf(FirestorePubSubTransactionRunner);
-    expect(actualCollections.activeCollection).toBe(
-      getFirestoreCollectionFromModule(testModule, MyDocument),
-    );
+    expect(actualCollections.activeCollection).toBe(collection);
     expect(actualCollections.softDelete?.collection.path).toEqual(
       `${actualCollections.activeCollection.path}$deleted`,
     );
