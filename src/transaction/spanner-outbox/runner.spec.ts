@@ -2,16 +2,18 @@ import {
   OutboxEventTransaction,
   TransactionOldTimestampError,
 } from '@causa/runtime';
-import { Logger } from '@causa/runtime/nestjs';
-import { Snapshot, type Database } from '@google-cloud/spanner';
+import { AppFixture, LoggingFixture } from '@causa/runtime/nestjs/testing';
+import { Database, Snapshot } from '@google-cloud/spanner';
 import { jest } from '@jest/globals';
-import { PubSubPublisher } from '../../pubsub/index.js';
-import { SpannerEntityManager } from '../../spanner/index.js';
-import { createDatabase, PubSubFixture } from '../../testing.js';
+import { Module } from '@nestjs/common';
+import { PubSubPublisher } from '../../pubsub/publisher.js';
+import { PubSubPublisherModule } from '../../pubsub/publisher.module.js';
+import { SpannerEntityManager, SpannerModule } from '../../spanner/index.js';
+import { PubSubFixture, SpannerFixture } from '../../testing.js';
 import { SpannerOutboxEvent } from './event.js';
+import { SpannerOutboxTransactionModule } from './module.js';
 import { SpannerReadOnlyStateTransaction } from './readonly-transaction.js';
 import { SpannerOutboxTransactionRunner } from './runner.js';
-import { SpannerOutboxSender } from './sender.js';
 import {
   expectOutboxToEqual,
   getSpannerOutboxEvents,
@@ -20,54 +22,42 @@ import {
   SPANNER_SCHEMA,
 } from './utils.test.js';
 
+@Module({
+  imports: [
+    SpannerModule.forRoot(),
+    PubSubPublisherModule.forRoot(),
+    SpannerOutboxTransactionModule.forRoot({ pollingInterval: 0 }),
+  ],
+})
+class MyModule {}
+
 describe('SpannerOutboxTransactionRunner', () => {
-  let logger: Logger;
-  let database: Database;
+  let appFixture: AppFixture;
   let pubSubFixture: PubSubFixture;
   let entityManager: SpannerEntityManager;
-  let publisher: PubSubPublisher;
-  let sender: SpannerOutboxSender;
   let runner: SpannerOutboxTransactionRunner;
 
   beforeAll(async () => {
-    logger = new Logger({});
-    database = await createDatabase();
+    pubSubFixture = new PubSubFixture({ 'my-topic': MyEvent });
+    appFixture = new AppFixture(MyModule, {
+      fixtures: [
+        new SpannerFixture({ types: [MyTable, SpannerOutboxEvent] }),
+        pubSubFixture,
+      ],
+    });
+    await appFixture.init();
+
+    const database = appFixture.get(Database);
     const [operation] = await database.updateSchema(SPANNER_SCHEMA);
     await operation.promise();
-    pubSubFixture = new PubSubFixture();
-    const pubSubConf = await pubSubFixture.create('my-topic', MyEvent);
-    entityManager = new SpannerEntityManager(database);
-    publisher = new PubSubPublisher(logger, {
-      configurationGetter: (key) => pubSubConf[key],
-    });
-    sender = new SpannerOutboxSender(
-      entityManager,
-      SpannerOutboxEvent,
-      publisher,
-      logger,
-      { pollingInterval: 0 },
-    );
+
+    entityManager = appFixture.get(SpannerEntityManager);
+    runner = appFixture.get(SpannerOutboxTransactionRunner);
   });
 
-  beforeEach(() => {
-    runner = new SpannerOutboxTransactionRunner(
-      entityManager,
-      SpannerOutboxEvent,
-      sender,
-      logger,
-    );
-  });
+  afterEach(() => appFixture.clear());
 
-  afterEach(async () => {
-    pubSubFixture.clear();
-    await entityManager.clear(MyTable);
-    await entityManager.clear(SpannerOutboxEvent);
-  });
-
-  afterAll(async () => {
-    await pubSubFixture.deleteAll();
-    await database.delete();
-  });
+  afterAll(() => appFixture.delete());
 
   it('should run the transaction, commit the events, and publish them', async () => {
     const expectedRow = new MyTable({ id: '1', value: '🗃️' });
@@ -101,7 +91,7 @@ describe('SpannerOutboxTransactionRunner', () => {
     expect(actualResult).toEqual('🎉');
     const actualRow = await entityManager.findOneByKey(MyTable, '1');
     expect(actualRow).toEqual(expectedRow);
-    await pubSubFixture.expectEventInTopic('my-topic', expectedEvent, {
+    await pubSubFixture.expectEvent('my-topic', expectedEvent, {
       attributes: {
         default: '🫥',
         eventId: '1',
@@ -132,7 +122,7 @@ describe('SpannerOutboxTransactionRunner', () => {
     await expect(actualPromise).rejects.toThrow('💥');
     const actualRow = await entityManager.findOneByKey(MyTable, '1');
     expect(actualRow).toBeUndefined();
-    await pubSubFixture.expectNoMessageInTopic('my-topic');
+    await pubSubFixture.expectNoMessage('my-topic');
     await expectOutboxToEqual(entityManager, []);
   });
 
@@ -165,11 +155,13 @@ describe('SpannerOutboxTransactionRunner', () => {
         }),
     );
     const actualOutboxEvents = new Promise((resolve) => {
-      jest.spyOn(publisher, 'publish').mockImplementationOnce(async () => {
-        // During publishing, events should still be in the outbox.
-        resolve(await getSpannerOutboxEvents(entityManager));
-        throw new Error('💥');
-      });
+      jest
+        .spyOn(appFixture.get(PubSubPublisher), 'publish')
+        .mockImplementationOnce(async () => {
+          // During publishing, events should still be in the outbox.
+          resolve(await getSpannerOutboxEvents(entityManager));
+          throw new Error('💥');
+        });
     });
 
     const actualResult = await runner.run(async (transaction) => {
@@ -183,12 +175,15 @@ describe('SpannerOutboxTransactionRunner', () => {
     expect(actualResult).toEqual('🎉');
     const actualRow = await entityManager.findOneByKey(MyTable, '1');
     expect(actualRow).toEqual(expectedRow);
-    await pubSubFixture.expectEventInTopic('my-topic', expectedEvent2);
-    expect(await actualOutboxEvents).toIncludeAllMembers(expectedOutboxEvents);
+    await pubSubFixture.expectEvent('my-topic', expectedEvent2);
+    expect(await actualOutboxEvents).toIncludeSameMembers(expectedOutboxEvents);
     // The failed event should still be in the outbox, with the lease removed.
     await expectOutboxToEqual(entityManager, [
       { ...expectedOutboxEvents[0], leaseExpiration: null },
     ]);
+    appFixture
+      .get(LoggingFixture)
+      .expectErrors({ message: 'Failed to publish an event.' });
   });
 
   it('should retry the transaction when a TransactionOldTimestampError is thrown', async () => {
@@ -216,7 +211,7 @@ describe('SpannerOutboxTransactionRunner', () => {
     expect(actualRow1).toBeUndefined();
     const actualRow2 = await entityManager.findOneByKey(MyTable, '2');
     expect(actualRow2).toEqual(new MyTable({ id: '2', value: '🗃' }));
-    await pubSubFixture.expectEventInTopic(
+    await pubSubFixture.expectEvent(
       'my-topic',
       new MyEvent({
         id: '2',
@@ -251,7 +246,7 @@ describe('SpannerOutboxTransactionRunner', () => {
     expect(actualResult).toEqual('🎉');
     expect(numCalls).toBe(2);
     expect(observedNumStagedEvents).toEqual([0, 0]);
-    await pubSubFixture.expectEventInTopic(
+    await pubSubFixture.expectEvent(
       'my-topic',
       new MyEvent({
         id: '2',
@@ -263,7 +258,7 @@ describe('SpannerOutboxTransactionRunner', () => {
     // This could pass unexpectedly because we cannot guarantee all messages have been received.
     // However, this in addition to `observedNumStagedEvents` should be enough to ensure that a new event transaction is
     // used on each retry.
-    expect(pubSubFixture.fixtures['my-topic'].messages).toHaveLength(1);
+    expect(pubSubFixture.topics['my-topic'].messages).toHaveLength(1);
     await expectOutboxToEqual(entityManager, []);
   });
 
@@ -286,7 +281,7 @@ describe('SpannerOutboxTransactionRunner', () => {
     await expect(actualPromise).rejects.toThrow(TransactionOldTimestampError);
     const actualRow = await entityManager.findOneByKey(MyTable, '1');
     expect(actualRow).toBeUndefined();
-    await pubSubFixture.expectNoMessageInTopic('my-topic');
+    await pubSubFixture.expectNoMessage('my-topic');
     await expectOutboxToEqual(entityManager, []);
   });
 
