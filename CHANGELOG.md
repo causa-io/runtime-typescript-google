@@ -17,6 +17,8 @@ Breaking changes:
 - Adapt the `PubSubFixture` to the `Fixture` and `EventFixture` interfaces.
 - Replace the `overrideAppCheck` test utility with the `AppCheckFixture`.
 - Replace the `GoogleAppFixture` with `createGoogleFixtures`.
+- Remove the nested type feature from the `SpannerEntityManager`.
+- Remove `runInExistingOrNew[ReadOnly]Transaction` in favor of options in `transaction` and `snapshot`.
 
 Features:
 

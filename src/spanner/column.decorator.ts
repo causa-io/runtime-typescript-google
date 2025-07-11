@@ -18,17 +18,6 @@ export type SpannerColumnMetadata = {
   name: string;
 
   /**
-   * If the type of the property is a nested type, this is the class for this property.
-   */
-  nestedType?: Type;
-
-  /**
-   * When `true`, sets the property to null if all properties is the nested object are null.
-   * Defaults to `false`.
-   */
-  nullifyNested: boolean;
-
-  /**
    * When `true`, the column is assumed to be of type `INT64` and the value will be safely stored in a `bigint`.
    */
   isBigInt: boolean;
@@ -76,8 +65,6 @@ export function SpannerColumn(options: Partial<SpannerColumnMetadata> = {}) {
 
     metadata[propertyKey] = {
       name: options.name ?? propertyKey,
-      nestedType: options.nestedType,
-      nullifyNested: options.nullifyNested ?? false,
       isInt: options.isInt ?? false,
       isBigInt: options.isBigInt ?? false,
       isPreciseDate,
@@ -128,15 +115,9 @@ export function getSpannerColumnsMetadata(
  * Lists all the columns in the given class, based on {@link SpannerColumn} decorators.
  *
  * @param classType The type for the table.
- * @param namePrefix Used for recursion with nested types, do not use directly.
  * @returns The list of columns for the given class.
  */
-export function getSpannerColumns(classType: Type, namePrefix = ''): string[] {
+export function getSpannerColumns(classType: Type): string[] {
   const columnsMetadata = getSpannerColumnsMetadata(classType);
-
-  return Object.values(columnsMetadata).flatMap((c) =>
-    c.nestedType
-      ? getSpannerColumns(c.nestedType, `${c.name}_`)
-      : `${namePrefix}${c.name}`,
-  );
+  return Object.values(columnsMetadata).flatMap((c) => c.name);
 }

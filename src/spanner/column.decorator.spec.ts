@@ -13,23 +13,12 @@ type SomeJsonType = {
 };
 
 describe('SpannerColumn', () => {
-  class NestedType {
-    @SpannerColumn()
-    otherColumn!: string;
-  }
-
   class Test {
     @SpannerColumn()
     defaultName!: string;
 
     @SpannerColumn({ name: 'providedName' })
     overriddenName!: string;
-
-    @SpannerColumn({ nestedType: NestedType })
-    nestedColumn!: NestedType;
-
-    @SpannerColumn({ nestedType: NestedType, nullifyNested: true })
-    nullableNestedColumn!: NestedType | null;
 
     @SpannerColumn({ isBigInt: true })
     bigIntColumn!: bigint;
@@ -70,12 +59,6 @@ describe('SpannerColumn', () => {
       expect(actualMetadata).toMatchObject({
         defaultName: { name: 'defaultName' },
         overriddenName: { name: 'providedName' },
-        nestedColumn: {
-          nestedType: NestedType,
-          nullifyNested: false,
-          isJson: false,
-        },
-        nullableNestedColumn: { nestedType: NestedType, nullifyNested: true },
         bigIntColumn: { isBigInt: true },
         regularNumberColumn: { isBigInt: false, isInt: false },
         smallIntNumberColumn: { isInt: true },
@@ -107,8 +90,6 @@ describe('SpannerColumn', () => {
       expect(actualParentColumns).toIncludeSameMembers([
         'defaultName',
         'providedName',
-        'nestedColumn_otherColumn',
-        'nullableNestedColumn_otherColumn',
         'bigIntColumn',
         'regularNumberColumn',
         'smallIntNumberColumn',
@@ -120,8 +101,6 @@ describe('SpannerColumn', () => {
       expect(actualChildColumns).toIncludeSameMembers([
         'defaultName',
         'providedName',
-        'nestedColumn_otherColumn',
-        'nullableNestedColumn_otherColumn',
         'bigIntColumn',
         'regularNumberColumn',
         'smallIntNumberColumn',
