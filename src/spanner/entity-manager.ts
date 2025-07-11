@@ -42,18 +42,27 @@ export type SpannerKey = (string | null)[];
 /**
  * Options for {@link SpannerEntityManager.snapshot}.
  */
-type SnapshotOptions = {
-  /**
-   * Sets how the timestamp will be selected when creating the snapshot.
-   */
-  timestampBounds?: TimestampBounds;
-};
+type SnapshotOptions =
+  | SpannerReadOnlyTransactionOption
+  | {
+      /**
+       * Sets how the timestamp will be selected when creating the snapshot.
+       */
+      timestampBounds?: TimestampBounds;
+    };
 
 /**
  * A function that can be passed to the {@link SpannerEntityManager.snapshot} method.
  */
 export type SnapshotFunction<T> = (
   snapshot: SpannerReadOnlyTransaction,
+) => Promise<T>;
+
+/**
+ * A function that can be passed to the {@link SpannerEntityManager.transaction} method.
+ */
+export type SpannerTransactionFunction<T> = (
+  transaction: SpannerReadWriteTransaction,
 ) => Promise<T>;
 
 /**
@@ -268,8 +277,8 @@ export class SpannerEntityManager {
     const columns =
       options.columns ?? (options.index ? primaryKeyColumns : allColumns);
 
-    return await this.runInExistingOrNewReadOnlyTransaction(
-      options.transaction,
+    return await this.snapshot(
+      { transaction: options.transaction },
       async (transaction) => {
         const [rows] = await transaction.read(tableName, {
           keys: [key as any],
@@ -367,10 +376,36 @@ export class SpannerEntityManager {
    * @param runFn The function to run in the transaction.
    * @returns The return value of the function.
    */
+  transaction<T>(runFn: SpannerTransactionFunction<T>): Promise<T>;
+  /**
+   * Runs the provided function in a (read write) {@link SpannerReadWriteTransaction}.
+   * The function itself should not commit or rollback the transaction.
+   * If the function throws an error, the transaction will be rolled back.
+   *
+   * @param options The options to use when creating the transaction.
+   * @param runFn The function to run in the transaction.
+   * @returns The return value of the function.
+   */
+  transaction<T>(
+    options: SpannerReadWriteTransactionOption,
+    runFn: SpannerTransactionFunction<T>,
+  ): Promise<T>;
   async transaction<T>(
-    runFn: (transaction: SpannerReadWriteTransaction) => Promise<T>,
+    optionsOrRunFn:
+      | SpannerReadWriteTransactionOption
+      | SpannerTransactionFunction<T>,
+    runFn?: SpannerTransactionFunction<T>,
   ): Promise<T> {
+    const options = runFn
+      ? (optionsOrRunFn as SpannerReadWriteTransactionOption)
+      : {};
+    runFn ??= optionsOrRunFn as SpannerTransactionFunction<T>;
+
     try {
+      if (options.transaction) {
+        return await runFn(options.transaction);
+      }
+
       return await this.database.runTransactionAsync(async (transaction) => {
         try {
           const result = await runFn(transaction);
@@ -420,17 +455,24 @@ export class SpannerEntityManager {
     optionsOrRunFn: SnapshotOptions | SnapshotFunction<T>,
     runFn?: SnapshotFunction<T>,
   ): Promise<T> {
-    const snapshotFn =
-      typeof optionsOrRunFn === 'function'
-        ? optionsOrRunFn
-        : (runFn as SnapshotFunction<T>);
-    const options: SnapshotOptions =
-      typeof optionsOrRunFn === 'object' ? optionsOrRunFn : {};
+    const options = runFn ? (optionsOrRunFn as SnapshotOptions) : {};
+    runFn ??= optionsOrRunFn as SnapshotFunction<T>;
 
     let snapshot: Snapshot | undefined;
     try {
-      [snapshot] = await this.database.getSnapshot(options.timestampBounds);
-      return await snapshotFn(snapshot);
+      let transaction: SpannerReadOnlyTransaction | undefined;
+      if ('transaction' in options) {
+        transaction = options.transaction;
+      }
+
+      if (!transaction) {
+        [snapshot] = await this.database.getSnapshot(
+          'timestampBounds' in options ? options.timestampBounds : undefined,
+        );
+        transaction = snapshot;
+      }
+
+      return await runFn(transaction);
     } catch (error) {
       throw convertSpannerToEntityError(error) ?? error;
     } finally {
@@ -450,12 +492,10 @@ export class SpannerEntityManager {
   ): Promise<void> {
     const { quotedTableName } = this.tableCache.getMetadata(entityType);
 
-    await this.runInExistingOrNewTransaction(
-      options.transaction,
-      (transaction) =>
-        transaction.runUpdate({
-          sql: `DELETE FROM ${quotedTableName} WHERE TRUE`,
-        }),
+    await this.transaction(options, (transaction) =>
+      transaction.runUpdate({
+        sql: `DELETE FROM ${quotedTableName} WHERE TRUE`,
+      }),
     );
   }
 
@@ -488,8 +528,8 @@ export class SpannerEntityManager {
     const sqlStatement = statement ?? (optionsOrStatement as SqlStatement);
     const { entityType } = options;
 
-    return await this.runInExistingOrNewReadOnlyTransaction(
-      options.transaction,
+    return await this.snapshot(
+      { transaction: options.transaction },
       async (transaction) => {
         const [rows] = await transaction.run({
           ...sqlStatement,
@@ -580,12 +620,10 @@ export class SpannerEntityManager {
   ): Promise<void> {
     const objs = this.entitiesToSpannerObjects(entity);
 
-    await this.runInExistingOrNewTransaction(
-      options.transaction,
-      async (transaction) =>
-        Object.entries(objs).forEach(([tableName, objs]) =>
-          transaction.insert(tableName, objs),
-        ),
+    await this.transaction(options, async (transaction) =>
+      Object.entries(objs).forEach(([tableName, objs]) =>
+        transaction.insert(tableName, objs),
+      ),
     );
   }
 
@@ -606,12 +644,10 @@ export class SpannerEntityManager {
   ): Promise<void> {
     const objs = this.entitiesToSpannerObjects(entity);
 
-    await this.runInExistingOrNewTransaction(
-      options.transaction,
-      async (transaction) =>
-        Object.entries(objs).forEach(([tableName, objs]) =>
-          transaction.replace(tableName, objs),
-        ),
+    await this.transaction(options, async (transaction) =>
+      Object.entries(objs).forEach(([tableName, objs]) =>
+        transaction.replace(tableName, objs),
+      ),
     );
   }
 
@@ -652,8 +688,8 @@ export class SpannerEntityManager {
     const primaryKey = this.getPrimaryKey(update, entityType);
     const { tableName } = this.tableCache.getMetadata(entityType);
 
-    return await this.runInExistingOrNewTransaction(
-      options.transaction,
+    return await this.transaction(
+      { transaction: options.transaction },
       async (transaction) => {
         const existingEntity = await this.findOneByKey(entityType, primaryKey, {
           transaction,
@@ -713,8 +749,8 @@ export class SpannerEntityManager {
     }
     const { tableName } = this.tableCache.getMetadata(entityType);
 
-    return await this.runInExistingOrNewTransaction(
-      options.transaction,
+    return await this.transaction(
+      { transaction: options.transaction },
       async (transaction) => {
         const existingEntity = await this.findOneByKeyOrFail(entityType, key, {
           transaction,
@@ -730,51 +766,5 @@ export class SpannerEntityManager {
         return existingEntity;
       },
     );
-  }
-
-  /**
-   * Runs the given "read-write" function on a transaction. If a transaction is not passed, a new
-   * {@link SpannerReadWriteTransaction} is created instead.
-   *
-   * @param transaction The transaction to use. If `undefined`, a new transaction is created.
-   * @param fn The function to run on the transaction.
-   * @returns The result of the function.
-   */
-  async runInExistingOrNewTransaction<T>(
-    transaction: SpannerReadWriteTransaction | undefined,
-    fn: (transaction: SpannerReadWriteTransaction) => Promise<T>,
-  ) {
-    if (transaction) {
-      try {
-        return await fn(transaction);
-      } catch (error) {
-        throw convertSpannerToEntityError(error) ?? error;
-      }
-    }
-
-    return this.transaction(fn);
-  }
-
-  /**
-   * Runs the given "read-only" function on a transaction. If a transaction is not passed, a new
-   * {@link SpannerReadOnlyTransaction} is created instead.
-   *
-   * @param transaction The transaction to use. If `undefined`, a new {@link SpannerReadOnlyTransaction} is created.
-   * @param fn The function to run on the transaction.
-   * @returns The result of the function.
-   */
-  async runInExistingOrNewReadOnlyTransaction<T>(
-    transaction: SpannerReadOnlyTransaction | undefined,
-    fn: SnapshotFunction<T>,
-  ) {
-    if (transaction) {
-      try {
-        return await fn(transaction);
-      } catch (error) {
-        throw convertSpannerToEntityError(error) ?? error;
-      }
-    }
-
-    return this.snapshot(fn);
   }
 }

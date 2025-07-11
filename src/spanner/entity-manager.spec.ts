@@ -1,6 +1,6 @@
 import { EntityAlreadyExistsError, EntityNotFoundError } from '@causa/runtime';
 import { PreciseDate } from '@google-cloud/precise-date';
-import { Database, Snapshot, Transaction } from '@google-cloud/spanner';
+import { Database, Transaction } from '@google-cloud/spanner';
 import { status } from '@grpc/grpc-js';
 import { jest } from '@jest/globals';
 import 'jest-extended';
@@ -266,6 +266,32 @@ describe('SpannerEntityManager', () => {
 
       await expect(actualPromise).rejects.toThrow(TransactionFinishedError);
     });
+
+    it('should run the provided function in the provided transaction', async () => {
+      const expectedReturnValue = { value: '✅' };
+
+      const actualReturnValue = await database.runTransactionAsync(
+        async (transaction) => {
+          const returnValue = await manager.transaction(
+            { transaction },
+            async (transaction) => {
+              transaction.insert('MyEntity', { id: '1', value: '🎁' });
+              return expectedReturnValue;
+            },
+          );
+
+          transaction.end();
+
+          return returnValue;
+        },
+      );
+
+      expect(actualReturnValue).toEqual(expectedReturnValue);
+      const [actualRows] = await database
+        .table('MyEntity')
+        .read({ keys: ['1'], columns: ['id'] });
+      expect(actualRows).toBeEmpty();
+    });
   });
 
   describe('snapshot', () => {
@@ -339,105 +365,7 @@ describe('SpannerEntityManager', () => {
       expect(result).toEqual({ id: '6', value: '🔮' });
       expect(getSnapshotSpy).toHaveBeenCalledExactlyOnceWith({ readTimestamp });
     });
-  });
 
-  describe('runInExistingOrNewTransaction', () => {
-    it('should run the provided function in the provided transaction', async () => {
-      const expectedReturnValue = { value: '✅' };
-
-      const actualReturnValue = await database.runTransactionAsync(
-        async (transaction) => {
-          const returnValue = await manager.runInExistingOrNewTransaction(
-            transaction,
-            async (transaction) => {
-              transaction.insert('MyEntity', { id: '1', value: '🎁' });
-              return expectedReturnValue;
-            },
-          );
-
-          transaction.end();
-
-          return returnValue;
-        },
-      );
-
-      expect(actualReturnValue).toEqual(expectedReturnValue);
-      const [actualRows] = await database
-        .table('MyEntity')
-        .read({ keys: ['1'], columns: ['id'] });
-      expect(actualRows).toBeEmpty();
-    });
-
-    it('should run the provided function in a new transaction if none is provided', async () => {
-      const expectedReturnValue = { value: '✅' };
-
-      const actualReturnValue = await manager.runInExistingOrNewTransaction(
-        undefined,
-        async (transaction) => {
-          transaction.insert('MyEntity', { id: '1', value: '🎁' });
-          return expectedReturnValue;
-        },
-      );
-
-      expect(actualReturnValue).toEqual(expectedReturnValue);
-      const [actualRows] = await database
-        .table('MyEntity')
-        .read({ keys: ['1'], columns: ['id'], json: true });
-      expect(actualRows).toEqual([{ id: '1' }]);
-    });
-
-    it('should convert a Spanner error', async () => {
-      let actualPromise!: Promise<void>;
-      await database.runTransactionAsync(async (transaction) => {
-        actualPromise = manager.runInExistingOrNewTransaction(
-          transaction,
-          async () => {
-            const error = new Error('⌛');
-            (error as any).code = status.DEADLINE_EXCEEDED;
-            throw error;
-          },
-        );
-
-        await actualPromise.catch(() => {
-          // Ignore the error, just to finish the transaction.
-        });
-
-        transaction.end();
-      });
-
-      await expect(actualPromise).rejects.toThrow(TemporarySpannerError);
-    });
-
-    it('should rethrow an aborted error that will be retried by Spanner', async () => {
-      let firstTime = true;
-      const errors: any[] = [];
-      await database.runTransactionAsync(async (transaction) => {
-        try {
-          await manager.runInExistingOrNewTransaction(transaction, async () => {
-            if (!firstTime) {
-              return;
-            }
-
-            firstTime = false;
-            const error = new Error('♻️');
-            (error as any).code = status.ABORTED;
-            throw error;
-          });
-        } catch (error) {
-          errors.push(error);
-          throw error;
-        }
-      });
-
-      expect(errors).toHaveLength(1);
-      expect(errors[0].code).toBe(status.ABORTED);
-      expect(errors[0].message).toEqual('♻️');
-      // Throwing the error as a `TemporarySpannerError` makes it easier for clients to detect and rethrow.
-      expect(errors[0]).toBeInstanceOf(TemporarySpannerError);
-    });
-  });
-
-  describe('runInExistingOrNewReadOnlyTransaction', () => {
     it('should run the provided function in the provided transaction', async () => {
       const expectedReturnValue = { value: '✅' };
 
@@ -445,57 +373,24 @@ describe('SpannerEntityManager', () => {
       let actualTransaction!: SpannerReadOnlyTransaction;
       const actualReturnValue = await database.runTransactionAsync(
         async (transaction) => {
+          jest.spyOn(transaction, 'end');
           expectedTransaction = transaction;
 
-          return await manager.runInExistingOrNewReadOnlyTransaction(
-            transaction,
+          const value = await manager.snapshot(
+            { transaction },
             async (transaction) => {
               actualTransaction = transaction;
               return expectedReturnValue;
             },
           );
+
+          expect(transaction.end).not.toHaveBeenCalled();
+          return value;
         },
       );
 
       expect(actualTransaction).toBe(expectedTransaction);
       expect(actualReturnValue).toEqual(expectedReturnValue);
-    });
-
-    it('should run the provided function in a new snapshot if none is provided', async () => {
-      const expectedReturnValue = { value: '✅' };
-
-      let actualTransaction!: SpannerReadOnlyTransaction;
-      const actualReturnValue =
-        await manager.runInExistingOrNewReadOnlyTransaction(
-          undefined,
-          async (transaction) => {
-            actualTransaction = transaction;
-            return expectedReturnValue;
-          },
-        );
-
-      expect(actualTransaction).toBeInstanceOf(Snapshot);
-      expect(actualTransaction.ended).toBeTrue();
-      expect(actualReturnValue).toEqual(expectedReturnValue);
-    });
-
-    it('should convert a Spanner error', async () => {
-      const [snapshot] = await database.getSnapshot();
-
-      const actualPromise = manager.runInExistingOrNewReadOnlyTransaction(
-        snapshot,
-        async () => {
-          const error = new Error('⌛');
-          (error as any).code = status.DEADLINE_EXCEEDED;
-          throw error;
-        },
-      );
-      await actualPromise.catch(() => {
-        // Ignore the error, just to make sure the snapshot can be ended.
-      });
-      snapshot.end();
-
-      await expect(actualPromise).rejects.toThrow(TemporarySpannerError);
     });
   });
 
