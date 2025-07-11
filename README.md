@@ -52,7 +52,7 @@ The `FirebaseModule` is a NestJS module which exports various Firebase services 
 
 Outside of a NestJS context, `getDefaultFirebaseApp()` can be used to retrieve a consistently initialized singleton app.
 
-For testing, `overrideFirebaseApp` can be set as an `overrides` option for `makeTestAppFactory()`, which ensures the default Firebase application is used across tests and avoids lifecycle issues (repeatedly creating and tearing down new applications).
+For testing, the `FirebaseFixture` can be used, which ensures the default Firebase application is used across tests and avoids lifecycle issues (repeatedly creating and tearing down new applications).
 
 ### Firestore
 
@@ -60,7 +60,7 @@ The `makeFirestoreDataConverter` is a utility that returns a `FirestoreDataConve
 
 The `FirestoreCollectionsModule` builds upon the `FirebaseModule` and provides Firestore collections for the listed document types. In services, the `@InjectFirestoreCollection` decorator can be used to retrieve a Firestore collection, prepared with the aforementioned converter.
 
-Testing utilities are also provided. `clearFirestoreCollection()` can be used in between tests to reinitialize the collection. `overrideFirestoreCollections` can be used as an `overrides` option for `makeTestAppFactory()` to replace collections with temporary ones. This ensures separate collections are used for each test and avoids conflicts.
+Testing utilities are also provided with `FirestoreFixture`. It replaces injected collections with temporary ones, to ensure separate collections are used for each test suite and avoid conflicts. Also, collections are cleared between tests.
 
 ### NestJS health checks
 
@@ -86,9 +86,7 @@ For services being triggered by Pub/Sub messages, the `PubSubEventHandlerModule`
 
 The `PubSubHealthIndicator` is a `HealthIndicator` which can be used in a health check controller, such as the `GoogleHealthcheckModule`. It attempts to list topics using the Pub/Sub client to check connectivity to the Pub/Sub API.
 
-To test publishers, the `PubSubFixture` handles the creation and deletion of temporary topics. The `PubSubFixture.createWithOverrider()` method is especially useful when used in combination with the `makeTestAppFactory()` utility.
-
-To test event handlers, the `makePubSubRequester()` utility returns a function which can be used to make HTTP requests in the same way a Pub/Sub push subscription would.
+To test publishers, the `PubSubFixture` handles the creation and deletion of temporary topics, and provides `expect*` utilities to check for published messages. To test event handlers, it also provides the `makeRequester()` utility, which returns a function that can be used to make HTTP requests in the same way a Pub/Sub push subscription would.
 
 ### Spanner
 
@@ -98,7 +96,7 @@ The `SpannerModule` provides a `Database` instance configured using the `SPANNER
 
 The `SpannerHealthIndicator` is a `HealthIndicator` which can be used in a health check controller, such as the `GoogleHealthcheckModule`. It runs a dummy `SELECT 1` query against the database to check connectivity.
 
-For testing, the `createDatabase` utility creates a temporary database, copying the DDL from the configured database (set with the `SPANNER_DATABASE` environment variable). `overrideDatabase` can be used as an `overrides` option for `makeTestAppFactory` to substitute the database with a temporary one.
+For testing, the `createDatabase` utility creates a temporary database, copying the DDL from the configured database (set with the `SPANNER_DATABASE` environment variable). The `SpannerFixture` uses this mechanism, and also clears the specified tables between tests.
 
 ### GCP-based Causa transaction runners
 
@@ -121,4 +119,4 @@ The `@IsValidFirestoreId` validation decorator checks that a property is a strin
 
 ### More testing utilities
 
-Additionally to the testing utilities provided alongside many features in this package, the `GoogleAppFixture` ties many of those together to provide a smooth experience when testing a full NestJS application using Google services (Spanner, Pub/Sub, Firestore, Identity Platform) together. It manages the setup and tear down of all these services locally and provides a single entrypoint to interact with GCP-related fixtures in tests.
+To include all fixtures provided in this package as part of an `AppFixture`, use the `createGoogleFixtures` function, which is a convenience method to create the fixtures with sensible defaults.
