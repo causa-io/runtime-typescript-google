@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v1.0.0-rc.1 (2025-07-15)
+
 Breaking changes:
 
 - Upgrade the minimum Node.js version to `20`.
