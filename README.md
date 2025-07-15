@@ -119,4 +119,4 @@ The `@IsValidFirestoreId` validation decorator checks that a property is a strin
 
 ### More testing utilities
 
-To include all fixtures provided in this package as part of an `AppFixture`, use the `createGoogleFixtures` function, which is a convenience method to create the fixtures with sensible defaults.
+To include all fixtures provided in this package as part of an `AppFixture`, use the `createGoogleFixtures` function, which is a convenience method to create the fixtures with sensible defaults. This will also automatically provide a `VersionedEntityFixture` configured with the `SpannerOutboxTransactionRunner`.

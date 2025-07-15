@@ -8,6 +8,7 @@ import {
 } from '@causa/runtime';
 import { EVENT_PUBLISHER_INJECTION_NAME } from '@causa/runtime/nestjs';
 import { AppFixture } from '@causa/runtime/nestjs/testing';
+import { VersionedEntityFixture } from '@causa/runtime/testing';
 import { Database, Spanner } from '@google-cloud/spanner';
 import { Controller, Get, Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
@@ -33,7 +34,11 @@ import {
   FirestoreFixture,
   PubSubFixture,
 } from './testing.js';
-import { SoftDeletedFirestoreCollection } from './transaction/index.js';
+import {
+  FirestorePubSubTransactionRunner,
+  SoftDeletedFirestoreCollection,
+  SpannerOutboxTransactionRunner,
+} from './transaction/index.js';
 
 @SpannerTable({ primaryKey: ['id'] })
 class MyEntity implements VersionedEntity {
@@ -149,7 +154,7 @@ class MyController {
 })
 class MyModule {}
 
-describe('GoogleAppFixture', () => {
+describe('AppFixture', () => {
   let previousEnv: NodeJS.ProcessEnv;
   let spanner: Spanner;
   let sourceDatabase: Database;
@@ -203,7 +208,7 @@ describe('GoogleAppFixture', () => {
     process.env = previousEnv;
   });
 
-  describe('create', () => {
+  describe('init', () => {
     it('should create a temporary Spanner database', () => {
       const actualName = fixture.get(Database).formattedName_;
 
@@ -217,6 +222,42 @@ describe('GoogleAppFixture', () => {
 
       // The temporary collection includes a suffix.
       expect(actualCollection.path).not.toStartWith('myCollection');
+    });
+
+    it('should provide the default versioned entity fixture', () => {
+      const actualFixture = fixture.get(VersionedEntityFixture);
+
+      expect(actualFixture).toBeInstanceOf(VersionedEntityFixture);
+      expect((actualFixture as any).runnerType).toBe(
+        SpannerOutboxTransactionRunner,
+      );
+      expect((actualFixture as any).eventFixtureType).toBe(PubSubFixture);
+    });
+
+    it('should provide the requested versioned entity fixture', () => {
+      const fixture = new AppFixture(MyModule, {
+        fixtures: createGoogleFixtures({
+          versionedEntityRunner: FirestorePubSubTransactionRunner,
+        }),
+      });
+
+      const actualFixture = fixture.get(VersionedEntityFixture);
+
+      expect(actualFixture).toBeInstanceOf(VersionedEntityFixture);
+      expect((actualFixture as any).runnerType).toBe(
+        FirestorePubSubTransactionRunner,
+      );
+      expect((actualFixture as any).eventFixtureType).toBe(PubSubFixture);
+    });
+
+    it('should not provide a versioned entity fixture if requested', () => {
+      const fixture = new AppFixture(MyModule, {
+        fixtures: createGoogleFixtures({
+          versionedEntityRunner: null,
+        }),
+      });
+
+      expect(() => fixture.get(VersionedEntityFixture)).toThrow();
     });
   });
 
