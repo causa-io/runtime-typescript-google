@@ -1,10 +1,15 @@
 import { type Fixture } from '@causa/runtime/nestjs/testing';
+import { VersionedEntityFixture } from '@causa/runtime/testing';
 import type { Type } from '@nestjs/common';
 import { FirestoreFixture } from './firestore/testing.js';
 import { AuthUsersFixture } from './identity-platform/testing.js';
 import { PubSubFixture } from './pubsub/testing.js';
 import { SpannerFixture } from './spanner/testing.js';
 import { AppCheckFixture, FirebaseFixture } from './testing.js';
+import {
+  FirestorePubSubTransactionRunner,
+  SpannerOutboxTransactionRunner,
+} from './transaction/index.js';
 
 export * from './app-check/testing.js';
 export * from './firebase/testing.js';
@@ -42,9 +47,29 @@ export function createGoogleFixtures(
      * Defaults to `true`.
      */
     disableAppCheck?: boolean;
+
+    /**
+     * The transaction runner to use with the created {@link VersionedEntityFixture}.
+     * Defaults to {@link SpannerOutboxTransactionRunner}.
+     * If `null`, no versioned entity fixture is created.
+     */
+    versionedEntityRunner?:
+      | Type<SpannerOutboxTransactionRunner>
+      | Type<FirestorePubSubTransactionRunner>
+      | null;
   } = {},
 ): Fixture[] {
   const disableAppCheck = options.disableAppCheck ?? true;
+
+  const versionedEntityFixture =
+    options.versionedEntityRunner !== null
+      ? [
+          new VersionedEntityFixture(
+            options.versionedEntityRunner ?? SpannerOutboxTransactionRunner,
+            PubSubFixture,
+          ),
+        ]
+      : [];
 
   return [
     new FirebaseFixture(),
@@ -53,5 +78,6 @@ export function createGoogleFixtures(
     new SpannerFixture({ types: options.spannerTypes }),
     new PubSubFixture(options.pubSubTopics ?? {}),
     ...(disableAppCheck ? [new AppCheckFixture()] : []),
+    ...versionedEntityFixture,
   ];
 }
