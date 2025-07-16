@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v1.0.0-rc.2 (2025-07-16)
+
 Chores:
 
 - Use `throwHttpErrorResponse` rather than throwing error classes that have been removed.
