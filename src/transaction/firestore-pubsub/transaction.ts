@@ -41,10 +41,7 @@ export class FirestorePubSubTransaction extends Transaction {
     return this.stateTransaction.delete(type, key);
   }
 
-  get<T extends object>(
-    type: Type<T>,
-    entity: Partial<T>,
-  ): Promise<T | undefined> {
+  get<T extends object>(type: Type<T>, entity: Partial<T>): Promise<T | null> {
     return this.stateTransaction.get(type, entity);
   }
 

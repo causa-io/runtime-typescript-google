@@ -40,7 +40,7 @@ export class FirestoreReadOnlyStateTransaction
   async get<T extends object>(
     type: Type<T>,
     entity: Partial<T>,
-  ): Promise<T | undefined> {
+  ): Promise<T | null> {
     const { activeCollection, softDelete } =
       this.collectionResolver.getCollectionsForType(type);
 
@@ -50,12 +50,13 @@ export class FirestoreReadOnlyStateTransaction
       type,
     );
     const activeSnapshot = await this.firestoreTransaction.get(activeDocRef);
-    if (activeSnapshot.exists) {
-      return activeSnapshot.data();
+    const activeDocument = activeSnapshot.data();
+    if (activeDocument) {
+      return activeDocument;
     }
 
     if (!softDelete) {
-      return undefined;
+      return null;
     }
 
     const deletedDocRef = getReferenceForFirestoreDocument(
@@ -64,11 +65,11 @@ export class FirestoreReadOnlyStateTransaction
       type,
     );
     const deletedSnapshot = await this.firestoreTransaction.get(deletedDocRef);
-    if (!deletedSnapshot.exists) {
-      return undefined;
+    const deletedDocument = deletedSnapshot.data();
+    if (!deletedDocument) {
+      return null;
     }
 
-    const deletedDocument = deletedSnapshot.data();
     delete (deletedDocument as any)[softDelete.expirationField];
     return deletedDocument;
   }

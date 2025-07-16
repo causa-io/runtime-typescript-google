@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+Chores:
+
+- Use `throwHttpErrorResponse` rather than throwing error classes that have been removed.
+- Adapt to breaking change for state transactions to return `null`.
+
 ## v1.0.0-rc.1 (2025-07-15)
 
 Breaking changes:

@@ -80,7 +80,7 @@ describe('SpannerReadOnlyStateTransaction', () => {
       expect(actualEntity).toEqual(entity);
     });
 
-    it('should return undefined if the entity does not exist', async () => {
+    it('should return null if the entity does not exist', async () => {
       const actualEntity = await entityManager.snapshot(
         async (spannerTransaction) => {
           const transaction = new SpannerReadOnlyStateTransaction(
@@ -91,7 +91,7 @@ describe('SpannerReadOnlyStateTransaction', () => {
         },
       );
 
-      expect(actualEntity).toBeUndefined();
+      expect(actualEntity).toBeNull();
     });
 
     it('should return a soft deleted entity', async () => {
@@ -137,7 +137,7 @@ describe('SpannerReadOnlyStateTransaction', () => {
         },
       );
 
-      expect(actualEntity).toBeUndefined();
+      expect(actualEntity).toBeNull();
     });
   });
 });
