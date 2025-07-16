@@ -199,7 +199,7 @@ describe('FirestoreStateTransaction', () => {
       expect(actualDocument).toBeInstanceOf(MyDocument);
     });
 
-    it('should return undefined if the document does not exist', async () => {
+    it('should return null if the document does not exist', async () => {
       const actualDocument = await firestore.runTransaction(
         async (transaction) => {
           const stateTransaction = new FirestoreStateTransaction(
@@ -214,7 +214,7 @@ describe('FirestoreStateTransaction', () => {
         { readOnly: true },
       );
 
-      expect(actualDocument).toBeUndefined();
+      expect(actualDocument).toBeNull();
     });
 
     it('should return a document without a soft delete collection', async () => {

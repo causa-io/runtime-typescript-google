@@ -37,12 +37,12 @@ export class SpannerReadOnlyStateTransaction
   async get<T extends object>(
     type: Type<T>,
     entity: Partial<T>,
-  ): Promise<T | undefined> {
+  ): Promise<T | null> {
     const primaryKey = this.entityManager.getPrimaryKey(entity, type);
-
-    return await this.entityManager.findOneByKey(type, primaryKey, {
+    const row = await this.entityManager.findOneByKey(type, primaryKey, {
       transaction: this.spannerTransaction,
       includeSoftDeletes: true,
     });
+    return row ?? null;
   }
 }
