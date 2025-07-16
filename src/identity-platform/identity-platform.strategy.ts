@@ -1,5 +1,9 @@
 import type { User } from '@causa/runtime';
-import { Logger, UnauthenticatedError } from '@causa/runtime/nestjs';
+import {
+  Logger,
+  throwHttpErrorResponse,
+  UnauthenticatedErrorDto,
+} from '@causa/runtime/nestjs';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
@@ -44,7 +48,7 @@ export class IdentityPlatformStrategy extends PassportStrategy(Strategy) {
         this.logger.warn({ error: error.stack }, 'Token verification failed.');
       }
 
-      throw new UnauthenticatedError();
+      throwHttpErrorResponse(new UnauthenticatedErrorDto());
     }
 
     const user = {

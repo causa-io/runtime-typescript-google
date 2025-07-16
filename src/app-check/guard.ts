@@ -1,4 +1,8 @@
-import { Logger, UnauthenticatedError } from '@causa/runtime/nestjs';
+import {
+  Logger,
+  throwHttpErrorResponse,
+  UnauthenticatedErrorDto,
+} from '@causa/runtime/nestjs';
 import {
   type CanActivate,
   type ExecutionContext,
@@ -36,7 +40,7 @@ export class AppCheckGuard implements CanActivate {
 
     const appCheckToken = request.headers['x-firebase-appcheck'];
     if (!appCheckToken || typeof appCheckToken !== 'string') {
-      throw new UnauthenticatedError();
+      throwHttpErrorResponse(new UnauthenticatedErrorDto());
     }
 
     try {
@@ -48,7 +52,7 @@ export class AppCheckGuard implements CanActivate {
         'App Check token verification failed.',
       );
 
-      throw new UnauthenticatedError();
+      throwHttpErrorResponse(new UnauthenticatedErrorDto());
     }
   }
 }
