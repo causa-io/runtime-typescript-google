@@ -1,11 +1,16 @@
 import { JsonObjectSerializer, type ObjectSerializer } from '@causa/runtime';
-import type { NestJsModuleOverrider } from '@causa/runtime/nestjs/testing';
+import type {
+  AppFixture,
+  EventFixture,
+  Fixture,
+  NestJsModuleOverrider,
+} from '@causa/runtime/nestjs/testing';
 import { Message, PubSub, Subscription, Topic } from '@google-cloud/pubsub';
-import type { Type } from '@nestjs/common';
+import { HttpStatus, type Type } from '@nestjs/common';
 import { setTimeout } from 'timers/promises';
 import * as uuid from 'uuid';
-import { getConfigurationKeyForTopic } from '../configuration.js';
-import { PUBSUB_PUBLISHER_CONFIGURATION_GETTER_INJECTION_NAME } from '../publisher.module.js';
+import { getConfigurationKeyForTopic } from './configuration.js';
+import { PUBSUB_PUBLISHER_CONFIGURATION_GETTER_INJECTION_NAME } from './publisher.module.js';
 
 /**
  * The default duration (in milliseconds) after which `expectMessageInTopic` times out.
@@ -43,9 +48,9 @@ export type ReceivedPubSubEvent = {
 };
 
 /**
- * Options for the {@link PubSubFixture.expectMessageInTopic} method.
+ * Options for the {@link PubSubFixture.expectMessage} method.
  */
-type ExpectMessageInTopicOptions = {
+export type ExpectMessageOptions = {
   /**
    * The maximum time (in milliseconds) to wait for a message before giving up.
    * Defaults to `2000`.
@@ -54,18 +59,48 @@ type ExpectMessageInTopicOptions = {
 };
 
 /**
+ * Options when making a request to an endpoint handling Pub/Sub events using an {@link EventRequester}.
+ */
+export type EventRequesterOptions = {
+  /**
+   * The attributes to add to the Pub/Sub message.
+   * Using `undefined` values allows removing the attributes set by default.
+   */
+  attributes?: Record<string, string | undefined>;
+
+  /**
+   * The expected status code when making the request.
+   * Default is `200`.
+   */
+  expectedStatus?: number;
+
+  /**
+   * The time to set as the publication time of the Pub/Sub message.
+   */
+  publishTime?: Date;
+};
+
+/**
+ * A function that makes a query to an endpoint handling Pub/Sub events and tests the response.
+ */
+export type EventRequester = (
+  event: object,
+  options?: EventRequesterOptions,
+) => Promise<void>;
+
+/**
  * A utility class managing temporary Pub/Sub topics and listening to messages published to them.
  */
-export class PubSubFixture {
+export class PubSubFixture implements Fixture, EventFixture {
+  /**
+   * The parent {@link AppFixture}.
+   */
+  private appFixture!: AppFixture;
+
   /**
    * The Pub/Sub client to use.
    */
   readonly pubSub: PubSub;
-
-  /**
-   * Whether the Pub/Sub client is managed by the fixture.
-   */
-  private readonly isManagedClient: boolean;
 
   /**
    * The (de)serializer to use for Pub/Sub messages.
@@ -76,7 +111,7 @@ export class PubSubFixture {
    * The dictionary of monitored temporary topics.
    * The key is the name of the event topic (not broker-specific).
    */
-  readonly fixtures: Record<
+  readonly topics: Record<
     string,
     {
       /**
@@ -99,41 +134,37 @@ export class PubSubFixture {
   /**
    * Creates a new {@link PubSubFixture}.
    *
+   * @param topicsAndTypes The dictionary of topics to test and their event types.
    * @param options Options for the fixture.
    */
   constructor(
+    private readonly topicsAndTypes: Record<string, Type>,
     options: {
-      /**
-       * The Pub/Sub client to use.
-       */
-      pubSub?: PubSub;
-
       /**
        * The (de)serializer to use for Pub/Sub messages.
        */
       serializer?: ObjectSerializer;
     } = {},
   ) {
-    this.pubSub = options.pubSub ?? new PubSub();
-    this.isManagedClient = !options.pubSub;
+    this.pubSub = new PubSub();
     this.serializer = options.serializer ?? new JsonObjectSerializer();
   }
 
   /**
    * Creates a new temporary topic and starts listening to messages published to it.
    *
-   * @param sourceTopicName The original name of the topic, i.e. the one used in production.
+   * @param sourceTopic The original name of the topic, i.e. the one used in production.
    * @param eventType The type of the event published to the topic, used for deserialization.
    * @returns The configuration key and value for the created temporary topic.
    */
-  async create(
-    sourceTopicName: string,
+  private async create(
+    sourceTopic: string,
     eventType: Type,
   ): Promise<Record<string, string>> {
-    await this.delete(sourceTopicName);
+    await this.deleteTopic(sourceTopic);
 
     const suffix = uuid.v4().slice(-10);
-    const topicName = `${sourceTopicName}-${suffix}`;
+    const topicName = `${sourceTopic}-${suffix}`;
     const subscriptionName = `fixture-${suffix}`;
 
     // This ensures the project ID is populated in the Pub/Sub client.
@@ -143,16 +174,16 @@ export class PubSubFixture {
     const [topic] = await this.pubSub.createTopic(topicName);
     const [subscription] = await topic.createSubscription(subscriptionName);
 
-    this.fixtures[sourceTopicName] = { topic, subscription, messages: [] };
+    this.topics[sourceTopic] = { topic, subscription, messages: [] };
 
     subscription.on('message', async (message: Message) => {
-      const fixture = this.fixtures[sourceTopicName];
-      if (!fixture || fixture.topic !== topic) {
+      const topicFixture = this.topics[sourceTopic];
+      if (topicFixture?.topic !== topic) {
         return;
       }
 
       const event = await this.serializer.deserialize(eventType, message.data);
-      fixture.messages.push({
+      topicFixture.messages.push({
         attributes: message.attributes,
         orderingKey: message.orderingKey ? message.orderingKey : undefined,
         event,
@@ -161,38 +192,19 @@ export class PubSubFixture {
       message.ack();
     });
 
-    return { [getConfigurationKeyForTopic(sourceTopicName)]: topic.name };
+    return { [getConfigurationKeyForTopic(sourceTopic)]: topic.name };
   }
 
-  /**
-   * Creates several temporary topics and returns the configuration (environment variables) for the
-   *
-   * @param topicsAndTypes A dictionary of topics and their corresponding event types.
-   * @returns The configuration for Pub/Sub topics, with the IDs of the created topics.
-   */
-  async createMany(
-    topicsAndTypes: Record<string, Type>,
-  ): Promise<Record<string, string>> {
+  async init(appFixture: AppFixture): Promise<NestJsModuleOverrider> {
+    this.appFixture = appFixture;
+
     const configurations = await Promise.all(
-      Object.entries(topicsAndTypes).map(async ([topicName, eventType]) =>
-        this.create(topicName, eventType),
+      Object.entries(this.topicsAndTypes).map(([topic, eventType]) =>
+        this.create(topic, eventType),
       ),
     );
+    const configuration = Object.assign({}, ...configurations);
 
-    return Object.assign({}, ...configurations);
-  }
-
-  /**
-   * Uses {@link PubSubFixture.createMany} to create temporary topics and returns a {@link NestJsModuleOverrider} to
-   * override the Pub/Sub publisher configuration.
-   *
-   * @param topicsAndTypes A dictionary of topics and their corresponding event types.
-   * @returns The {@link NestJsModuleOverrider} to use to override the Pub/Sub publisher configuration.
-   */
-  async createWithOverrider(
-    topicsAndTypes: Record<string, Type>,
-  ): Promise<NestJsModuleOverrider> {
-    const configuration = await this.createMany(topicsAndTypes);
     return (builder) =>
       builder
         .overrideProvider(PUBSUB_PUBLISHER_CONFIGURATION_GETTER_INJECTION_NAME)
@@ -200,21 +212,87 @@ export class PubSubFixture {
   }
 
   /**
+   * Creates an {@link EventRequester} for an endpoint handling Pub/Sub messages.
+   * If the `event` passed to the {@link EventRequester} conforms to the `Event` interface (if it has `producedAt`,
+   * `name` and / or `id` properties), the default attributes are set in the Pub/Sub message. Default attributes can be
+   * overridden (or removed by passing `undefined`) using {@link EventRequesterOptions.attributes}.
+   *
+   * @param endpoint The endpoint to query.
+   * @param options Options when creating the requester.
+   * @returns The {@link EventRequester}.
+   */
+  makeRequester(
+    endpoint: string,
+    options: {
+      /**
+       * The default expected status code when making a request.
+       */
+      expectedStatus?: number;
+    } = {},
+  ): EventRequester {
+    return async (event, requestOptions) => {
+      const messageId = uuid.v4();
+      const publishTime = (
+        requestOptions?.publishTime ?? new Date()
+      ).toISOString();
+      const buffer = await this.serializer.serialize(event);
+      const data = buffer.toString('base64');
+
+      // Default attributes if the event conforms to the `Event` interface.
+      const defaultAttributes: Record<string, string> = {};
+      if ('producedAt' in event && event.producedAt instanceof Date) {
+        defaultAttributes.producedAt = event.producedAt.toISOString();
+      }
+      if ('name' in event && typeof event.name === 'string') {
+        defaultAttributes.eventName = event.name;
+      }
+      if ('id' in event && typeof event.id === 'string') {
+        defaultAttributes.eventId = event.id;
+      }
+      const attributes = {
+        ...defaultAttributes,
+        ...requestOptions?.attributes,
+      };
+
+      const payload = {
+        message: {
+          messageId,
+          message_id: messageId,
+          publishTime,
+          publish_time: publishTime,
+          attributes,
+          data,
+        },
+        subscription: 'subscription',
+      };
+      const expectedStatus =
+        requestOptions?.expectedStatus ??
+        options.expectedStatus ??
+        HttpStatus.OK;
+
+      await this.appFixture.request
+        .post(endpoint)
+        .send(payload)
+        .expect(expectedStatus);
+    };
+  }
+
+  /**
    * Checks that the given message has been published to the specified topic.
    *
-   * @param sourceTopicName The original name of the event topic.
+   * @param topic The original name of the event topic.
    * @param expectedMessage The message expected to have been published.
    *   This can be an `expect` expression, e.g. `expect.objectContaining({})`.
    * @param options Options for the expectation.
    */
-  async expectMessageInTopic(
-    sourceTopicName: string,
+  async expectMessage(
+    topic: string,
     expectedMessage: any,
-    options: ExpectMessageInTopicOptions = {},
+    options: ExpectMessageOptions = {},
   ): Promise<void> {
-    const fixture = this.fixtures[sourceTopicName];
+    const fixture = this.topics[topic];
     if (!fixture) {
-      throw new Error(`Fixture for topic '${sourceTopicName}' does not exist.`);
+      throw new Error(`Fixture for topic '${topic}' does not exist.`);
     }
 
     const timeoutTime =
@@ -241,17 +319,17 @@ export class PubSubFixture {
   }
 
   /**
-   * Uses {@link PubSubFixture.expectMessageInTopic} to check that the given event has been published to the specified
+   * Uses {@link PubSubFixture.expectMessage} to check that the given event has been published to the specified
    * topic. The `expectedEvent` is the payload of the message, i.e. the `event` property.
    *
-   * @param sourceTopicName The original name of the event topic.
+   * @param topic The original name of the event topic.
    * @param expectedEvent The event expected to have been published.
    * @param options Options for the expectation.
    */
-  async expectEventInTopic(
-    sourceTopicName: string,
+  async expectEvent(
+    topic: string,
     expectedEvent: any,
-    options: ExpectMessageInTopicOptions & {
+    options: ExpectMessageOptions & {
       /**
        * The attributes expected to have been published with the event.
        * This may contain only a subset of the attributes.
@@ -259,8 +337,8 @@ export class PubSubFixture {
       attributes?: Record<string, string>;
     } = {},
   ): Promise<void> {
-    await this.expectMessageInTopic(
-      sourceTopicName,
+    await this.expectMessage(
+      topic,
       expect.objectContaining({
         event: expectedEvent,
         attributes: expect.objectContaining(options.attributes ?? {}),
@@ -274,11 +352,11 @@ export class PubSubFixture {
    * By default, because publishing (and receiving) the messages is asynchronous, a small delay is added before checking
    * that no message has been received. This delay can be removed or increased by passing the `delay` option.
    *
-   * @param sourceTopicName The original name of the topic, i.e. the one used in production.
+   * @param topic The original name of the topic, i.e. the one used in production.
    * @param options Options for the expectation.
    */
-  async expectNoMessageInTopic(
-    sourceTopicName: string,
+  async expectNoMessage(
+    topic: string,
     options: {
       /**
        * The delay (in milliseconds) before checking that no message has been received.
@@ -286,9 +364,9 @@ export class PubSubFixture {
       delay?: number;
     } = {},
   ): Promise<void> {
-    const fixture = this.fixtures[sourceTopicName];
+    const fixture = this.topics[topic];
     if (!fixture) {
-      throw new Error(`Fixture for topic '${sourceTopicName}' does not exist.`);
+      throw new Error(`Fixture for topic '${topic}' does not exist.`);
     }
 
     const delay = options.delay ?? DEFAULT_EXPECT_NO_MESSAGE_DELAY;
@@ -299,52 +377,43 @@ export class PubSubFixture {
     const numMessages = fixture.messages.length;
     if (numMessages > 0) {
       throw new Error(
-        `Expected 0 messages in '${sourceTopicName}' but found ${numMessages}.`,
+        `Expected 0 messages in '${topic}' but found ${numMessages}.`,
       );
     }
   }
 
-  /**
-   * Clears all the messages received from the temporary topics.
-   */
-  clear() {
-    Object.values(this.fixtures).forEach((f) => {
-      f.messages = [];
+  async expectNoEvent(topic: string): Promise<void> {
+    await this.expectNoMessage(topic);
+  }
+
+  async clear(): Promise<void> {
+    Object.values(this.topics).forEach((t) => {
+      t.messages = [];
     });
   }
 
   /**
    * Deletes the temporary topic for the corresponding "production" topic.
    *
-   * @param sourceTopicName The original name of the topic, i.e. the one used in production.
+   * @param topic The original name of the topic, i.e. the one used in production.
    */
-  async delete(sourceTopicName: string): Promise<void> {
-    const fixture = this.fixtures[sourceTopicName];
-    if (!fixture) {
+  async deleteTopic(topic: string): Promise<void> {
+    const topicFixture = this.topics[topic];
+    if (!topicFixture) {
       return;
     }
 
-    delete this.fixtures[sourceTopicName];
+    delete this.topics[topic];
 
-    fixture.subscription.removeAllListeners();
-    await fixture.subscription.delete();
+    topicFixture.subscription.removeAllListeners();
+    await topicFixture.subscription.delete();
 
-    await fixture.topic.delete();
+    await topicFixture.topic.delete();
   }
 
-  /**
-   * Deletes all previously created temporary topics.
-   * If the Pub/Sub client was managed by the fixture (it wasn't passed as an option), it is also closed.
-   */
-  async deleteAll(): Promise<void> {
-    await Promise.all(
-      Object.keys(this.fixtures).map((sourceTopicName) =>
-        this.delete(sourceTopicName),
-      ),
-    );
+  async delete(): Promise<void> {
+    await Promise.all(Object.keys(this.topics).map((t) => this.deleteTopic(t)));
 
-    if (this.isManagedClient) {
-      await this.pubSub.close();
-    }
+    await this.pubSub.close();
   }
 }

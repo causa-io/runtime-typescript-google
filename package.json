@@ -1,6 +1,6 @@
 {
   "name": "@causa/runtime-google",
-  "version": "0.40.0",
+  "version": "1.0.0-rc.2",
   "description": "An extension to the Causa runtime SDK (`@causa/runtime`), providing Google-specific features.",
   "repository": {
     "type": "git",
@@ -32,7 +32,7 @@
     "test:cov": "npm run test -- --coverage"
   },
   "dependencies": {
-    "@causa/runtime": ">= 0.27.2 < 1.0.0",
+    "@causa/runtime": ">=1.0.0-rc.3",
     "@google-cloud/precise-date": "^5.0.0",
     "@google-cloud/pubsub": "^5.1.0",
     "@google-cloud/spanner": "^8.0.0",

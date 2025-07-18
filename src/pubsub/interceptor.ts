@@ -8,10 +8,11 @@ import {
   validateObject,
 } from '@causa/runtime';
 import {
-  BadRequestError,
+  BadRequestErrorDto,
   BaseEventHandlerInterceptor,
   Logger,
   type ParsedEventRequest,
+  throwHttpErrorResponse,
 } from '@causa/runtime/nestjs';
 import { type ExecutionContext, Injectable, type Type } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
@@ -121,7 +122,7 @@ export class PubSubEventHandlerInterceptor extends BaseEventHandlerInterceptor {
         'Received invalid Pub/Sub message.',
       );
 
-      throw new BadRequestError();
+      throwHttpErrorResponse(new BadRequestErrorDto());
     }
 
     this.logger.assign({ pubSubMessageId: message.messageId });

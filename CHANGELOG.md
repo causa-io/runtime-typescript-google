@@ -2,9 +2,36 @@
 
 ## Unreleased
 
+## v1.0.0-rc.2 (2025-07-16)
+
+Chores:
+
+- Use `throwHttpErrorResponse` rather than throwing error classes that have been removed.
+- Adapt to breaking change for state transactions to return `null`.
+
+## v1.0.0-rc.1 (2025-07-15)
+
 Breaking changes:
 
 - Upgrade the minimum Node.js version to `20`.
+- Remove the `SpannerPubSubTransactionRunner` in favor of the `SpannerOutboxTransactionRunner`.
+- Adapt and define the `SpannerStateTransaction` and `SpannerReadOnlyStateTransaction` to new transaction semantics.
+- Replace the `SpannerTransaction` by the `SpannerOutboxTransaction`.
+- Adapt the `SpannerOutboxTransactionRunner` to the new `OutboxTransactionRunner` base class.
+- Adapt and define the `FirestoreStateTransaction` and `FirestoreReadOnlyStateTransaction` to new transaction semantics.
+- Adapt the `FirestorePubSubTransactionRunner` to the new `OutboxTransactionRunner` base class.
+- Replace the `overrideFirebaseApp` test utility with `FirebaseFixture`.
+- Replace the `overrideFirestoreCollections` and `getFirestoreCollectionFromModule` by the `FirestoreFixture`.
+- Adapt the `AuthUsersFixture` to the `Fixture` interface.
+- Adapt the `PubSubFixture` to the `Fixture` and `EventFixture` interfaces.
+- Replace the `overrideAppCheck` test utility with the `AppCheckFixture`.
+- Replace the `GoogleAppFixture` with `createGoogleFixtures`.
+- Remove the nested type feature from the `SpannerEntityManager`.
+- Remove `runInExistingOrNew[ReadOnly]Transaction` in favor of options in `transaction` and `snapshot`.
+
+Features:
+
+- Create the `SpannerFixture` using the existing `createDatabase` utility.
 
 ## v0.40.0 (2025-05-28)
 

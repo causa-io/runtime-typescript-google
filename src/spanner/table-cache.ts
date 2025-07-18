@@ -76,12 +76,6 @@ export class SpannerTableCache {
         `Only one column can be marked as soft delete.`,
       );
     }
-    if (softDeleteColumns[0]?.nestedType) {
-      throw new InvalidEntityDefinitionError(
-        entityType,
-        `Soft delete columns cannot be nested.`,
-      );
-    }
     const softDeleteColumn = softDeleteColumns[0]?.name ?? null;
 
     const columns = getSpannerColumns(entityType);
