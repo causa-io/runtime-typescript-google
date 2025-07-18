@@ -6,7 +6,6 @@ import {
 } from '@causa/runtime';
 import { EventAttributes, EventBody, Logger } from '@causa/runtime/nestjs';
 import { AppFixture, LoggingFixture } from '@causa/runtime/nestjs/testing';
-import { getLoggedInfos } from '@causa/runtime/testing';
 import { Controller, HttpCode, HttpStatus, Module, Post } from '@nestjs/common';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { IsString } from 'class-validator';
@@ -118,15 +117,17 @@ describe('PubSubEventHandlerInterceptor', () => {
       publishTime: expectedDate,
     });
 
-    expect(getLoggedInfos({ predicate: (o) => o.message === '🎉' })).toEqual([
-      expect.objectContaining({
+    appFixture.get(LoggingFixture).expectInfos(
+      {
+        message: '🎉',
         someProp: '👋',
         someAttribute: '🌻',
         publishTime: expectedDate.toISOString(),
         eventId: '1234',
         pubSubMessageId: expect.any(String),
-      }),
-    ]);
+      },
+      { exact: false },
+    );
   });
 
   it('should return 200 and log an error when the event is invalid', async () => {
