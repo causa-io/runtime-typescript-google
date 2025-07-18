@@ -1,7 +1,6 @@
 import type { User } from '@causa/runtime';
 import { AuthModule, AuthUser } from '@causa/runtime/nestjs';
-import { AppFixture } from '@causa/runtime/nestjs/testing';
-import { getLoggedWarnings } from '@causa/runtime/testing';
+import { AppFixture, LoggingFixture } from '@causa/runtime/nestjs/testing';
 import { Controller, Get, Module } from '@nestjs/common';
 import { setTimeout } from 'timers/promises';
 import { FirebaseModule } from '../firebase/index.js';
@@ -53,12 +52,10 @@ describe('IdentityPlatformStrategy', () => {
       .auth('bob', { type: 'bearer' })
       .expect(401);
 
-    expect(getLoggedWarnings()).toEqual([
-      expect.objectContaining({
-        message: 'Token verification failed.',
-        error: expect.stringContaining('Decoding Firebase ID token failed.'),
-      }),
-    ]);
+    appFixture.get(LoggingFixture).expectWarnings({
+      message: 'Token verification failed.',
+      error: expect.stringContaining('Decoding Firebase ID token failed.'),
+    });
   });
 
   it('should return a 401 if the token is expired', async () => {
