@@ -1,6 +1,8 @@
 # 🔖 Changelog
 
-## Unreleased
+## v1.0.0 (2025-07-18)
+
+See the changelog of the release candidates.
 
 ## v1.0.0-rc.2 (2025-07-16)
 
