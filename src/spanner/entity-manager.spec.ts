@@ -692,6 +692,24 @@ describe('SpannerEntityManager', () => {
       });
       expect(actualEntity).toBeInstanceOf(IndexedEntity);
     });
+
+    it('should pass the request options to the read method', async () => {
+      let spy!: jest.SpiedFunction<Transaction['read']>;
+      const requestOptions = { priority: SpannerRequestPriority.PRIORITY_LOW };
+
+      await manager.snapshot(async (transaction) => {
+        spy = jest.spyOn(transaction, 'read');
+        await manager.findOneByKey(SomeEntity, '1', {
+          transaction,
+          requestOptions,
+        });
+      });
+
+      expect(spy).toHaveBeenCalledExactlyOnceWith(
+        'MyEntity',
+        expect.objectContaining({ requestOptions }),
+      );
+    });
   });
 
   describe('findOneByKeyOrFail', () => {

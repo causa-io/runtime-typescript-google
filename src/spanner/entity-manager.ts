@@ -102,23 +102,24 @@ export type QueryOptions<T> = SpannerReadOnlyTransactionOption &
 /**
  * Options when reading entities.
  */
-type FindOptions = SpannerReadOnlyTransactionOption & {
-  /**
-   * The index to use to look up the entity.
-   */
-  index?: string;
+type FindOptions = SpannerReadOnlyTransactionOption &
+  Pick<ExecuteSqlRequest, 'requestOptions'> & {
+    /**
+     * The index to use to look up the entity.
+     */
+    index?: string;
 
-  /**
-   * The columns to fetch. If not provided, all columns will be fetched.
-   */
-  columns?: string[];
+    /**
+     * The columns to fetch. If not provided, all columns will be fetched.
+     */
+    columns?: string[];
 
-  /**
-   * If `true`, soft-deleted entities will be included in the results.
-   * Defaults to `false`.
-   */
-  includeSoftDeletes?: boolean;
-};
+    /**
+     * If `true`, soft-deleted entities will be included in the results.
+     * Defaults to `false`.
+     */
+    includeSoftDeletes?: boolean;
+  };
 
 /**
  * A class that manages access to entities stored in a Cloud Spanner database.
@@ -291,6 +292,7 @@ export class SpannerEntityManager {
           json: true,
           jsonOptions: { wrapNumbers: true },
           index: options.index,
+          requestOptions: options.requestOptions,
         });
         const row: Record<string, any> | undefined = rows[0];
 
