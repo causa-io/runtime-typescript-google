@@ -412,29 +412,32 @@ export class SpannerEntityManager {
         return await runFn(options.transaction);
       }
 
-      return await this.database.runTransactionAsync(async (transaction) => {
-        try {
-          const result = await runFn(transaction);
+      return await this.database.runTransactionAsync(
+        { requestOptions: { transactionTag: options.tag } },
+        async (transaction) => {
+          try {
+            const result = await runFn(transaction);
 
-          if (transaction.ended) {
-            throw new TransactionFinishedError();
-          }
-
-          await transaction.commit();
-
-          return result;
-        } catch (error) {
-          if (!transaction.ended) {
-            if (transaction.id) {
-              await transaction.rollback();
-            } else {
-              transaction.end();
+            if (transaction.ended) {
+              throw new TransactionFinishedError();
             }
-          }
 
-          throw error;
-        }
-      });
+            await transaction.commit();
+
+            return result;
+          } catch (error) {
+            if (!transaction.ended) {
+              if (transaction.id) {
+                await transaction.rollback();
+              } else {
+                transaction.end();
+              }
+            }
+
+            throw error;
+          }
+        },
+      );
     } catch (error) {
       throw convertSpannerToEntityError(error) ?? error;
     }

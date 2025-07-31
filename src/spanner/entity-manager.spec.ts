@@ -293,6 +293,19 @@ describe('SpannerEntityManager', () => {
         .read({ keys: ['1'], columns: ['id'] });
       expect(actualRows).toBeEmpty();
     });
+
+    it('should pass the transaction tag', async () => {
+      jest.spyOn(database, 'runTransactionAsync');
+      const tag = '🔖';
+
+      const actual = await manager.transaction({ tag }, async () => '🎉');
+
+      expect(actual).toEqual('🎉');
+      expect(database.runTransactionAsync).toHaveBeenCalledWith(
+        { requestOptions: { transactionTag: tag } },
+        expect.any(Function),
+      );
+    });
   });
 
   describe('snapshot', () => {
