@@ -4,7 +4,10 @@ import {
   Int,
   type Type as ParamType,
 } from '@google-cloud/spanner/build/src/codec.js';
-import type { TimestampBounds } from '@google-cloud/spanner/build/src/transaction.js';
+import type {
+  ExecuteSqlRequest,
+  TimestampBounds,
+} from '@google-cloud/spanner/build/src/transaction.js';
 import { Injectable, type Type } from '@nestjs/common';
 import {
   copyInstanceWithMissingColumnsToNull,
@@ -88,12 +91,13 @@ export type SqlStatement = {
 /**
  * Options for {@link SpannerEntityManager.query}.
  */
-export type QueryOptions<T> = SpannerReadOnlyTransactionOption & {
-  /**
-   * The type of entity to return in the list of results.
-   */
-  entityType?: Type<T>;
-};
+export type QueryOptions<T> = SpannerReadOnlyTransactionOption &
+  Pick<ExecuteSqlRequest, 'requestOptions'> & {
+    /**
+     * The type of entity to return in the list of results.
+     */
+    entityType?: Type<T>;
+  };
 
 /**
  * Options when reading entities.
@@ -526,13 +530,14 @@ export class SpannerEntityManager {
       ? (optionsOrStatement as QueryOptions<T>)
       : {};
     const sqlStatement = statement ?? (optionsOrStatement as SqlStatement);
-    const { entityType } = options;
+    const { entityType, requestOptions } = options;
 
     return await this.snapshot(
       { transaction: options.transaction },
       async (transaction) => {
         const [rows] = await transaction.run({
           ...sqlStatement,
+          requestOptions,
           json: true,
           jsonOptions: { wrapNumbers: entityType != null },
         });

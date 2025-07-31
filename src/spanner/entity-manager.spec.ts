@@ -21,6 +21,7 @@ import {
 } from './errors.js';
 import { SpannerTable } from './table.decorator.js';
 import { createDatabase } from './testing.js';
+import { SpannerRequestPriority } from './types.js';
 
 @SpannerTable({ name: 'MyEntity', primaryKey: ['id'] })
 class SomeEntity {
@@ -499,6 +500,23 @@ describe('SpannerEntityManager', () => {
         json: true,
       });
       expect(actualRows).toEqual([{ id: '1', value: 10 }]);
+    });
+
+    it('should pass the request options to the query', async () => {
+      let spy!: jest.SpiedFunction<Transaction['run']>;
+      const requestOptions = { priority: SpannerRequestPriority.PRIORITY_LOW };
+
+      await manager.snapshot(async (transaction) => {
+        spy = jest.spyOn(transaction, 'run');
+        await manager.query(
+          { transaction, requestOptions },
+          { sql: 'SELECT 1' },
+        );
+      });
+
+      expect(spy).toHaveBeenCalledWith(
+        expect.objectContaining({ requestOptions }),
+      );
     });
   });
 

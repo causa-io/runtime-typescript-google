@@ -1,7 +1,11 @@
+import { protos } from '@google-cloud/spanner';
 import type {
   SpannerReadOnlyTransaction,
   SpannerReadWriteTransaction,
 } from './entity-manager.js';
+
+export const SpannerRequestPriority =
+  protos.google.spanner.v1.RequestOptions.Priority;
 
 /**
  * Option for a function that accepts a Spanner read-only transaction.
