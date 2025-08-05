@@ -18,11 +18,10 @@ import { PubSubTopicNotConfiguredError } from './errors.js';
 
 /**
  * The default options to use when publishing messages.
- * Batching is disabled as the most common use case is to publish a single message at a time, for which latency is more
- * important than throughput.
+ * Batching is minimal, as latency should be prioritized over throughput.
  */
 const DEFAULT_PUBLISH_OPTIONS: TopicPublishOptions = {
-  batching: { maxMessages: 1 },
+  batching: { maxMilliseconds: 5 },
 };
 
 /**
@@ -195,32 +194,16 @@ export class PubSubPublisher implements EventPublisher, OnApplicationShutdown {
       messageInfo.eventId = attributes.eventId;
     }
 
-    try {
-      const messageId = await pubSubTopic.publishMessage({
-        data,
-        attributes,
-        orderingKey: key,
-      });
+    const messageId = await pubSubTopic.publishMessage({
+      data,
+      attributes,
+      orderingKey: key,
+    });
 
-      this.logger.info(
-        { publishedMessage: { ...messageInfo, messageId } },
-        'Published message to Pub/Sub.',
-      );
-    } catch (error: any) {
-      this.logger.error(
-        {
-          failedMessage: {
-            ...messageInfo,
-            data: data.toString('base64'),
-            attributes,
-            key,
-          },
-          error: error.stack,
-        },
-        'Failed to publish message to Pub/Sub.',
-      );
-      throw error;
-    }
+    this.logger.info(
+      { publishedMessage: { ...messageInfo, messageId } },
+      'Published message to Pub/Sub.',
+    );
   }
 
   async flush(): Promise<void> {

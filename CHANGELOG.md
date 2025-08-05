@@ -6,6 +6,7 @@ Features:
 
 - Expose request options for `SpannerEntityManager` `query` and `find` methods.
 - Support the `tag` option for `SpannerEntityManager.transaction`, and expose it through the `SpannerOutboxTransactionRunner` as well.
+- Update the `DEFAULT_PUBLISH_OPTIONS` for Pub/Sub, to allow for minimal batching of messages.
 
 ## v1.0.0 (2025-07-18)
 

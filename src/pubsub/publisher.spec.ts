@@ -1,5 +1,5 @@
 import { type Event, type PreparedEvent } from '@causa/runtime';
-import { AppFixture, LoggingFixture } from '@causa/runtime/nestjs/testing';
+import { AppFixture } from '@causa/runtime/nestjs/testing';
 import { Topic } from '@google-cloud/pubsub';
 import { jest } from '@jest/globals';
 import { Module } from '@nestjs/common';
@@ -74,7 +74,7 @@ describe('PubSubPublisher', () => {
   describe('constructor', () => {
     it('should default to disable batching', () => {
       expect(publisher.publishOptions).toMatchObject({
-        batching: { maxMessages: 1 },
+        batching: { maxMilliseconds: 5 },
       });
     });
 
@@ -87,7 +87,7 @@ describe('PubSubPublisher', () => {
       );
 
       expect(actualMyAwesomeTopic.publisher.settings).toMatchObject({
-        batching: { maxMessages: 1 },
+        batching: { maxMilliseconds: 5 },
       });
       expect(actualMyOtherTopic.publisher.settings).toMatchObject({
         batching: { maxMessages: 100, maxBytes: 1000 },
@@ -271,28 +271,6 @@ describe('PubSubPublisher', () => {
       await expect(actualPromise).rejects.toThrow('📫💥');
 
       await fixture.expectNoMessage('my.awesome-topic.v1');
-      appFixture.get(LoggingFixture).expectErrors({
-        message: 'Failed to publish message to Pub/Sub.',
-        failedMessage: {
-          topic: 'my.awesome-topic.v1',
-          eventId: '1234',
-          pubSubTopic: fixture.topics['my.awesome-topic.v1'].topic.name,
-          data: Buffer.from(
-            JSON.stringify({
-              id: '1234',
-              producedAt: event.producedAt,
-              name: 'my-event',
-              data: { someProp: 'HELLO' },
-            }),
-          ).toString('base64'),
-          attributes: {
-            producedAt: event.producedAt.toISOString(),
-            eventName: 'my-event',
-            eventId: '1234',
-          },
-        },
-        error: expect.stringContaining('📫💥'),
-      });
     });
   });
 
