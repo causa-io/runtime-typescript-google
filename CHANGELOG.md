@@ -1,5 +1,12 @@
 # 🔖 Changelog
 
+## Unreleased
+
+Features:
+
+- Expose request options for `SpannerEntityManager` `query` and `find` methods.
+- Support the `tag` option for `SpannerEntityManager.transaction`, and expose it through the `SpannerOutboxTransactionRunner` as well.
+
 ## v1.0.0 (2025-07-18)
 
 See the changelog of the release candidates.
