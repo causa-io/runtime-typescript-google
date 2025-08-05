@@ -8,7 +8,10 @@ import {
 import { Logger } from '@causa/runtime/nestjs';
 import type { Statement } from '@google-cloud/spanner/build/src/transaction.js';
 import type { Type } from '@nestjs/common';
-import { SpannerEntityManager } from '../../spanner/index.js';
+import {
+  SpannerEntityManager,
+  SpannerRequestPriority,
+} from '../../spanner/index.js';
 
 /**
  * Sharding options for the {@link SpannerOutboxSender}.
@@ -215,11 +218,14 @@ export class SpannerOutboxSender extends OutboxEventSender {
 
   protected async fetchEvents(): Promise<OutboxEvent[]> {
     // Event IDs are first acquired in an (implicit) read-only transaction, to avoid a lock on the entire table.
-    const currentTime = new Date();
-    const eventIds = await this.entityManager.query<{ id: string }>({
-      sql: this.fetchEventsSql,
-      params: { currentTime, batchSize: this.batchSize },
-    });
+    const params: Record<string, any> = {
+      currentTime: new Date(),
+      batchSize: this.batchSize,
+    };
+    const eventIds = await this.entityManager.query<{ id: string }>(
+      { requestOptions: { priority: SpannerRequestPriority.PRIORITY_MEDIUM } },
+      { sql: this.fetchEventsSql, params },
+    );
     if (eventIds.length === 0) {
       return [];
     }
