@@ -14,9 +14,9 @@ import {
 } from '../../spanner/index.js';
 
 /**
- * Sharding options for the {@link SpannerOutboxSender}.
+ * The sharding configuration for the {@link SpannerOutboxSender}.
  */
-export type SpannerOutboxSenderShardingOptions = {
+type SpannerOutboxSenderSharding = {
   /**
    * The name of the column used for sharding.
    */
@@ -26,7 +26,22 @@ export type SpannerOutboxSenderShardingOptions = {
    * The number of shards.
    */
   readonly count: number;
+
+  /**
+   * Whether events are fetched one shard at a time in a round-robin fashion, or all shards at once.
+   * Defaults to `true`.
+   */
+  readonly roundRobin: boolean;
 };
+
+/**
+ * Sharding options for the {@link SpannerOutboxSender}.
+ */
+export type SpannerOutboxSenderShardingOptions = Pick<
+  SpannerOutboxSenderSharding,
+  'column' | 'count'
+> &
+  Partial<SpannerOutboxSenderSharding>;
 
 /**
  * Options for the {@link SpannerOutboxSender}.
@@ -74,7 +89,19 @@ export class SpannerOutboxSender extends OutboxEventSender {
    * Sharding options.
    * If `null`, queries to fetch events will not use sharding.
    */
-  readonly sharding: SpannerOutboxSenderShardingOptions | undefined;
+  readonly sharding: SpannerOutboxSenderSharding | undefined;
+
+  /**
+   * If sharding round-robin is enabled, the permutation of shard indices determining the order in which shards are
+   * queried by {@link SpannerOutboxSender.fetchEvents}.
+   */
+  private readonly shardsPermutation: number[] | undefined;
+
+  /**
+   * If sharding round-robin is enabled, the index of the next shard to query in
+   * {@link SpannerOutboxSender.fetchEvents}.
+   */
+  private shardsPermutationIndex: number | undefined;
 
   /**
    * The name of the column used for the {@link OutboxEvent.id} property.
@@ -131,11 +158,23 @@ export class SpannerOutboxSender extends OutboxEventSender {
   ) {
     super(publisher, logger, options);
 
-    this.sharding = options.sharding;
+    this.sharding = options.sharding
+      ? { roundRobin: true, ...options.sharding }
+      : undefined;
     this.idColumn = options.idColumn ?? DEFAULT_ID_COLUMN;
     this.leaseExpirationColumn =
       options.leaseExpirationColumn ?? DEFAULT_LEASE_EXPIRATION_COLUMN;
     this.index = options.index;
+
+    if (this.sharding?.roundRobin) {
+      this.shardsPermutation = Array.from(
+        { length: this.sharding.count },
+        (_, i) => [i, Math.random()],
+      )
+        .sort(([, a], [, b]) => a - b)
+        .map(([i]) => i);
+      this.shardsPermutationIndex = 0;
+    }
 
     ({
       fetchEventsSql: this.fetchEventsSql,
@@ -166,8 +205,12 @@ export class SpannerOutboxSender extends OutboxEventSender {
     const noLeaseFilter = `\`${this.leaseExpirationColumn}\` IS NULL OR \`${this.leaseExpirationColumn}\` < @currentTime`;
     let fetchFilter = noLeaseFilter;
     if (this.sharding) {
-      const { column, count } = this.sharding;
-      fetchFilter = `\`${column}\` BETWEEN 0 AND ${count - 1} AND (${fetchFilter})`;
+      const { column, count, roundRobin } = this.sharding;
+      const shardFilter =
+        (roundRobin ?? true)
+          ? `\`${column}\` = @shard`
+          : `\`${column}\` BETWEEN 0 AND ${count - 1}`;
+      fetchFilter = `(${shardFilter}) AND (${fetchFilter})`;
     }
 
     const fetchEventsSql = `
@@ -217,11 +260,17 @@ export class SpannerOutboxSender extends OutboxEventSender {
   }
 
   protected async fetchEvents(): Promise<OutboxEvent[]> {
-    // Event IDs are first acquired in an (implicit) read-only transaction, to avoid a lock on the entire table.
     const params: Record<string, any> = {
       currentTime: new Date(),
       batchSize: this.batchSize,
     };
+    if (this.shardsPermutationIndex !== undefined && this.shardsPermutation) {
+      params.shard = this.shardsPermutation[this.shardsPermutationIndex];
+      this.shardsPermutationIndex =
+        (this.shardsPermutationIndex + 1) % this.shardsPermutation.length;
+    }
+
+    // Event IDs are first acquired in an (implicit) read-only transaction, to avoid a lock on the entire table.
     const eventIds = await this.entityManager.query<{ id: string }>(
       { requestOptions: { priority: SpannerRequestPriority.PRIORITY_MEDIUM } },
       { sql: this.fetchEventsSql, params },

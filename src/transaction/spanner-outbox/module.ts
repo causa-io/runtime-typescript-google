@@ -63,11 +63,18 @@ function parseSenderOptions(
   const index = config.get<string>('SPANNER_OUTBOX_INDEX');
   const shardingColumn = config.get<string>('SPANNER_OUTBOX_SHARDING_COLUMN');
   const shardingCount = validateIntOrUndefined('SPANNER_OUTBOX_SHARDING_COUNT');
+  const shardingDisableRoundRobin = !!config.get(
+    'SPANNER_OUTBOX_SHARDING_DISABLE_ROUND_ROBIN',
+  );
   const leaseDuration = validateIntOrUndefined('SPANNER_OUTBOX_LEASE_DURATION');
 
   const sharding: SpannerOutboxSenderShardingOptions | undefined =
     shardingColumn && shardingCount
-      ? { column: shardingColumn, count: shardingCount }
+      ? {
+          column: shardingColumn,
+          count: shardingCount,
+          roundRobin: !shardingDisableRoundRobin,
+        }
       : undefined;
 
   const envOptionsWithUndefined = {

@@ -250,10 +250,7 @@ describe('SpannerOutboxSender', () => {
         {
           ...defaultOptions,
           index: 'OutboxEventsByShardAndLeaseExpiration',
-          sharding: {
-            column: 'shard',
-            count: 2,
-          },
+          sharding: { column: 'shard', count: 2, roundRobin: false },
         },
       ) as any;
       const event = new SpannerOutboxEventWithShard({
@@ -269,6 +266,43 @@ describe('SpannerOutboxSender', () => {
       const actualEvents = await senderWithSharding.fetchEvents();
 
       expect(actualEvents).toBeEmpty();
+    });
+
+    it('should fetch events from a single shard at a time', async () => {
+      const shardCount = 5;
+      const events = Array.from(
+        { length: shardCount },
+        (_, shard) =>
+          new SpannerOutboxEventWithShard({
+            id: shard.toString(),
+            topic: 'my-topic',
+            data: Buffer.from('🎉'),
+            attributes: {},
+            leaseExpiration: null,
+            shard,
+          }),
+      );
+      await entityManager.insert(events);
+      const senderWithSharding = new SpannerOutboxSender(
+        entityManager,
+        SpannerOutboxEventWithShard,
+        publisher,
+        logger,
+        {
+          ...defaultOptions,
+          index: 'OutboxEventsByShardAndLeaseExpiration',
+          sharding: { column: 'shard', count: shardCount, roundRobin: true },
+        },
+      ) as any;
+
+      const eventIds: string[] = [];
+      for (let i = 0; i < shardCount; i++) {
+        const actualEvents = await senderWithSharding.fetchEvents();
+
+        expect(actualEvents).toHaveLength(1);
+        eventIds.push(actualEvents[0].id);
+      }
+      expect(eventIds).toIncludeSameMembers(events.map(({ id }) => id));
     });
   });
 

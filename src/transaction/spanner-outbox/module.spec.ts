@@ -94,6 +94,7 @@ describe('SpannerOutboxTransactionModule', () => {
         SPANNER_OUTBOX_INDEX: 'MyIndex',
         SPANNER_OUTBOX_SHARDING_COLUMN: 'myColumn',
         SPANNER_OUTBOX_SHARDING_COUNT: '5',
+        SPANNER_OUTBOX_SHARDING_DISABLE_ROUND_ROBIN: 'true',
         SPANNER_OUTBOX_LEASE_DURATION: '60000',
       },
     });
@@ -109,6 +110,7 @@ describe('SpannerOutboxTransactionModule', () => {
     expect(sender.sharding).toEqual({
       column: 'myColumn',
       count: 5,
+      roundRobin: false,
     });
     expect(sender.leaseDuration).toBe(60000);
   });
@@ -150,6 +152,7 @@ describe('SpannerOutboxTransactionModule', () => {
     expect(sender.sharding).toEqual({
       column: 'myShardColumn',
       count: 4,
+      roundRobin: true,
     });
     expect(sender.leaseDuration).toBe(28000);
   });
