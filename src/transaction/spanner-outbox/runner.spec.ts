@@ -69,11 +69,14 @@ describe('SpannerOutboxTransactionRunner', () => {
     });
 
     const actualResult = await runner.run(
-      { publishOptions: { attributes: { default: '🫥' } } },
+      { publishOptions: { attributes: { default: '🫥' } }, tag: '🔖' },
       async (transaction) => {
         expect(transaction.spannerTransaction).toBe(
           transaction.stateTransaction.spannerTransaction,
         );
+        expect(
+          transaction.spannerTransaction.requestOptions?.transactionTag,
+        ).toBe('🔖');
         expect(transaction.entityManager).toBe(entityManager);
         expect(transaction.eventTransaction).toBeInstanceOf(
           OutboxEventTransaction,
