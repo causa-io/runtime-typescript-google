@@ -21,6 +21,7 @@ import {
 } from './errors.js';
 import { SpannerTable } from './table.decorator.js';
 import { createDatabase } from './testing.js';
+import { SpannerRequestPriority } from './types.js';
 
 @SpannerTable({ name: 'MyEntity', primaryKey: ['id'] })
 class SomeEntity {
@@ -292,6 +293,19 @@ describe('SpannerEntityManager', () => {
         .read({ keys: ['1'], columns: ['id'] });
       expect(actualRows).toBeEmpty();
     });
+
+    it('should pass the transaction tag', async () => {
+      jest.spyOn(database, 'runTransactionAsync');
+      const tag = '🔖';
+
+      const actual = await manager.transaction({ tag }, async () => '🎉');
+
+      expect(actual).toEqual('🎉');
+      expect(database.runTransactionAsync).toHaveBeenCalledWith(
+        { requestOptions: { transactionTag: tag } },
+        expect.any(Function),
+      );
+    });
   });
 
   describe('snapshot', () => {
@@ -500,6 +514,23 @@ describe('SpannerEntityManager', () => {
       });
       expect(actualRows).toEqual([{ id: '1', value: 10 }]);
     });
+
+    it('should pass the request options to the query', async () => {
+      let spy!: jest.SpiedFunction<Transaction['run']>;
+      const requestOptions = { priority: SpannerRequestPriority.PRIORITY_LOW };
+
+      await manager.snapshot(async (transaction) => {
+        spy = jest.spyOn(transaction, 'run');
+        await manager.query(
+          { transaction, requestOptions },
+          { sql: 'SELECT 1' },
+        );
+      });
+
+      expect(spy).toHaveBeenCalledWith(
+        expect.objectContaining({ requestOptions }),
+      );
+    });
   });
 
   describe('getPrimaryKey', () => {
@@ -673,6 +704,24 @@ describe('SpannerEntityManager', () => {
         notStored: '🙈',
       });
       expect(actualEntity).toBeInstanceOf(IndexedEntity);
+    });
+
+    it('should pass the request options to the read method', async () => {
+      let spy!: jest.SpiedFunction<Transaction['read']>;
+      const requestOptions = { priority: SpannerRequestPriority.PRIORITY_LOW };
+
+      await manager.snapshot(async (transaction) => {
+        spy = jest.spyOn(transaction, 'read');
+        await manager.findOneByKey(SomeEntity, '1', {
+          transaction,
+          requestOptions,
+        });
+      });
+
+      expect(spy).toHaveBeenCalledExactlyOnceWith(
+        'MyEntity',
+        expect.objectContaining({ requestOptions }),
+      );
     });
   });
 

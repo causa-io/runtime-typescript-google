@@ -5,8 +5,8 @@ import {
   type TransactionFn,
 } from '@causa/runtime';
 import { Logger } from '@causa/runtime/nestjs';
-import { Firestore } from '@google-cloud/firestore';
 import { Injectable } from '@nestjs/common';
+import { Firestore } from 'firebase-admin/firestore';
 import { wrapFirestoreOperation } from '../../firestore/index.js';
 import { PubSubPublisher } from '../../pubsub/index.js';
 import { FirestoreReadOnlyStateTransaction } from './readonly-state-transaction.js';

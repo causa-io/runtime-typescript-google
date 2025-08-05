@@ -4,7 +4,10 @@ import {
   Int,
   type Type as ParamType,
 } from '@google-cloud/spanner/build/src/codec.js';
-import type { TimestampBounds } from '@google-cloud/spanner/build/src/transaction.js';
+import type {
+  ExecuteSqlRequest,
+  TimestampBounds,
+} from '@google-cloud/spanner/build/src/transaction.js';
 import { Injectable, type Type } from '@nestjs/common';
 import {
   copyInstanceWithMissingColumnsToNull,
@@ -88,33 +91,35 @@ export type SqlStatement = {
 /**
  * Options for {@link SpannerEntityManager.query}.
  */
-export type QueryOptions<T> = SpannerReadOnlyTransactionOption & {
-  /**
-   * The type of entity to return in the list of results.
-   */
-  entityType?: Type<T>;
-};
+export type QueryOptions<T> = SpannerReadOnlyTransactionOption &
+  Pick<ExecuteSqlRequest, 'requestOptions'> & {
+    /**
+     * The type of entity to return in the list of results.
+     */
+    entityType?: Type<T>;
+  };
 
 /**
  * Options when reading entities.
  */
-type FindOptions = SpannerReadOnlyTransactionOption & {
-  /**
-   * The index to use to look up the entity.
-   */
-  index?: string;
+type FindOptions = SpannerReadOnlyTransactionOption &
+  Pick<ExecuteSqlRequest, 'requestOptions'> & {
+    /**
+     * The index to use to look up the entity.
+     */
+    index?: string;
 
-  /**
-   * The columns to fetch. If not provided, all columns will be fetched.
-   */
-  columns?: string[];
+    /**
+     * The columns to fetch. If not provided, all columns will be fetched.
+     */
+    columns?: string[];
 
-  /**
-   * If `true`, soft-deleted entities will be included in the results.
-   * Defaults to `false`.
-   */
-  includeSoftDeletes?: boolean;
-};
+    /**
+     * If `true`, soft-deleted entities will be included in the results.
+     * Defaults to `false`.
+     */
+    includeSoftDeletes?: boolean;
+  };
 
 /**
  * A class that manages access to entities stored in a Cloud Spanner database.
@@ -287,6 +292,7 @@ export class SpannerEntityManager {
           json: true,
           jsonOptions: { wrapNumbers: true },
           index: options.index,
+          requestOptions: options.requestOptions,
         });
         const row: Record<string, any> | undefined = rows[0];
 
@@ -406,29 +412,32 @@ export class SpannerEntityManager {
         return await runFn(options.transaction);
       }
 
-      return await this.database.runTransactionAsync(async (transaction) => {
-        try {
-          const result = await runFn(transaction);
+      return await this.database.runTransactionAsync(
+        { requestOptions: { transactionTag: options.tag } },
+        async (transaction) => {
+          try {
+            const result = await runFn(transaction);
 
-          if (transaction.ended) {
-            throw new TransactionFinishedError();
-          }
-
-          await transaction.commit();
-
-          return result;
-        } catch (error) {
-          if (!transaction.ended) {
-            if (transaction.id) {
-              await transaction.rollback();
-            } else {
-              transaction.end();
+            if (transaction.ended) {
+              throw new TransactionFinishedError();
             }
-          }
 
-          throw error;
-        }
-      });
+            await transaction.commit();
+
+            return result;
+          } catch (error) {
+            if (!transaction.ended) {
+              if (transaction.id) {
+                await transaction.rollback();
+              } else {
+                transaction.end();
+              }
+            }
+
+            throw error;
+          }
+        },
+      );
     } catch (error) {
       throw convertSpannerToEntityError(error) ?? error;
     }
@@ -526,13 +535,14 @@ export class SpannerEntityManager {
       ? (optionsOrStatement as QueryOptions<T>)
       : {};
     const sqlStatement = statement ?? (optionsOrStatement as SqlStatement);
-    const { entityType } = options;
+    const { entityType, requestOptions } = options;
 
     return await this.snapshot(
       { transaction: options.transaction },
       async (transaction) => {
         const [rows] = await transaction.run({
           ...sqlStatement,
+          requestOptions,
           json: true,
           jsonOptions: { wrapNumbers: entityType != null },
         });
