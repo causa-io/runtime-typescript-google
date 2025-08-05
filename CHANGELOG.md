@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v1.1.0 (2025-08-05)
+
 Features:
 
 - Expose request options for `SpannerEntityManager` `query` and `find` methods.
