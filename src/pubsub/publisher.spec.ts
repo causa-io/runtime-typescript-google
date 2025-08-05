@@ -74,7 +74,7 @@ describe('PubSubPublisher', () => {
   describe('constructor', () => {
     it('should default to disable batching', () => {
       expect(publisher.publishOptions).toMatchObject({
-        batching: { maxMessages: 1 },
+        batching: { maxMilliseconds: 5 },
       });
     });
 
@@ -87,7 +87,7 @@ describe('PubSubPublisher', () => {
       );
 
       expect(actualMyAwesomeTopic.publisher.settings).toMatchObject({
-        batching: { maxMessages: 1 },
+        batching: { maxMilliseconds: 5 },
       });
       expect(actualMyOtherTopic.publisher.settings).toMatchObject({
         batching: { maxMessages: 100, maxBytes: 1000 },

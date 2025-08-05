@@ -18,11 +18,10 @@ import { PubSubTopicNotConfiguredError } from './errors.js';
 
 /**
  * The default options to use when publishing messages.
- * Batching is disabled as the most common use case is to publish a single message at a time, for which latency is more
- * important than throughput.
+ * Batching is minimal, as latency should be prioritized over throughput.
  */
 const DEFAULT_PUBLISH_OPTIONS: TopicPublishOptions = {
-  batching: { maxMessages: 1 },
+  batching: { maxMilliseconds: 5 },
 };
 
 /**
