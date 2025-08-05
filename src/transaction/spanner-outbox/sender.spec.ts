@@ -166,6 +166,12 @@ describe('SpannerOutboxSender', () => {
 
       const actualEvents = await sender.fetchEvents();
 
+      const leaseExpectation = expect.toBeBetween(
+        new Date(Date.now() + 1500),
+        // The lease was determined at the beginning of the write transaction, which has now completed successfully.
+        // The `leaseExpiration` should therefore be under 2 seconds from now.
+        new Date(Date.now() + 2000),
+      );
       const actualEvent1 = await entityManager.findOneByKeyOrFail(
         SpannerOutboxEventWithShard,
         '1',
@@ -177,10 +183,6 @@ describe('SpannerOutboxSender', () => {
       const actualEvent3 = await entityManager.findOneByKeyOrFail(
         SpannerOutboxEventWithShard,
         '3',
-      );
-      const leaseExpectation = expect.toBeBetween(
-        new Date(Date.now() + 1900),
-        new Date(Date.now() + 2100),
       );
       expect(actualEvent1).toEqual({
         ...event1,
