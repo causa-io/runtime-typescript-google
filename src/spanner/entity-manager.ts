@@ -269,14 +269,37 @@ export class SpannerEntityManager {
    * @param entityTypeOrColumns The type of entity, or the unquoted list of columns.
    * @returns The list of columns, quoted with backticks and joined.
    */
-  sqlColumns(entityTypeOrColumns: Type | string[]): string {
-    const columns = Array.isArray(entityTypeOrColumns)
-      ? entityTypeOrColumns
-      : Object.values(
-          this.tableCache.getMetadata(entityTypeOrColumns).columnNames,
-        );
+  sqlColumns<T = unknown>(
+    entityTypeOrColumns: Type<T> | string[],
+    options: {
+      /**
+       * If `entityTypeOrColumns` is a type, only the columns for the given properties will be included.
+       */
+      forProperties?: T extends object ? (keyof T & string)[] : never;
 
-    return columns.map((c) => `\`${c}\``).join(', ');
+      /**
+       * The alias with which to prefix each column.
+       */
+      alias?: string;
+    } = {},
+  ): string {
+    let columns: string[];
+
+    if (Array.isArray(entityTypeOrColumns)) {
+      columns = entityTypeOrColumns;
+    } else {
+      const { columnNames } = this.tableCache.getMetadata(entityTypeOrColumns);
+      columns = options.forProperties
+        ? options.forProperties.map((p) => columnNames[p])
+        : Object.values(columnNames);
+    }
+
+    columns = columns.map((c) => `\`${c}\``);
+    if (options.alias) {
+      columns = columns.map((c) => `\`${options.alias}\`.${c}`);
+    }
+
+    return columns.join(', ');
   }
 
   /**

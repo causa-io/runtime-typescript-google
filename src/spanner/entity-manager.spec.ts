@@ -1277,5 +1277,31 @@ describe('SpannerEntityManager', () => {
         InvalidEntityDefinitionError,
       );
     });
+
+    it('should only return the columns for the specified properties', () => {
+      @SpannerTable({ primaryKey: ['id'] })
+      class EntityWithCustomName {
+        @SpannerColumn()
+        id!: string;
+
+        @SpannerColumn({ name: 'customName' })
+        value!: string;
+      }
+
+      const actualColumns = manager.sqlColumns(EntityWithCustomName, {
+        forProperties: ['value'],
+      });
+
+      expect(actualColumns).toEqual('`customName`');
+    });
+
+    it.each([SomeEntity, ['id', 'value']])(
+      'should prefix with the alias',
+      (cols) => {
+        const actualColumns = manager.sqlColumns(cols, { alias: 't' });
+
+        expect(actualColumns).toEqual('`t`.`id`, `t`.`value`');
+      },
+    );
   });
 });
