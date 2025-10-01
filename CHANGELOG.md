@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+Features:
+
+- Add the `forProperties` and `alias` options to `SpannerEntityManager.sqlColumns`.
+
+Chores:
+
+- `SpannerEntityManager.sqlTableName` has been renamed to `SpannerEntityManager.sqlTable`. The previous method is still available but deprecated.
+
 ## v1.1.0 (2025-08-05)
 
 Features:
