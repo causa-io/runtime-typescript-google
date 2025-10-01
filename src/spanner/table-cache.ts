@@ -1,8 +1,5 @@
 import type { Type } from '@nestjs/common';
-import {
-  getSpannerColumns,
-  getSpannerColumnsMetadata,
-} from './column.decorator.js';
+import { getSpannerColumnsMetadata } from './column.decorator.js';
 import { InvalidEntityDefinitionError } from './errors.js';
 import { getSpannerTableMetadataFromType } from './table.decorator.js';
 
@@ -16,24 +13,14 @@ export type CachedSpannerTableMetadata = {
   tableName: string;
 
   /**
-   * The name of the table, quoted with backticks for use in queries.
-   */
-  quotedTableName: string;
-
-  /**
    * The (ordered) list of columns that are part of the primary key.
    */
   primaryKeyColumns: string[];
 
   /**
-   * The list of all columns in the table.
+   * A map from class property names to Spanner column names.
    */
-  columns: string[];
-
-  /**
-   * The list of all columns in the table, quoted with backticks and joined for use in queries.
-   */
-  quotedColumns: string;
+  columnNames: Record<string, string>;
 
   /**
    * The name of the column used to mark soft deletes, if any.
@@ -63,7 +50,6 @@ export class SpannerTableCache {
     }
 
     const tableName = tableMetadata.name;
-    const quotedTableName = `\`${tableName}\``;
     const primaryKeyColumns = tableMetadata.primaryKey;
 
     const columnsMetadata = getSpannerColumnsMetadata(entityType);
@@ -78,16 +64,15 @@ export class SpannerTableCache {
     }
     const softDeleteColumn = softDeleteColumns[0]?.name ?? null;
 
-    const columns = getSpannerColumns(entityType);
-    const quotedColumns = columns.map((c) => `\`${c}\``).join(', ');
+    const columnNames = Object.fromEntries(
+      Object.entries(columnsMetadata).map(([prop, { name }]) => [prop, name]),
+    );
 
     return {
       tableName,
-      quotedTableName,
       primaryKeyColumns,
-      columns,
-      quotedColumns,
       softDeleteColumn,
+      columnNames,
     };
   }
 

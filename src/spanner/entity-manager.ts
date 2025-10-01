@@ -221,10 +221,11 @@ export class SpannerEntityManager {
       .map(([k, v]) => `${k}=${v}`)
       .join(',');
 
-    const quotedTableName =
+    const tableName =
       typeof entityTypeOrTable === 'string'
-        ? `\`${entityTypeOrTable}\``
-        : this.tableCache.getMetadata(entityTypeOrTable).quotedTableName;
+        ? entityTypeOrTable
+        : this.tableCache.getMetadata(entityTypeOrTable).tableName;
+    const quotedTableName = `\`${tableName}\``;
 
     return tableHintsString.length > 0
       ? `${quotedTableName}@{${tableHintsString}}`
@@ -241,11 +242,13 @@ export class SpannerEntityManager {
    * @returns The list of columns, quoted with backticks and joined.
    */
   sqlColumns(entityTypeOrColumns: Type | string[]): string {
-    if (Array.isArray(entityTypeOrColumns)) {
-      return entityTypeOrColumns.map((c) => `\`${c}\``).join(', ');
-    }
+    const columns = Array.isArray(entityTypeOrColumns)
+      ? entityTypeOrColumns
+      : Object.values(
+          this.tableCache.getMetadata(entityTypeOrColumns).columnNames,
+        );
 
-    return this.tableCache.getMetadata(entityTypeOrColumns).quotedColumns;
+    return columns.map((c) => `\`${c}\``).join(', ');
   }
 
   /**
@@ -273,14 +276,11 @@ export class SpannerEntityManager {
       key = [key];
     }
 
-    const {
-      tableName,
-      columns: allColumns,
-      primaryKeyColumns,
-      softDeleteColumn,
-    } = this.tableCache.getMetadata(entityType);
+    const { tableName, columnNames, primaryKeyColumns, softDeleteColumn } =
+      this.tableCache.getMetadata(entityType);
     const columns =
-      options.columns ?? (options.index ? primaryKeyColumns : allColumns);
+      options.columns ??
+      (options.index ? primaryKeyColumns : Object.values(columnNames));
 
     return await this.snapshot(
       { transaction: options.transaction },
@@ -499,12 +499,10 @@ export class SpannerEntityManager {
     entityType: Type,
     options: SpannerReadWriteTransactionOption = {},
   ): Promise<void> {
-    const { quotedTableName } = this.tableCache.getMetadata(entityType);
+    const { tableName } = this.tableCache.getMetadata(entityType);
 
     await this.transaction(options, (transaction) =>
-      transaction.runUpdate({
-        sql: `DELETE FROM ${quotedTableName} WHERE TRUE`,
-      }),
+      transaction.runUpdate(`DELETE FROM \`${tableName}\` WHERE TRUE`),
     );
   }
 
