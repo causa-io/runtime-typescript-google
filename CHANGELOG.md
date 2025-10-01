@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v1.2.0 (2025-10-01)
+
 Features:
 
 - Add the `forProperties` and `alias` options to `SpannerEntityManager.sqlColumns`.
