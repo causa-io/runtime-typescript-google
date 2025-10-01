@@ -189,11 +189,39 @@ export class SpannerEntityManager {
   /**
    * Returns the (quoted) name of the table for the given entity type.
    *
+   * @deprecated Use {@link sqlTable} instead.
+   *
    * @param entityTypeOrTable The type of entity, or the unquoted table name.
    * @param options Options when constructing the table name (e.g. the index to use).
    * @returns The name of the table, quoted with backticks.
    */
   sqlTableName(
+    entityTypeOrTable: Type | string,
+    options: {
+      /**
+       * Sets a table hint to indicate which index to use when querying the table.
+       * The value will be quoted with backticks.
+       */
+      index?: string;
+
+      /**
+       * Sets a table hint to disable the check that prevents queries from using null-filtered indexes.
+       * This is useful when using the emulator, which does not support null-filtered indexes.
+       */
+      disableQueryNullFilteredIndexEmulatorCheck?: boolean;
+    } = {},
+  ): string {
+    return this.sqlTable(entityTypeOrTable, options);
+  }
+
+  /**
+   * Returns the (quoted) name of the table for the given entity type.
+   *
+   * @param entityTypeOrTable The type of entity, or the unquoted table name.
+   * @param options Options when constructing the table name (e.g. the index to use).
+   * @returns The name of the table, quoted with backticks.
+   */
+  sqlTable(
     entityTypeOrTable: Type | string,
     options: {
       /**

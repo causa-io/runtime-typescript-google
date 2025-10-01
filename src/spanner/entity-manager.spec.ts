@@ -1220,21 +1220,21 @@ describe('SpannerEntityManager', () => {
     });
   });
 
-  describe('sqlTableName', () => {
+  describe('sqlTable', () => {
     it('should return the quoted table name for the entity type', () => {
-      const actualTableName = manager.sqlTableName(SomeEntity);
+      const actualTableName = manager.sqlTable(SomeEntity);
 
       expect(actualTableName).toEqual('`MyEntity`');
     });
 
     it('should return the quoted table name for a string', () => {
-      const actualTableName = manager.sqlTableName('MyTable');
+      const actualTableName = manager.sqlTable('MyTable');
 
       expect(actualTableName).toEqual('`MyTable`');
     });
 
     it('should add the index to the table name', () => {
-      const actualTableName = manager.sqlTableName('MyTable', {
+      const actualTableName = manager.sqlTable('MyTable', {
         index: 'MyIndex',
       });
 
@@ -1242,7 +1242,7 @@ describe('SpannerEntityManager', () => {
     });
 
     it('should add the index and the Spanner emulator hint', () => {
-      const actualTableName = manager.sqlTableName('MyTable', {
+      const actualTableName = manager.sqlTable('MyTable', {
         index: 'MyIndex',
         disableQueryNullFilteredIndexEmulatorCheck: true,
       });
@@ -1253,7 +1253,7 @@ describe('SpannerEntityManager', () => {
     });
 
     it('should throw when the type is not a valid entity type', () => {
-      expect(() => manager.sqlTableName({} as any)).toThrow(
+      expect(() => manager.sqlTable({} as any)).toThrow(
         InvalidEntityDefinitionError,
       );
     });

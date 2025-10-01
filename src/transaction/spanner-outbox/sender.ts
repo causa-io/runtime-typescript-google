@@ -196,11 +196,10 @@ export class SpannerOutboxSender extends OutboxEventSender {
     | 'successfulUpdateSql'
     | 'failedUpdateSql'
   > {
-    const table = this.entityManager.sqlTableName(this.outboxEventType);
-    const tableWithIndex = this.entityManager.sqlTableName(
-      this.outboxEventType,
-      { index: this.index },
-    );
+    const table = this.entityManager.sqlTable(this.outboxEventType);
+    const tableWithIndex = this.entityManager.sqlTable(this.outboxEventType, {
+      index: this.index,
+    });
 
     const noLeaseFilter = `\`${this.leaseExpirationColumn}\` IS NULL OR \`${this.leaseExpirationColumn}\` < @currentTime`;
     let fetchFilter = noLeaseFilter;
