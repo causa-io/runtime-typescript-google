@@ -84,7 +84,7 @@ export async function getSpannerOutboxEvents(
         SELECT
           ${entityManager.sqlColumns(type)}
         FROM
-          ${entityManager.sqlTableName(type)}`,
+          ${entityManager.sqlTable(type)}`,
     },
   );
 }

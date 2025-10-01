@@ -28,10 +28,12 @@ describe('SpannerTableCache', () => {
 
       expect(metadata).toEqual({
         tableName: 'MyCustomEntity',
-        quotedTableName: '`MyCustomEntity`',
         primaryKeyColumns: ['id'],
-        columns: ['id', 'customName', 'deletedAt'],
-        quotedColumns: '`id`, `customName`, `deletedAt`',
+        columnNames: {
+          id: 'id',
+          someName: 'customName',
+          deletedAt: 'deletedAt',
+        },
         softDeleteColumn: 'deletedAt',
       });
     });
@@ -62,10 +64,8 @@ describe('SpannerTableCache', () => {
 
       expect(metadata).toEqual({
         tableName: 'MyEntity',
-        quotedTableName: '`MyEntity`',
         primaryKeyColumns: ['id'],
-        columns: ['id'],
-        quotedColumns: '`id`',
+        columnNames: { id: 'id' },
         softDeleteColumn: null,
       });
     });

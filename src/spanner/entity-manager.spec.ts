@@ -1220,21 +1220,21 @@ describe('SpannerEntityManager', () => {
     });
   });
 
-  describe('sqlTableName', () => {
+  describe('sqlTable', () => {
     it('should return the quoted table name for the entity type', () => {
-      const actualTableName = manager.sqlTableName(SomeEntity);
+      const actualTableName = manager.sqlTable(SomeEntity);
 
       expect(actualTableName).toEqual('`MyEntity`');
     });
 
     it('should return the quoted table name for a string', () => {
-      const actualTableName = manager.sqlTableName('MyTable');
+      const actualTableName = manager.sqlTable('MyTable');
 
       expect(actualTableName).toEqual('`MyTable`');
     });
 
     it('should add the index to the table name', () => {
-      const actualTableName = manager.sqlTableName('MyTable', {
+      const actualTableName = manager.sqlTable('MyTable', {
         index: 'MyIndex',
       });
 
@@ -1242,7 +1242,7 @@ describe('SpannerEntityManager', () => {
     });
 
     it('should add the index and the Spanner emulator hint', () => {
-      const actualTableName = manager.sqlTableName('MyTable', {
+      const actualTableName = manager.sqlTable('MyTable', {
         index: 'MyIndex',
         disableQueryNullFilteredIndexEmulatorCheck: true,
       });
@@ -1253,7 +1253,7 @@ describe('SpannerEntityManager', () => {
     });
 
     it('should throw when the type is not a valid entity type', () => {
-      expect(() => manager.sqlTableName({} as any)).toThrow(
+      expect(() => manager.sqlTable({} as any)).toThrow(
         InvalidEntityDefinitionError,
       );
     });
@@ -1277,5 +1277,31 @@ describe('SpannerEntityManager', () => {
         InvalidEntityDefinitionError,
       );
     });
+
+    it('should only return the columns for the specified properties', () => {
+      @SpannerTable({ primaryKey: ['id'] })
+      class EntityWithCustomName {
+        @SpannerColumn()
+        id!: string;
+
+        @SpannerColumn({ name: 'customName' })
+        value!: string;
+      }
+
+      const actualColumns = manager.sqlColumns(EntityWithCustomName, {
+        forProperties: ['value'],
+      });
+
+      expect(actualColumns).toEqual('`customName`');
+    });
+
+    it.each([SomeEntity, ['id', 'value']])(
+      'should prefix with the alias',
+      (cols) => {
+        const actualColumns = manager.sqlColumns(cols, { alias: 't' });
+
+        expect(actualColumns).toEqual('`t`.`id`, `t`.`value`');
+      },
+    );
   });
 });

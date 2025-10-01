@@ -189,11 +189,39 @@ export class SpannerEntityManager {
   /**
    * Returns the (quoted) name of the table for the given entity type.
    *
+   * @deprecated Use {@link sqlTable} instead.
+   *
    * @param entityTypeOrTable The type of entity, or the unquoted table name.
    * @param options Options when constructing the table name (e.g. the index to use).
    * @returns The name of the table, quoted with backticks.
    */
   sqlTableName(
+    entityTypeOrTable: Type | string,
+    options: {
+      /**
+       * Sets a table hint to indicate which index to use when querying the table.
+       * The value will be quoted with backticks.
+       */
+      index?: string;
+
+      /**
+       * Sets a table hint to disable the check that prevents queries from using null-filtered indexes.
+       * This is useful when using the emulator, which does not support null-filtered indexes.
+       */
+      disableQueryNullFilteredIndexEmulatorCheck?: boolean;
+    } = {},
+  ): string {
+    return this.sqlTable(entityTypeOrTable, options);
+  }
+
+  /**
+   * Returns the (quoted) name of the table for the given entity type.
+   *
+   * @param entityTypeOrTable The type of entity, or the unquoted table name.
+   * @param options Options when constructing the table name (e.g. the index to use).
+   * @returns The name of the table, quoted with backticks.
+   */
+  sqlTable(
     entityTypeOrTable: Type | string,
     options: {
       /**
@@ -221,10 +249,11 @@ export class SpannerEntityManager {
       .map(([k, v]) => `${k}=${v}`)
       .join(',');
 
-    const quotedTableName =
+    const tableName =
       typeof entityTypeOrTable === 'string'
-        ? `\`${entityTypeOrTable}\``
-        : this.tableCache.getMetadata(entityTypeOrTable).quotedTableName;
+        ? entityTypeOrTable
+        : this.tableCache.getMetadata(entityTypeOrTable).tableName;
+    const quotedTableName = `\`${tableName}\``;
 
     return tableHintsString.length > 0
       ? `${quotedTableName}@{${tableHintsString}}`
@@ -240,12 +269,37 @@ export class SpannerEntityManager {
    * @param entityTypeOrColumns The type of entity, or the unquoted list of columns.
    * @returns The list of columns, quoted with backticks and joined.
    */
-  sqlColumns(entityTypeOrColumns: Type | string[]): string {
+  sqlColumns<T = unknown>(
+    entityTypeOrColumns: Type<T> | string[],
+    options: {
+      /**
+       * If `entityTypeOrColumns` is a type, only the columns for the given properties will be included.
+       */
+      forProperties?: T extends object ? (keyof T & string)[] : never;
+
+      /**
+       * The alias with which to prefix each column.
+       */
+      alias?: string;
+    } = {},
+  ): string {
+    let columns: string[];
+
     if (Array.isArray(entityTypeOrColumns)) {
-      return entityTypeOrColumns.map((c) => `\`${c}\``).join(', ');
+      columns = entityTypeOrColumns;
+    } else {
+      const { columnNames } = this.tableCache.getMetadata(entityTypeOrColumns);
+      columns = options.forProperties
+        ? options.forProperties.map((p) => columnNames[p])
+        : Object.values(columnNames);
     }
 
-    return this.tableCache.getMetadata(entityTypeOrColumns).quotedColumns;
+    columns = columns.map((c) => `\`${c}\``);
+    if (options.alias) {
+      columns = columns.map((c) => `\`${options.alias}\`.${c}`);
+    }
+
+    return columns.join(', ');
   }
 
   /**
@@ -273,14 +327,11 @@ export class SpannerEntityManager {
       key = [key];
     }
 
-    const {
-      tableName,
-      columns: allColumns,
-      primaryKeyColumns,
-      softDeleteColumn,
-    } = this.tableCache.getMetadata(entityType);
+    const { tableName, columnNames, primaryKeyColumns, softDeleteColumn } =
+      this.tableCache.getMetadata(entityType);
     const columns =
-      options.columns ?? (options.index ? primaryKeyColumns : allColumns);
+      options.columns ??
+      (options.index ? primaryKeyColumns : Object.values(columnNames));
 
     return await this.snapshot(
       { transaction: options.transaction },
@@ -499,12 +550,10 @@ export class SpannerEntityManager {
     entityType: Type,
     options: SpannerReadWriteTransactionOption = {},
   ): Promise<void> {
-    const { quotedTableName } = this.tableCache.getMetadata(entityType);
+    const { tableName } = this.tableCache.getMetadata(entityType);
 
     await this.transaction(options, (transaction) =>
-      transaction.runUpdate({
-        sql: `DELETE FROM ${quotedTableName} WHERE TRUE`,
-      }),
+      transaction.runUpdate(`DELETE FROM \`${tableName}\` WHERE TRUE`),
     );
   }
 
