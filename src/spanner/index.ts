@@ -1,15 +1,16 @@
 export { SpannerColumn } from './column.decorator.js';
 export {
-  SPANNER_SESSION_POOL_OPTIONS_FOR_CLOUD_FUNCTIONS,
-  SPANNER_SESSION_POOL_OPTIONS_FOR_SERVICE,
   catchSpannerDatabaseErrors,
   getDefaultSpannerDatabaseForCloudFunction,
+  SPANNER_SESSION_POOL_OPTIONS_FOR_CLOUD_FUNCTIONS,
+  SPANNER_SESSION_POOL_OPTIONS_FOR_SERVICE,
 } from './database.js';
 export { SpannerEntityManager } from './entity-manager.js';
 export type {
   SpannerKey,
   SpannerReadOnlyTransaction,
   SpannerReadWriteTransaction,
+  SqlStatement,
 } from './entity-manager.js';
 export * from './errors.js';
 export { SpannerHealthIndicator } from './healthcheck.js';
