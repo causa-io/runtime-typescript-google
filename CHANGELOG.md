@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+Features:
+
+- Export the `SqlStatement` type.
+
 ## v1.2.0 (2025-10-01)
 
 Features:
