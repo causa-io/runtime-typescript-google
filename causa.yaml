@@ -17,6 +17,8 @@ project:
 
 javascript:
   dependencies:
+    check:
+      allowlist: [GHSA-9965-vmph-33xx]
     update:
       packageTargets:
         '@types/node': minor
