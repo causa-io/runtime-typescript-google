@@ -34,7 +34,7 @@ export class FirestoreStateTransaction
     ) as Type<T>;
     key ??= typeOrEntity as Partial<T>;
 
-    const { activeCollection, softDelete } =
+    const { activeCollection } =
       this.collectionResolver.getCollectionsForType(type);
 
     const activeDocRef = getReferenceForFirestoreDocument(
@@ -44,39 +44,37 @@ export class FirestoreStateTransaction
     );
     this.firestoreTransaction.delete(activeDocRef);
 
-    if (!softDelete) {
+    const softDeleteInfo = this.getSoftDeleteInfo(activeDocRef, type);
+    if (!softDeleteInfo) {
       return;
     }
 
-    const deletedDocRef = getReferenceForFirestoreDocument(
-      softDelete.collection,
-      key,
-      type,
-    );
-    this.firestoreTransaction.delete(deletedDocRef);
+    this.firestoreTransaction.delete(softDeleteInfo.ref);
   }
 
   async set<T extends object>(entity: T): Promise<void> {
     const documentType = entity.constructor as Type<T>;
-    const { activeCollection, softDelete } =
+    const { activeCollection } =
       this.collectionResolver.getCollectionsForType(documentType);
 
     const activeDocRef = getReferenceForFirestoreDocument(
       activeCollection,
       entity,
     );
-    if (!softDelete) {
+
+    const softDeleteInfo = this.getSoftDeleteInfo(activeDocRef, documentType);
+    if (!softDeleteInfo) {
       this.firestoreTransaction.set(activeDocRef, entity);
       return;
     }
 
-    const deletedDocRef = getReferenceForFirestoreDocument(
-      softDelete.collection,
-      entity,
-    );
+    const {
+      ref: deletedDocRef,
+      expirationDelay,
+      expirationField,
+    } = softDeleteInfo;
 
     if ('deletedAt' in entity && entity.deletedAt instanceof Date) {
-      const { expirationDelay, expirationField } = softDelete;
       const expiresAt = new Date(entity.deletedAt.getTime() + expirationDelay);
       const deletedDoc = plainToInstance(documentType, {
         ...entity,

@@ -14,6 +14,8 @@ export type FirestoreCollectionsForDocumentType<T> = {
   /**
    * Configuration about the soft-delete collection, where documents are stored when their `deletedAt` field is not
    * `null`. This can be `null` if the document type does not declare a soft-delete collection.
+   *
+   * @deprecated Use `SoftDeleteInfo` in `FirestoreReadOnlyStateTransaction.getSoftDeleteInfo` instead.
    */
   readonly softDelete:
     | ({

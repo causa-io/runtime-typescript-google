@@ -6,7 +6,10 @@ import {
 } from 'firebase-admin/firestore';
 import 'jest-extended';
 import { getDefaultFirebaseApp } from '../../firebase/index.js';
-import { FirestoreCollection } from '../../firestore/index.js';
+import {
+  FirestoreCollection,
+  makeFirestoreDataConverter,
+} from '../../firestore/index.js';
 import {
   clearFirestoreCollection,
   createFirestoreTemporaryCollection,
@@ -55,11 +58,34 @@ class MyNonSoftDeletedDocument implements VersionedEntity {
   readonly deletedAt!: Date | null;
 }
 
+@FirestoreCollection({
+  name: 'parent',
+  path: (doc) => `${doc.id1}/child/${doc.id2}`,
+})
+@SoftDeletedFirestoreCollection()
+class MyNestedDocument {
+  constructor(data: Partial<MyNestedDocument> = {}) {
+    Object.assign(this, {
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      deletedAt: null,
+      ...data,
+    });
+  }
+
+  readonly id1!: string;
+  readonly id2!: string;
+  readonly createdAt!: Date;
+  readonly updatedAt!: Date;
+  readonly deletedAt!: Date | null;
+}
+
 describe('FirestoreStateTransaction', () => {
   let firestore: Firestore;
   let activeCollection: CollectionReference<MyDocument>;
   let deletedCollection: CollectionReference<MyDocument>;
   let nonSoftDeleteCollection: CollectionReference<MyNonSoftDeletedDocument>;
+  let parentCollection: CollectionReference<MyNestedDocument>;
   let resolver: FirestoreCollectionResolver;
 
   beforeAll(() => {
@@ -68,13 +94,16 @@ describe('FirestoreStateTransaction', () => {
       firestore,
       MyDocument,
     );
-    deletedCollection = createFirestoreTemporaryCollection(
-      firestore,
-      MyDocument,
-    );
+    deletedCollection = firestore
+      .collection(`${activeCollection.path}$deleted`)
+      .withConverter(makeFirestoreDataConverter(MyDocument));
     nonSoftDeleteCollection = createFirestoreTemporaryCollection(
       firestore,
       MyNonSoftDeletedDocument,
+    );
+    parentCollection = createFirestoreTemporaryCollection(
+      firestore,
+      MyNestedDocument,
     );
     resolver = {
       getCollectionsForType<T>(documentType: {
@@ -98,6 +127,18 @@ describe('FirestoreStateTransaction', () => {
           };
         }
 
+        if (documentType === MyNestedDocument) {
+          return {
+            activeCollection: parentCollection,
+            softDelete: {
+              // This should not be used anyway, as it is not correct for nested collections.
+              collection: parentCollection,
+              expirationField: '_expirationDate',
+              expirationDelay: 24 * 3600 * 1000,
+            },
+          };
+        }
+
         throw new Error('Unexpected document type.');
       },
     };
@@ -105,6 +146,9 @@ describe('FirestoreStateTransaction', () => {
 
   afterEach(async () => {
     await clearFirestoreCollection(activeCollection);
+    await clearFirestoreCollection(deletedCollection);
+    await clearFirestoreCollection(nonSoftDeleteCollection);
+    await clearFirestoreCollection(parentCollection);
   });
 
   describe('constructor', () => {
@@ -229,6 +273,44 @@ describe('FirestoreStateTransaction', () => {
         .get();
       expect(actualDocument.exists).toBeFalse();
     });
+
+    it('should handle nested collections', async () => {
+      const document = new MyNestedDocument({ id1: 'parent1', id2: 'child1' });
+      const documentPath = parentCollection.doc(
+        `${document.id1}/child/${document.id2}`,
+      );
+      await documentPath.set(document);
+      const deletedDocument = new MyNestedDocument({
+        id1: 'parent1',
+        id2: 'child2',
+        deletedAt: new Date(),
+      });
+      const deletedDocumentPath = parentCollection.doc(
+        `${deletedDocument.id1}/child$deleted/${deletedDocument.id2}`,
+      );
+      await deletedDocumentPath.set({
+        ...deletedDocument,
+        _expirationDate: new Date(),
+      } as any);
+
+      await firestore.runTransaction(async (transaction) => {
+        const stateTransaction = new FirestoreStateTransaction(
+          transaction,
+          resolver,
+        );
+
+        await stateTransaction.delete(document);
+        await stateTransaction.delete(MyNestedDocument, {
+          id1: deletedDocument.id1,
+          id2: deletedDocument.id2,
+        });
+      });
+
+      const actualDocument = await documentPath.get();
+      expect(actualDocument.exists).toBeFalse();
+      const actualDeletedDocument = await deletedDocumentPath.get();
+      expect(actualDeletedDocument.exists).toBeFalse();
+    });
   });
 
   describe('set', () => {
@@ -345,6 +427,39 @@ describe('FirestoreStateTransaction', () => {
         .doc(document.id)
         .get();
       expect(actualDocument.data()).toEqual(document);
+    });
+
+    it('should handle nested collections', async () => {
+      const document = new MyNestedDocument({ id1: 'parent1', id2: 'child1' });
+      const deletedDocument = new MyNestedDocument({
+        id1: 'parent1',
+        id2: 'child2',
+        deletedAt: new Date(),
+      });
+
+      await firestore.runTransaction(async (transaction) => {
+        const stateTransaction = new FirestoreStateTransaction(
+          transaction,
+          resolver,
+        );
+
+        await stateTransaction.set(document);
+        await stateTransaction.set(deletedDocument);
+      });
+
+      const actualDocument = await parentCollection
+        .doc(`${document.id1}/child/${document.id2}`)
+        .get();
+      expect(actualDocument.data()).toEqual(document);
+      const actualDeletedDocument = await parentCollection
+        .doc(`${deletedDocument.id1}/child$deleted/${deletedDocument.id2}`)
+        .get();
+      expect(actualDeletedDocument.data()).toEqual({
+        ...deletedDocument,
+        _expirationDate: new Date(
+          deletedDocument.deletedAt!.getTime() + 24 * 3600 * 1000,
+        ),
+      });
     });
   });
 });
