@@ -1,6 +1,6 @@
 {
   "name": "@causa/runtime-google",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "An extension to the Causa runtime SDK (`@causa/runtime`), providing Google-specific features.",
   "repository": {
     "type": "git",
