@@ -6,6 +6,10 @@ Features:
 
 - Export the `SqlStatement` type.
 
+Fixes:
+
+- Ensure the soft-deleted Firestore collection suffix is appended to the child collection.
+
 ## v1.2.0 (2025-10-01)
 
 Features:
