@@ -8,7 +8,11 @@ import { Global, Module, type DynamicModule, type Type } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PubSubPublisherModule } from '../../pubsub/index.js';
-import { SpannerModule, SpannerTable } from '../../spanner/index.js';
+import {
+  SpannerColumn,
+  SpannerModule,
+  SpannerTable,
+} from '../../spanner/index.js';
 import { SpannerOutboxEvent } from './event.js';
 import {
   SpannerOutboxTransactionModule,
@@ -118,6 +122,7 @@ describe('SpannerOutboxTransactionModule', () => {
   it('should use the passed options', async () => {
     @SpannerTable({ primaryKey: ['id'] })
     class MyEvent implements OutboxEvent {
+      @SpannerColumn()
       readonly id!: string;
       readonly topic!: string;
       readonly data!: Buffer;

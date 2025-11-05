@@ -17,7 +17,7 @@ describe('SpannerTable', () => {
 
   class NotATable {}
 
-  it('should use property name as default table name', () => {
+  it('should use class name as default table name', () => {
     const obj = new DefaultName();
     const metadata = getSpannerTableMetadataFromType(
       obj.constructor as { new (): DefaultName },

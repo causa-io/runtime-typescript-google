@@ -93,6 +93,25 @@ class SoftDeleteEntity {
   deletedAt!: Date | null;
 }
 
+@SpannerTable({ primaryKey: ['address.city', 'address.zip', 'id'] })
+class NestedKeyEntity {
+  constructor(data: Partial<NestedKeyEntity> = {}) {
+    Object.assign(this, data);
+  }
+
+  @SpannerColumn({ isInt: true })
+  id!: number;
+
+  @SpannerColumn({ isJson: true })
+  address!: {
+    city: string;
+    zip: string;
+  };
+
+  @SpannerColumn()
+  value!: string;
+}
+
 const TEST_SCHEMA = [
   `CREATE TABLE MyEntity (
     id STRING(MAX) NOT NULL,
@@ -120,6 +139,14 @@ const TEST_SCHEMA = [
     id STRING(MAX) NOT NULL,
     deletedAt TIMESTAMP
   ) PRIMARY KEY (id)`,
+  `CREATE TABLE NestedKeyEntity (
+    id INT64 NOT NULL,
+    address JSON NOT NULL,
+    value STRING(MAX) NOT NULL,
+    addressCity STRING(MAX) AS (JSON_VALUE(address, '$.city')) STORED,
+    addressZip STRING(MAX) AS (JSON_VALUE(address, '$.zip')) STORED,
+  ) PRIMARY KEY (addressCity, addressZip, id)`,
+  `CREATE INDEX NestedKeyEntityByZip ON NestedKeyEntity(addressZip) STORING (address)`,
 ];
 
 describe('SpannerEntityManager', () => {
@@ -144,6 +171,7 @@ describe('SpannerEntityManager', () => {
       await manager.clear(IndexedEntity, { transaction });
       await manager.clear(ParentEntity, { transaction });
       await manager.clear(SoftDeleteEntity, { transaction });
+      await manager.clear(NestedKeyEntity, { transaction });
     });
   });
 
@@ -577,6 +605,56 @@ describe('SpannerEntityManager', () => {
         EntityMissingPrimaryKeyError,
       );
     });
+
+    it('should extract primary key from nested properties using dot notation', () => {
+      const obj = new NestedKeyEntity({
+        id: 42,
+        address: { city: 'San Francisco', zip: '94102' },
+        value: 'test',
+      });
+
+      const actualPrimaryKey = manager.getPrimaryKey(obj);
+
+      expect(actualPrimaryKey).toEqual(['San Francisco', '94102', '42']);
+    });
+
+    it('should throw when a nested primary key property is undefined', () => {
+      const obj = new NestedKeyEntity({
+        id: 42,
+        address: { city: 'San Francisco' } as any,
+        value: 'test',
+      });
+
+      expect(() => manager.getPrimaryKey(obj)).toThrow(
+        EntityMissingPrimaryKeyError,
+      );
+    });
+
+    it('should throw when a nested primary key parent object is undefined', () => {
+      const obj = new NestedKeyEntity({
+        id: 42,
+        value: 'test',
+      } as any);
+
+      expect(() => manager.getPrimaryKey(obj)).toThrow(
+        EntityMissingPrimaryKeyError,
+      );
+    });
+
+    it('should convert numbers in nested properties to strings for primary keys', () => {
+      @SpannerTable({ primaryKey: ['metadata.count'] })
+      class EntityWithNumericNestedKey {
+        @SpannerColumn()
+        metadata!: { count: number };
+      }
+
+      const actualPrimaryKey = manager.getPrimaryKey(
+        { metadata: { count: 123 } },
+        EntityWithNumericNestedKey,
+      );
+
+      expect(actualPrimaryKey).toEqual(['123']);
+    });
   });
 
   describe('findOneByKey', () => {
@@ -692,10 +770,20 @@ describe('SpannerEntityManager', () => {
       await database
         .table('IndexedEntity')
         .insert({ id: '1', value: 10, otherValue: '🎁', notStored: '🙈' });
+      await database.table('NestedKeyEntity').insert({
+        id: 1,
+        address: JSON.stringify({ city: 'City', zip: '12345' }),
+        value: 'test',
+      });
 
       const actualEntity = await manager.findOneByKey(IndexedEntity, ['10'], {
         index: IndexedEntity.ByValue,
       });
+      const actualNestedEntity = await manager.findOneByKey(
+        NestedKeyEntity,
+        '12345',
+        { index: 'NestedKeyEntityByZip' },
+      );
 
       expect(actualEntity).toEqual({
         id: '1',
@@ -704,6 +792,12 @@ describe('SpannerEntityManager', () => {
         notStored: '🙈',
       });
       expect(actualEntity).toBeInstanceOf(IndexedEntity);
+      expect(actualNestedEntity).toEqual({
+        id: 1,
+        address: { city: 'City', zip: '12345' },
+        value: 'test',
+      });
+      expect(actualNestedEntity).toBeInstanceOf(NestedKeyEntity);
     });
 
     it('should pass the request options to the read method', async () => {
@@ -1122,6 +1216,33 @@ describe('SpannerEntityManager', () => {
       const [actualRows] = await database.table('IndexedEntity').read({
         keys: ['1'],
         columns: ['id', 'value', 'otherValue', 'notStored'],
+        json: true,
+      });
+      expect(actualRows).toEqual([actualEntity]);
+    });
+
+    it('should update entity with nested properties in primary key', async () => {
+      await database.table('NestedKeyEntity').insert({
+        id: 77,
+        address: { city: 'Seattle', zip: '98101' },
+        value: '☕',
+      });
+
+      const actualEntity = await manager.update(NestedKeyEntity, {
+        id: 77,
+        address: { city: 'Seattle', zip: '98101' },
+        value: '🌧️',
+      });
+
+      expect(actualEntity).toEqual({
+        id: 77,
+        address: { city: 'Seattle', zip: '98101' },
+        value: '🌧️',
+      });
+      expect(actualEntity).toBeInstanceOf(NestedKeyEntity);
+      const [actualRows] = await database.table('NestedKeyEntity').read({
+        keys: [['Seattle', '98101', '77']],
+        columns: ['id', 'address', 'value'],
         json: true,
       });
       expect(actualRows).toEqual([actualEntity]);

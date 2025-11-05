@@ -16,7 +16,9 @@ export type SpannerTableMetadata = {
   name: string;
 
   /**
-   * The (ordered) list of columns in the class defining the primary key.
+   * The (ordered) list of columns in the table defining the primary key.
+   * Column names should be used rather than property names (if they differ).
+   * Nested columns can be used, using dot notation (e.g., `address.city`).
    */
   primaryKey: string[];
 };
