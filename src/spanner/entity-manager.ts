@@ -1,9 +1,6 @@
 import { EntityNotFoundError } from '@causa/runtime';
 import { Database, Snapshot, Transaction } from '@google-cloud/spanner';
-import {
-  Int,
-  type Type as ParamType,
-} from '@google-cloud/spanner/build/src/codec.js';
+import { type Type as ParamType } from '@google-cloud/spanner/build/src/codec.js';
 import type {
   ExecuteSqlRequest,
   TimestampBounds,
@@ -16,11 +13,7 @@ import {
   updateInstanceByColumn,
 } from './conversion.js';
 import { convertSpannerToEntityError } from './error-converter.js';
-import {
-  EntityMissingPrimaryKeyError,
-  InvalidArgumentError,
-  TransactionFinishedError,
-} from './errors.js';
+import { InvalidArgumentError, TransactionFinishedError } from './errors.js';
 import { SpannerTableCache } from './table-cache.js';
 import type {
   SpannerReadOnlyTransactionOption,
@@ -150,8 +143,8 @@ export class SpannerEntityManager {
    */
   getPrimaryKey<T>(entity: T | Partial<T>, entityType?: Type<T>): SpannerKey {
     entityType ??= (entity as any).constructor as Type<T>;
-    const obj = instanceToSpannerObject(entity, entityType);
-    return this.getPrimaryKeyForSpannerObject(obj, entityType);
+    const { primaryKeyGetter } = this.tableCache.getMetadata(entityType);
+    return primaryKeyGetter(entity);
   }
 
   /**
@@ -165,25 +158,8 @@ export class SpannerEntityManager {
     obj: Record<string, any>,
     entityType: Type,
   ): SpannerKey {
-    const { primaryKeyColumns } = this.tableCache.getMetadata(entityType);
-
-    return primaryKeyColumns.map((c) => {
-      const value = obj[c];
-
-      if (value === undefined) {
-        throw new EntityMissingPrimaryKeyError();
-      }
-
-      if (value instanceof Int) {
-        return value.value;
-      }
-
-      if (value instanceof Date) {
-        return value.toJSON();
-      }
-
-      return value;
-    });
+    const entity = spannerObjectToInstance(obj, entityType);
+    return this.getPrimaryKey(entity, entityType);
   }
 
   /**
