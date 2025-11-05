@@ -5,6 +5,7 @@
 Features:
 
 - Support an array of elements in `FirestoreCollection` `path` function.
+- Support nested primary keys in Spanner entities.
 
 Fixes:
 
