@@ -1,6 +1,7 @@
 import type { VersionedEntity } from '@causa/runtime';
 import type { Type } from '@nestjs/common';
 import 'reflect-metadata';
+import { makeFirestoreDataConverter } from '../../firestore/index.js';
 
 /**
  * The metadata for a Firestore collection in which the objects that are soft-deleted are moved to a separate
@@ -26,6 +27,19 @@ export type SoftDeletedFirestoreCollectionMetadata = {
    * Default is `$deleted`.
    */
   deletedDocumentsCollectionSuffix: string;
+};
+
+/**
+ * Information about soft-deletion for a given document.
+ */
+export type SoftDeleteInfo<T extends object> = Omit<
+  SoftDeletedFirestoreCollectionMetadata,
+  'deletedDocumentsCollectionSuffix'
+> & {
+  /**
+   * The reference to the soft-deleted document.
+   */
+  ref: FirebaseFirestore.DocumentReference<T>;
 };
 
 /**
@@ -73,4 +87,32 @@ export function getSoftDeletedFirestoreCollectionMetadataForType(
   );
 
   return metadata ?? null;
+}
+
+/**
+ * Returns the soft-delete information for a given document, if the document type supports soft-deletion.
+ *
+ * @param activeDocRef The reference to the active document.
+ * @param type The type of the document.
+ * @returns The soft-delete information for the document, or `null` if the document type does not support
+ *   soft-deletion.
+ */
+export function getSoftDeleteInfo<T extends object>(
+  activeDocRef: FirebaseFirestore.DocumentReference<T>,
+  type: Type<T>,
+): SoftDeleteInfo<T> | null {
+  const softDeleteMetadata =
+    getSoftDeletedFirestoreCollectionMetadataForType(type);
+  if (!softDeleteMetadata) {
+    return null;
+  }
+
+  const { deletedDocumentsCollectionSuffix: suffix, ...info } =
+    softDeleteMetadata;
+  const softDeleteCollection = activeDocRef.firestore
+    .collection(`${activeDocRef.parent.path}${suffix}`)
+    .withConverter(makeFirestoreDataConverter(type));
+  const ref = softDeleteCollection.doc(activeDocRef.id);
+
+  return { ...info, ref };
 }
