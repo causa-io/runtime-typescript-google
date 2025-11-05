@@ -10,6 +10,7 @@ import {
   SpannerEntityManager,
   type SpannerReadWriteTransaction,
 } from '../../spanner/index.js';
+import type { SpannerReadOnlyStateTransaction } from './readonly-transaction.js';
 import type { SpannerStateTransaction } from './state-transaction.js';
 
 /**
@@ -23,7 +24,7 @@ export type SpannerOutboxTransactionOption =
  */
 export class SpannerOutboxTransaction
   extends Transaction
-  implements OutboxTransaction
+  implements OutboxTransaction, SpannerReadOnlyStateTransaction
 {
   constructor(
     readonly stateTransaction: SpannerStateTransaction,

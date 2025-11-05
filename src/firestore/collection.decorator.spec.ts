@@ -15,6 +15,19 @@ class MyDocument {
   constructor(readonly id: string = '🐑') {}
 }
 
+@FirestoreCollection({
+  name: '🔖',
+  path: (doc) => [doc.grandParentId, doc.parentId, doc.id],
+})
+class MyDocumentWithArrayPath {
+  constructor(
+    readonly grandParentId: string | undefined = '📁',
+    readonly parentId: string | null = '🗃️',
+    readonly id: string = '🐑',
+    readonly unused?: string,
+  ) {}
+}
+
 describe('FirestoreCollection', () => {
   let firestore: Firestore;
 
@@ -85,6 +98,53 @@ describe('FirestoreCollection', () => {
         ),
       ).toThrow(
         `The path of the 'MyDocument' document cannot be obtained from the given object.`,
+      );
+    });
+
+    it('should return the reference when the path function returns an array', () => {
+      const document = new MyDocumentWithArrayPath();
+
+      const actualReference = getReferenceForFirestoreDocument(
+        firestore.collection('🗃️'),
+        document,
+      );
+
+      expect(actualReference.path).toEqual('🗃️/📁/🗃️/🐑');
+    });
+
+    it('should return the reference for a partial document with array path', () => {
+      const document = { grandParentId: '🎁', parentId: '🗃️', id: '🪆' };
+
+      const actualReference = getReferenceForFirestoreDocument(
+        firestore.collection('🗃️'),
+        document,
+        MyDocumentWithArrayPath,
+      );
+
+      expect(actualReference.path).toEqual('🗃️/🎁/🗃️/🪆');
+    });
+
+    it('should throw if the returned path array contains undefined', () => {
+      expect(() =>
+        getReferenceForFirestoreDocument(
+          firestore.collection('🗃️'),
+          { parentId: '🗃️', id: '🐑' },
+          MyDocumentWithArrayPath,
+        ),
+      ).toThrow(
+        `The path of the 'MyDocumentWithArrayPath' document cannot be obtained from the given object.`,
+      );
+    });
+
+    it('should throw if the returned path array contains null', () => {
+      expect(() =>
+        getReferenceForFirestoreDocument(
+          firestore.collection('🗃️'),
+          { grandParentId: '🎁', parentId: null, id: '🐑' },
+          MyDocumentWithArrayPath,
+        ),
+      ).toThrow(
+        `The path of the 'MyDocumentWithArrayPath' document cannot be obtained from the given object.`,
       );
     });
   });

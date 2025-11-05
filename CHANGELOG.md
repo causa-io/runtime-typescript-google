@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+Features:
+
+- Support an array of elements in `FirestoreCollection` `path` function.
+
+Fixes:
+
+- Adapt to base runtime type constraints for transactions to implement the corresponding readonly transaction.
+
 ## v1.3.0 (2025-10-20)
 
 Features:

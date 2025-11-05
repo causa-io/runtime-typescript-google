@@ -3,6 +3,7 @@ import type { Type } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { getReferenceForFirestoreDocument } from '../../firestore/index.js';
 import { FirestoreReadOnlyStateTransaction } from './readonly-state-transaction.js';
+import { getSoftDeleteInfo } from './soft-deleted-collection.decorator.js';
 
 /**
  * A {@link StateTransaction} that uses Firestore for state storage.
@@ -44,7 +45,7 @@ export class FirestoreStateTransaction
     );
     this.firestoreTransaction.delete(activeDocRef);
 
-    const softDeleteInfo = this.getSoftDeleteInfo(activeDocRef, type);
+    const softDeleteInfo = getSoftDeleteInfo(activeDocRef, type);
     if (!softDeleteInfo) {
       return;
     }
@@ -62,7 +63,7 @@ export class FirestoreStateTransaction
       entity,
     );
 
-    const softDeleteInfo = this.getSoftDeleteInfo(activeDocRef, documentType);
+    const softDeleteInfo = getSoftDeleteInfo(activeDocRef, documentType);
     if (!softDeleteInfo) {
       this.firestoreTransaction.set(activeDocRef, entity);
       return;

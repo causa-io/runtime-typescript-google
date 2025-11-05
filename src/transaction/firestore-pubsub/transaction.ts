@@ -6,7 +6,9 @@ import {
 } from '@causa/runtime';
 import type { Type } from '@nestjs/common';
 import { Transaction as FirestoreTransaction } from 'firebase-admin/firestore';
+import { FirestoreReadOnlyStateTransaction } from './readonly-state-transaction.js';
 import type { FirestoreStateTransaction } from './state-transaction.js';
+import type { FirestoreCollectionResolver } from './types.js';
 
 /**
  * Option for a function that accepts a {@link FirestorePubSubTransaction}.
@@ -17,7 +19,10 @@ export type FirestoreOutboxTransactionOption =
 /**
  * A {@link Transaction} that uses Firestore for state storage and Pub/Sub for event publishing.
  */
-export class FirestorePubSubTransaction extends Transaction {
+export class FirestorePubSubTransaction
+  extends Transaction
+  implements FirestoreReadOnlyStateTransaction
+{
   constructor(
     readonly stateTransaction: FirestoreStateTransaction,
     private readonly eventTransaction: OutboxEventTransaction,
@@ -31,6 +36,10 @@ export class FirestorePubSubTransaction extends Transaction {
    */
   get firestoreTransaction(): FirestoreTransaction {
     return this.stateTransaction.firestoreTransaction;
+  }
+
+  get collectionResolver(): FirestoreCollectionResolver {
+    return this.stateTransaction.collectionResolver;
   }
 
   set<T extends object>(entity: T): Promise<void> {
