@@ -27,17 +27,20 @@ describe('SpannerEntityManager', () => {
 
   afterAll(() => database.delete());
 
-  describe('query', () => {
-    it('should run the query and return the typed entities', async () => {
+  describe('queryStream', () => {
+    it('should run the query and return an async iterable of typed entities', async () => {
       await database.table('MyEntity').insert([
         { id: '1', value: '🎁' },
         { id: '2', value: '🎉' },
       ]);
 
-      const actualEntities = await manager.query(
+      const actualEntities: SomeEntity[] = [];
+      for await (const entity of manager.queryStream(
         { entityType: SomeEntity },
         { sql: 'SELECT id, value FROM MyEntity ORDER BY id' },
-      );
+      )) {
+        actualEntities.push(entity);
+      }
 
       expect(actualEntities).toEqual([
         { id: '1', value: '🎁' },
@@ -47,46 +50,44 @@ describe('SpannerEntityManager', () => {
       expect(actualEntities[1]).toBeInstanceOf(SomeEntity);
     });
 
-    it('should wrap numbers when converting results to class instances', async () => {
-      const value = BigInt(Number.MAX_SAFE_INTEGER) + 1n;
-      await database
-        .table('IntEntity')
-        .insert([{ id: '1', value: value.toString() }]);
-
-      const actualEntities = await manager.query(
-        { entityType: IntEntity },
-        { sql: 'SELECT id, value FROM IntEntity' },
-      );
-
-      expect(actualEntities).toEqual([{ id: '1', value }]);
-      expect(actualEntities[0]).toBeInstanceOf(IntEntity);
-    });
-
     it('should run the query without typed entities', async () => {
       await database.table('IntEntity').insert([{ id: '1', value: 10 }]);
 
-      const actualEntities = await manager.query({
+      const actualEntities: any[] = [];
+      for await (const entity of manager.queryStream({
         sql: 'SELECT id, value FROM IntEntity',
-      });
+      })) {
+        actualEntities.push(entity);
+      }
 
       expect(actualEntities).toEqual([{ id: '1', value: 10 }]);
       expect(actualEntities[0]).not.toBeInstanceOf(IntEntity);
     });
 
     it('should use a read only transaction by default', async () => {
-      const actualPromise = manager.query({
+      const stream = manager.queryStream({
         sql: `INSERT INTO IntEntity(id, value) VALUES ('1', 10)`,
       });
+
+      const actualPromise = (async () => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        for await (const _ of stream) {
+        }
+      })();
 
       await expect(actualPromise).rejects.toThrow(InvalidArgumentError);
     });
 
     it('should use the provided transaction', async () => {
       await manager.transaction(async (transaction) => {
-        await manager.query(
+        const stream = manager.queryStream(
           { transaction },
           { sql: `INSERT INTO IntEntity(id, value) VALUES ('1', 10)` },
         );
+
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        for await (const _ of stream) {
+        }
       });
 
       const [actualRows] = await database.table('IntEntity').read({
@@ -103,10 +104,14 @@ describe('SpannerEntityManager', () => {
 
       await manager.snapshot(async (transaction) => {
         spy = jest.spyOn(transaction, 'runStream');
-        await manager.query(
+        const stream = manager.queryStream(
           { transaction, requestOptions },
           { sql: 'SELECT 1' },
         );
+
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        for await (const _ of stream) {
+        }
       });
 
       expect(spy).toHaveBeenCalledWith(
