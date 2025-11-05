@@ -21,12 +21,15 @@ export type FirestoreCollectionMetadata<T> = {
 
   /**
    * Returns the path of the document (relative to the collection) for the given partial document.
+   * If an array is returned, the segments are joined with `/` to form the full path.
+   * If any `undefined` or `null` value is returned, an error is thrown.
    *
    * @param document The (partial) document for which the path should be returned.
-   * @returns The path of the document (relative to the collection), or `undefined` if the path cannot be derived from
-   *   the partial document.
+   * @returns The path of the document (relative to the collection).
    */
-  path: (document: Partial<T>) => string | undefined;
+  path: (
+    document: Partial<T>,
+  ) => string | undefined | null | (string | undefined | null)[];
 };
 
 /**
@@ -83,12 +86,14 @@ export function getReferenceForFirestoreDocument<T>(
   documentType ??= (document as any).constructor as Type<T>;
   const { path } = getFirestoreCollectionMetadataForType(documentType);
 
-  const relativePath = path(document);
-  if (!relativePath) {
+  const rawPath = path(document);
+  const pathArray = Array.isArray(rawPath) ? rawPath : [rawPath];
+
+  if (pathArray.some((p) => p == undefined)) {
     throw new Error(
       `The path of the '${documentType.name}' document cannot be obtained from the given object.`,
     );
   }
 
-  return collection.doc(relativePath);
+  return collection.doc(pathArray.join('/'));
 }
