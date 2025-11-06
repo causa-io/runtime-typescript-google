@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v1.4.0 (2025-11-06)
+
 Features:
 
 - Support an array of elements in `FirestoreCollection` `path` function.
