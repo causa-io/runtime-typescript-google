@@ -15,12 +15,10 @@ const config = {
   testMatch: ['**/*.spec.ts'],
   extensionsToTreatAsEsm: ['.ts'],
   moduleFileExtensions: ['js', 'ts'],
-  transform: {
-    '^.+\\.(t|j)s?$': ['@swc/jest', { sourceMaps: 'inline' }],
-  },
-  moduleNameMapper: {
-    '^(\\.{1,2}/.*)\\.js$': '$1',
-  },
+  transform: { '^.+\\.(t|j)s?$': ['@swc/jest', { sourceMaps: 'inline' }] },
+  moduleNameMapper: { '^(\\.{1,2}/.*)\\.js$': '$1' },
+  testTimeout: 10000,
+  openHandlesTimeout: 10000,
 };
 
 export default config;

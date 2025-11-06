@@ -556,29 +556,94 @@ export class SpannerEntityManager {
     optionsOrStatement: QueryOptions<T> | SqlStatement,
     statement?: SqlStatement,
   ): Promise<T[]> {
+    return await Array.fromAsync(
+      this.queryStream(optionsOrStatement as any, statement as any),
+    );
+  }
+
+  /**
+   * Runs the given SQL statement in the database, returning an async iterable of the results.
+   * By default, the statement is run in a {@link SpannerReadOnlyTransaction}. To perform a write operation, pass a
+   * {@link SpannerReadWriteTransaction} in the options.
+   *
+   * @param options Options for the operation.
+   * @param statement The SQL statement to run.
+   * @returns An async iterable that yields the rows returned by the query.
+   *   If {@link QueryOptions.entityType} is set, the rows are converted to instances of that class.
+   */
+  queryStream<T>(
+    options: QueryOptions<T>,
+    statement: SqlStatement,
+  ): AsyncIterable<T>;
+  /**
+   * Runs the given SQL statement in the database, returning an async iterable of the results.
+   * The statement is run in a {@link SpannerReadOnlyTransaction}.
+   *
+   * @param statement The SQL statement to run.
+   * @returns An async iterable that yields the rows returned by the query.
+   */
+  queryStream<T>(statement: SqlStatement): AsyncIterable<T>;
+  async *queryStream<T>(
+    optionsOrStatement: QueryOptions<T> | SqlStatement,
+    statement?: SqlStatement,
+  ): AsyncIterable<T> {
     const options: QueryOptions<T> = statement
       ? (optionsOrStatement as QueryOptions<T>)
       : {};
     const sqlStatement = statement ?? (optionsOrStatement as SqlStatement);
-    const { entityType, requestOptions } = options;
+    const { entityType, requestOptions, transaction } = options;
 
-    return await this.snapshot(
-      { transaction: options.transaction },
-      async (transaction) => {
-        const [rows] = await transaction.run({
-          ...sqlStatement,
-          requestOptions,
-          json: true,
-          jsonOptions: { wrapNumbers: entityType != null },
-        });
+    try {
+      const stream = (transaction ?? this.database).runStream({
+        ...sqlStatement,
+        requestOptions,
+        json: true,
+        jsonOptions: { wrapNumbers: entityType != null },
+      });
 
-        if (entityType) {
-          return rows.map((row) => spannerObjectToInstance(row, entityType));
-        }
+      for await (const row of stream) {
+        yield entityType ? spannerObjectToInstance(row, entityType) : row;
+      }
+    } catch (error) {
+      // If running in a transaction, the error will be caught by `snapshot()` or `transaction()`.
+      throw transaction ? error : (convertSpannerToEntityError(error) ?? error);
+    }
+  }
 
-        return rows as T[];
-      },
-    );
+  /**
+   * Runs the given SQL statement in the database, returning an async iterable of batches of results.
+   * By default, the statement is run in a {@link SpannerReadOnlyTransaction}. To perform a write operation, pass a
+   * {@link SpannerReadWriteTransaction} in the options.
+   *
+   * @param options Options for the operation.
+   * @param statement The SQL statement to run.
+   * @returns An async iterable that yields batches of rows returned by the query.
+   *   If {@link QueryOptions.entityType} is set, the rows are converted to instances of that class.
+   */
+  async *queryBatches<T>(
+    options: QueryOptions<T> & {
+      /**
+       * The maximum number of items to include in each batch.
+       */
+      batchSize: number;
+    },
+    statement: SqlStatement,
+  ): AsyncIterable<T[]> {
+    const { batchSize } = options;
+    let batch: T[] = [];
+
+    for await (const item of this.queryStream(options, statement)) {
+      batch.push(item);
+
+      if (batch.length >= batchSize) {
+        yield batch;
+        batch = [];
+      }
+    }
+
+    if (batch.length > 0) {
+      yield batch;
+    }
   }
 
   // Types that can be used as hints to disambiguate query parameter array types.

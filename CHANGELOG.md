@@ -6,6 +6,7 @@ Features:
 
 - Support an array of elements in `FirestoreCollection` `path` function.
 - Support nested primary keys in Spanner entities.
+- Implement asynchronous iterables for Spanner queries with `queryBatches` and `queryStream`.
 
 Fixes:
 
