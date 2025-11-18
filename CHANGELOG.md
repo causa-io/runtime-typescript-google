@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+Fixes:
+
+- Rollback usage of Node.js 22, and update the Spanner features accordingly.
+
 ## v1.4.0 (2025-11-06)
 
 Features:

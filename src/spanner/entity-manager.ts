@@ -556,9 +556,16 @@ export class SpannerEntityManager {
     optionsOrStatement: QueryOptions<T> | SqlStatement,
     statement?: SqlStatement,
   ): Promise<T[]> {
-    return await Array.fromAsync(
-      this.queryStream(optionsOrStatement as any, statement as any),
-    );
+    const results: T[] = [];
+
+    for await (const row of this.queryStream<T>(
+      optionsOrStatement as any,
+      statement as any,
+    )) {
+      results.push(row);
+    }
+
+    return results;
   }
 
   /**
