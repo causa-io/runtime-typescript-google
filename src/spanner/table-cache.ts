@@ -1,12 +1,12 @@
 import { Float, Float32, Int, Numeric } from '@google-cloud/spanner';
 import type { Type } from '@nestjs/common';
 import { getSpannerColumnsMetadata } from './column.decorator.js';
-import type { SpannerKey } from './entity-manager.js';
 import {
   EntityMissingPrimaryKeyError,
   InvalidEntityDefinitionError,
 } from './errors.js';
 import { getSpannerTableMetadataFromType } from './table.decorator.js';
+import type { SpannerKey } from './types.js';
 
 /**
  * A function that, given an entity, returns its primary key as a {@link SpannerKey}.
