@@ -204,7 +204,7 @@ describe('SpannerStateTransaction', () => {
           spannerTransaction,
         );
         await transaction.delete(MyEntity, { id1: 'id1', id2: 'id2' });
-        spannerTransaction.end();
+        await spannerTransaction.rollback();
       });
 
       const actualEntity = await entityManager.findOneByKey(MyEntity, [
