@@ -9,6 +9,8 @@ describe('createDatabase', () => {
 
   beforeAll(async () => {
     spanner = new Spanner();
+    // Works around a Spanner client bug, and ensures the instance gets the project ID placeholder replaced.
+    await spanner.getProjectId();
     const [newInstance, operation] = await spanner.createInstance(
       'test-instance',
       { displayName: 'test-utils', config: 'test/local' },

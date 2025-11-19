@@ -46,28 +46,34 @@ function makeDatabaseParameters(
 export async function createDatabase(
   options: Partial<CreateDatabaseParameters> = {},
 ): Promise<Database> {
-  const { name, sourceDatabaseName, instance } =
+  const { name, sourceDatabaseName, instance, spanner } =
     makeDatabaseParameters(options);
+  const [{ formattedName_: parent }] = await instance.get();
+  const adminClient = spanner.getDatabaseAdminClient();
 
-  const [databases] = await instance.getDatabases();
+  const [databases] = await adminClient.listDatabases({ parent });
   const existingDatabase = databases.find(
-    (d) => d.formattedName_.split('/').pop() === name,
+    (d) => d.name?.split('/').pop() === name,
   );
-  await existingDatabase?.delete();
-
-  const [database, operation] = await instance.createDatabase(name);
-  await operation.promise();
-
-  if (sourceDatabaseName) {
-    const sourceDatabase = instance.database(sourceDatabaseName);
-    const [schema] = await sourceDatabase.getSchema();
-    await sourceDatabase.close();
-
-    const [updateOperation] = await database.updateSchema(schema);
-    await updateOperation.promise();
+  if (existingDatabase) {
+    await adminClient.dropDatabase({ database: existingDatabase.name });
   }
 
-  return database;
+  let extraStatements: string[] | undefined;
+  if (sourceDatabaseName) {
+    const sourceDatabase = instance.database(sourceDatabaseName);
+    [extraStatements] = await sourceDatabase.getSchema();
+    await sourceDatabase.close();
+  }
+
+  const [operation] = await adminClient.createDatabase({
+    parent,
+    createStatement: `CREATE DATABASE \`${name}\``,
+    extraStatements,
+  });
+  await operation.promise();
+
+  return instance.database(name);
 }
 
 /**
