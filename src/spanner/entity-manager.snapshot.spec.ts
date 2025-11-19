@@ -3,15 +3,13 @@ import { Database, Transaction } from '@google-cloud/spanner';
 import { status } from '@grpc/grpc-js';
 import { jest } from '@jest/globals';
 import 'jest-extended';
-import {
-  SpannerEntityManager,
-  type SpannerReadOnlyTransaction,
-} from './entity-manager.js';
+import { SpannerEntityManager } from './entity-manager.js';
 import {
   clearAllTestEntities,
   setupTestDatabase,
 } from './entity-manager.test.js';
 import { InvalidQueryError, TemporarySpannerError } from './errors.js';
+import type { SpannerReadOnlyTransaction } from './types.js';
 
 describe('SpannerEntityManager', () => {
   let database: Database;

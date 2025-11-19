@@ -311,11 +311,10 @@ describe('AppFixture', () => {
       await fixture.delete();
 
       const spanner = new Spanner();
-      const [databaseExists] = await spanner
-        .instance(process.env.SPANNER_INSTANCE ?? '')
-        .database(databaseName, { min: 0 })
-        .exists();
-      expect(databaseExists).toBeFalse();
+      const getPromise = spanner
+        .getDatabaseAdminClient()
+        .getDatabase({ name: databaseName });
+      await expect(getPromise).rejects.toThrow('5 NOT_FOUND');
       spanner.close();
       expect(fixture.get(PubSubFixture).topics).toBeEmptyObject();
       expect(fixture.get(AuthUsersFixture).users).toBeEmpty();

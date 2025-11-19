@@ -1,6 +1,7 @@
 import { Database, Transaction } from '@google-cloud/spanner';
 import { jest } from '@jest/globals';
 import 'jest-extended';
+import { Readable } from 'node:stream';
 import { SpannerEntityManager } from './entity-manager.js';
 import {
   clearAllTestEntities,
@@ -117,6 +118,29 @@ describe('SpannerEntityManager', () => {
       expect(spy).toHaveBeenCalledWith(
         expect.objectContaining({ requestOptions }),
       );
+    });
+
+    it('should filter out undefined rows sent by the PartialResultStream', async () => {
+      const actualRows = await manager.snapshot(async (transaction) => {
+        jest
+          .spyOn(transaction, 'runStream')
+          .mockReturnValueOnce(
+            Readable.from([{ value: '🎁' }, undefined, { value: '🎉' }]) as any,
+          );
+
+        const stream = manager.queryStream(
+          { transaction },
+          { sql: 'SELECT value FROM MyEntity ORDER BY id' },
+        );
+
+        const rows: any[] = [];
+        for await (const row of stream) {
+          rows.push(row);
+        }
+        return rows;
+      });
+
+      expect(actualRows).toEqual([{ value: '🎁' }, { value: '🎉' }]);
     });
   });
 });

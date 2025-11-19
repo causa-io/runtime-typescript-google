@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+Features:
+
+- Define additional SQL statement types.
+
+Fixes:
+
+- Ignore `undefined` rows when streaming query results from Spanner.
+
+Chores:
+
+- Work around Spanner bugs in tests and fixtures.
+
 ## v1.4.1 (2025-11-18)
 
 Fixes:

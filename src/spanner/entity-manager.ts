@@ -1,6 +1,5 @@
 import { EntityNotFoundError } from '@causa/runtime';
-import { Database, Snapshot, Transaction } from '@google-cloud/spanner';
-import { type Type as ParamType } from '@google-cloud/spanner/build/src/codec.js';
+import { Database, Snapshot } from '@google-cloud/spanner';
 import type {
   ExecuteSqlRequest,
   TimestampBounds,
@@ -16,24 +15,14 @@ import { convertSpannerToEntityError } from './error-converter.js';
 import { InvalidArgumentError, TransactionFinishedError } from './errors.js';
 import { SpannerTableCache } from './table-cache.js';
 import type {
+  SpannerKey,
+  SpannerReadOnlyTransaction,
   SpannerReadOnlyTransactionOption,
+  SpannerReadWriteTransaction,
   SpannerReadWriteTransactionOption,
+  SqlParamType,
+  SqlStatement,
 } from './types.js';
-
-/**
- * Any Spanner transaction that can be used for reading.
- */
-export type SpannerReadOnlyTransaction = Snapshot | Transaction;
-
-/**
- * A Spanner transaction that can be used for reading and writing.
- */
-export type SpannerReadWriteTransaction = Transaction;
-
-/**
- * A key for a Spanner row.
- */
-export type SpannerKey = (string | null)[];
 
 /**
  * Options for {@link SpannerEntityManager.snapshot}.
@@ -60,26 +49,6 @@ export type SnapshotFunction<T> = (
 export type SpannerTransactionFunction<T> = (
   transaction: SpannerReadWriteTransaction,
 ) => Promise<T>;
-
-/**
- * A SQL statement run using {@link SpannerEntityManager.query}.
- */
-export type SqlStatement = {
-  /**
-   * The SQL statement to run.
-   */
-  sql: string;
-
-  /**
-   * The values for the parameters referenced in the statement.
-   */
-  params?: Record<string, any>;
-
-  /**
-   * The types of the parameters in the statement.
-   */
-  types?: Record<string, ParamType>;
-};
 
 /**
  * Options for {@link SpannerEntityManager.query}.
@@ -609,6 +578,11 @@ export class SpannerEntityManager {
       });
 
       for await (const row of stream) {
+        // `undefined` may be sent by the `PartialResultStream` to test whether the consumer can accept more data.
+        if (row === undefined) {
+          continue;
+        }
+
         yield entityType ? spannerObjectToInstance(row, entityType) : row;
       }
     } catch (error) {
@@ -654,39 +628,39 @@ export class SpannerEntityManager {
   }
 
   // Types that can be used as hints to disambiguate query parameter array types.
-  static readonly ParamTypeFloat64Array: ParamType = {
+  static readonly ParamTypeFloat64Array: SqlParamType = {
     type: 'array',
     child: { type: 'float64' },
   };
-  static readonly ParamTypeInt64Array: ParamType = {
+  static readonly ParamTypeInt64Array: SqlParamType = {
     type: 'array',
     child: { type: 'int64' },
   };
-  static readonly ParamTypeNumericArray: ParamType = {
+  static readonly ParamTypeNumericArray: SqlParamType = {
     type: 'array',
     child: { type: 'numeric' },
   };
-  static readonly ParamTypeBoolArray: ParamType = {
+  static readonly ParamTypeBoolArray: SqlParamType = {
     type: 'array',
     child: { type: 'bool' },
   };
-  static readonly ParamTypeStringArray: ParamType = {
+  static readonly ParamTypeStringArray: SqlParamType = {
     type: 'array',
     child: { type: 'string' },
   };
-  static readonly ParamTypeBytesArray: ParamType = {
+  static readonly ParamTypeBytesArray: SqlParamType = {
     type: 'array',
     child: { type: 'bytes' },
   };
-  static readonly ParamTypeJsonArray: ParamType = {
+  static readonly ParamTypeJsonArray: SqlParamType = {
     type: 'array',
     child: { type: 'json' },
   };
-  static readonly ParamTypeTimestampArray: ParamType = {
+  static readonly ParamTypeTimestampArray: SqlParamType = {
     type: 'array',
     child: { type: 'timestamp' },
   };
-  static readonly ParamTypeDateArray: ParamType = {
+  static readonly ParamTypeDateArray: SqlParamType = {
     type: 'array',
     child: { type: 'date' },
   };
