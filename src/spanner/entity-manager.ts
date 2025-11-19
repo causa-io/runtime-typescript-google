@@ -609,6 +609,11 @@ export class SpannerEntityManager {
       });
 
       for await (const row of stream) {
+        // `undefined` may be sent by the `PartialResultStream` to test whether the consumer can accept more data.
+        if (row === undefined) {
+          continue;
+        }
+
         yield entityType ? spannerObjectToInstance(row, entityType) : row;
       }
     } catch (error) {
