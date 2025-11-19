@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v1.5.0 (2025-11-19)
+
 Features:
 
 - Define additional SQL statement types.
