@@ -567,10 +567,17 @@ export class SpannerEntityManager {
       ? (optionsOrStatement as QueryOptions<T>)
       : {};
     const sqlStatement = statement ?? (optionsOrStatement as SqlStatement);
-    const { entityType, requestOptions, transaction } = options;
+    const { entityType, requestOptions } = options;
 
+    let snapshot: Snapshot | undefined;
     try {
-      const stream = (transaction ?? this.database).runStream({
+      let { transaction } = options;
+      if (!transaction) {
+        [snapshot] = await this.database.getSnapshot();
+        transaction = snapshot;
+      }
+
+      const stream = transaction.runStream({
         ...sqlStatement,
         requestOptions,
         json: true,
@@ -587,7 +594,9 @@ export class SpannerEntityManager {
       }
     } catch (error) {
       // If running in a transaction, the error will be caught by `snapshot()` or `transaction()`.
-      throw transaction ? error : (convertSpannerToEntityError(error) ?? error);
+      throw !snapshot ? error : (convertSpannerToEntityError(error) ?? error);
+    } finally {
+      snapshot?.end();
     }
   }
 
