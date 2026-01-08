@@ -13,9 +13,7 @@ import type {
  * A {@link FirestoreCollectionResolver} that uses NestJS dependency injection to resolve Firestore collections.
  */
 @Injectable()
-export class NestJsFirestoreCollectionResolver
-  implements FirestoreCollectionResolver
-{
+export class NestJsFirestoreCollectionResolver implements FirestoreCollectionResolver {
   /**
    * A cache of Firestore collections for document types.
    */

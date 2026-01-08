@@ -34,6 +34,7 @@ describe('SpannerEntityManager', () => {
         { id: '1', value: '🎁' },
         { id: '2', value: '🎉' },
       ]);
+      jest.spyOn(manager.database, 'runStream');
 
       const actualEntities: SomeEntity[] = [];
       for await (const entity of manager.queryStream(
@@ -49,6 +50,9 @@ describe('SpannerEntityManager', () => {
       ]);
       expect(actualEntities[0]).toBeInstanceOf(SomeEntity);
       expect(actualEntities[1]).toBeInstanceOf(SomeEntity);
+      // `Database.runStream` should not be called because it breaks async iterables.
+      // A transaction (snapshot) should always be used instead.
+      expect(manager.database.runStream).not.toHaveBeenCalled();
     });
 
     it('should run the query without typed entities', async () => {

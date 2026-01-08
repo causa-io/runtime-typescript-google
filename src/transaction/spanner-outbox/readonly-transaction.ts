@@ -18,9 +18,7 @@ export type SpannerReadOnlyStateTransactionOption =
 /**
  * A {@link ReadOnlyStateTransaction} that uses Spanner for state storage.
  */
-export class SpannerReadOnlyStateTransaction
-  implements ReadOnlyStateTransaction
-{
+export class SpannerReadOnlyStateTransaction implements ReadOnlyStateTransaction {
   /**
    * Creates a new {@link SpannerReadOnlyStateTransaction}.
    *
