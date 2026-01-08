@@ -9,12 +9,10 @@ describe('configuration', () => {
 
   beforeEach(async () => {
     jest.resetModules();
-    const { getDefaultLogger, updatePinoConfiguration } = await import(
-      '@causa/runtime'
-    );
-    const { spyOnLogger, getLoggedObjects } = await import(
-      '@causa/runtime/testing'
-    );
+    const { getDefaultLogger, updatePinoConfiguration } =
+      await import('@causa/runtime');
+    const { spyOnLogger, getLoggedObjects } =
+      await import('@causa/runtime/testing');
     getLogs = getLoggedObjects;
     updatePinoConfiguration({
       ...googlePinoConfiguration,

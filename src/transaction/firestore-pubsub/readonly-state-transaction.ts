@@ -23,9 +23,7 @@ export type FirestoreReadOnlyStateTransactionOption =
  * {@link FirestoreStateTransaction.get} will return the document from either the regular or soft-delete collection, as
  * expected by {@link ReadOnlyStateTransaction.get}.
  */
-export class FirestoreReadOnlyStateTransaction
-  implements ReadOnlyStateTransaction
-{
+export class FirestoreReadOnlyStateTransaction implements ReadOnlyStateTransaction {
   constructor(
     /**
      * The Firestore transaction to use.
