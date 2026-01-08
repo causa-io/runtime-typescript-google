@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v1.5.1 (2026-01-08)
+
 Fixes:
 
 - Work around Spanner client bug by always using a transaction (or snapshot) when streaming query results.
