@@ -233,6 +233,34 @@ describe('conversion', () => {
       expect(actualSpannerObject).toEqual({ someSmallInt: new Int('46') });
     });
 
+    it('should throw when wrapping an unsafe integer for isInt column', () => {
+      const instance = new WrappedNumberEntity({
+        someSmallInt: Number(UNSAFE_INT),
+      });
+
+      expect(() =>
+        instanceToSpannerObject(instance, WrappedNumberEntity),
+      ).toThrow(RangeError);
+    });
+
+    it('should throw when wrapping an unsafe integer string for isInt column', () => {
+      const instance = new WrappedNumberEntity({
+        someSmallInt: UNSAFE_INT_STR as any,
+      });
+
+      expect(() =>
+        instanceToSpannerObject(instance, WrappedNumberEntity),
+      ).toThrow(RangeError);
+    });
+
+    it('should throw when wrapping a float for isInt column', () => {
+      const instance = new WrappedNumberEntity({ someSmallInt: 1.5 });
+
+      expect(() =>
+        instanceToSpannerObject(instance, WrappedNumberEntity),
+      ).toThrow(RangeError);
+    });
+
     it('should handle null values for small integers', () => {
       const instance = new WrappedNumberEntity({ someSmallInt: null });
 
@@ -274,6 +302,19 @@ describe('conversion', () => {
         floatArray: [new Float(3), new Float(7), new Float(9)],
         jsonArray: '[{"a":1},{"b":2}]',
       });
+    });
+
+    it('should throw when wrapping an unsafe integer in an array for isInt column', () => {
+      const instance = new ArrayEntity({
+        stringArray: [],
+        integerArray: [1, Number(UNSAFE_INT), 3],
+        floatArray: [],
+        jsonArray: [],
+      });
+
+      expect(() => instanceToSpannerObject(instance, ArrayEntity)).toThrow(
+        RangeError,
+      );
     });
   });
 

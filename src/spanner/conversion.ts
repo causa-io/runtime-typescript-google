@@ -86,6 +86,34 @@ function spannerValueToJavaScript(
 }
 
 /**
+ * Converts a number, bigint, or string value to a Spanner `Int`, throwing if the value is not a safe integer.
+ *
+ * @param value The value to convert.
+ * @returns The Spanner `Int` value.
+ */
+function toSafeSpannerInt(value: unknown): Int {
+  const valueType = typeof value;
+  if (
+    valueType !== 'number' &&
+    valueType !== 'string' &&
+    valueType !== 'bigint'
+  ) {
+    throw new TypeError(
+      `Expected a number, bigint, or string, but received ${valueType}.`,
+    );
+  }
+
+  const num = valueType !== 'number' ? Number(value) : value;
+  if (!Number.isSafeInteger(num)) {
+    throw new RangeError(
+      'Value is not a safe integer for column marked as integer.',
+    );
+  }
+
+  return new Int((value as any).toString());
+}
+
+/**
  * Converts a value such that it is safe to pass to the Spanner client.
  * Numeric values and arrays of numeric values are wrapped using Spanner classes.
  * A column marked as JSON is stringified.
@@ -99,10 +127,16 @@ function makeSpannerValue(value: any, metadata: SpannerColumnMetadata): any {
     return value;
   }
 
-  if (metadata.isBigInt || metadata.isInt) {
+  if (metadata.isBigInt) {
     return Array.isArray(value)
       ? value.map((v) => new Int(v.toString()))
       : new Int(value.toString());
+  }
+
+  if (metadata.isInt) {
+    return Array.isArray(value)
+      ? value.map(toSafeSpannerInt)
+      : toSafeSpannerInt(value);
   }
 
   if (metadata.isJson) {
