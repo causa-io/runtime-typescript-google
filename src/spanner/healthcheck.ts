@@ -1,7 +1,14 @@
-import { BaseHealthIndicatorService } from '@causa/runtime/nestjs';
+import { orFallbackFn, tryMap } from '@causa/runtime';
+import {
+  BaseHealthIndicatorService,
+  type HealthChecker,
+} from '@causa/runtime/nestjs';
 import { Database } from '@google-cloud/spanner';
 import { Injectable } from '@nestjs/common';
-import { HealthCheckError, type HealthIndicatorResult } from '@nestjs/terminus';
+import {
+  HealthIndicatorService,
+  type HealthIndicatorResult,
+} from '@nestjs/terminus';
 
 /**
  * The key used to identify the Spanner health indicator.
@@ -12,21 +19,25 @@ const SPANNER_HEALTH_KEY = 'google.spanner';
  * A service testing the availability of the Spanner service.
  */
 @Injectable()
-export class SpannerHealthIndicator extends BaseHealthIndicatorService {
-  constructor(private readonly database: Database) {
+export class SpannerHealthIndicator
+  extends BaseHealthIndicatorService
+  implements HealthChecker
+{
+  constructor(
+    private readonly database: Database,
+    private readonly healthIndicatorService: HealthIndicatorService,
+  ) {
     super();
   }
 
   async check(): Promise<HealthIndicatorResult> {
-    try {
-      await this.database.run('SELECT 1');
-
-      return this.getStatus(SPANNER_HEALTH_KEY, true);
-    } catch (error: any) {
-      throw new HealthCheckError(
-        'Failed to check health by running Spanner query.',
-        this.getStatus(SPANNER_HEALTH_KEY, false, { error: error.message }),
-      );
-    }
+    const check = this.healthIndicatorService.check(SPANNER_HEALTH_KEY);
+    return await tryMap<HealthIndicatorResult>(
+      async () => {
+        await this.database.run('SELECT 1');
+        return check.up();
+      },
+      orFallbackFn((error: any) => check.down({ error: error.message })),
+    );
   }
 }
