@@ -6,6 +6,11 @@ Chores:
 
 - Use the `HealthIndicatorService` in existing health indicators.
 
+Fixes:
+
+- Ensure a Spanner column value stored as an integer will not lose precision.
+- Convert `getSnapshot` Spanner errors when streaming a query.
+
 ## v1.5.1 (2026-01-08)
 
 Fixes:
