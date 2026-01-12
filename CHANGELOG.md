@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v1.5.2 (2026-01-12)
+
 Chores:
 
 - Use the `HealthIndicatorService` in existing health indicators.
