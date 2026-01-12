@@ -567,17 +567,17 @@ export class SpannerEntityManager {
       ? (optionsOrStatement as QueryOptions<T>)
       : {};
     const sqlStatement = statement ?? (optionsOrStatement as SqlStatement);
-    const { entityType, requestOptions } = options;
+    const { entityType, requestOptions, transaction } = options;
 
     let snapshot: Snapshot | undefined;
     try {
-      let { transaction } = options;
-      if (!transaction) {
+      let txn = transaction;
+      if (!txn) {
         [snapshot] = await this.database.getSnapshot();
-        transaction = snapshot;
+        txn = snapshot;
       }
 
-      const stream = transaction.runStream({
+      const stream = txn.runStream({
         ...sqlStatement,
         requestOptions,
         json: true,
@@ -593,8 +593,9 @@ export class SpannerEntityManager {
         yield entityType ? spannerObjectToInstance(row, entityType) : row;
       }
     } catch (error) {
-      // If running in a transaction, the error will be caught by `snapshot()` or `transaction()`.
-      throw !snapshot ? error : (convertSpannerToEntityError(error) ?? error);
+      // If running in a provided transaction, the error will be caught by `snapshot()` or `transaction()`.
+      // Otherwise, the error should be converted.
+      throw transaction ? error : (convertSpannerToEntityError(error) ?? error);
     } finally {
       snapshot?.end();
     }

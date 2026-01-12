@@ -1,4 +1,5 @@
 import { Database, Transaction } from '@google-cloud/spanner';
+import { status } from '@grpc/grpc-js';
 import { jest } from '@jest/globals';
 import 'jest-extended';
 import { Readable } from 'node:stream';
@@ -9,7 +10,7 @@ import {
   setupTestDatabase,
   SomeEntity,
 } from './entity-manager.test.js';
-import { InvalidArgumentError } from './errors.js';
+import { InvalidArgumentError, TemporarySpannerError } from './errors.js';
 import { SpannerRequestPriority } from './types.js';
 
 describe('SpannerEntityManager', () => {
@@ -145,6 +146,22 @@ describe('SpannerEntityManager', () => {
       });
 
       expect(actualRows).toEqual([{ value: '🎁' }, { value: '🎉' }]);
+    });
+
+    it('should convert Spanner errors when getSnapshot fails', async () => {
+      const error = new Error('💥') as any;
+      error.code = status.UNAVAILABLE;
+      jest
+        .spyOn(manager.database, 'getSnapshot')
+        .mockRejectedValueOnce(error as never);
+
+      const actualPromise = (async () => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        for await (const _ of manager.queryStream({ sql: 'SELECT 1' })) {
+        }
+      })();
+
+      await expect(actualPromise).rejects.toThrow(TemporarySpannerError);
     });
   });
 });
