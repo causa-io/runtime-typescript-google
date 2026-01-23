@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v1.5.3 (2026-01-23)
+
 Fixes:
 
 - Always convert Spanner errors in `SpannerEntityManager.queryStream`.
