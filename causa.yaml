@@ -18,7 +18,7 @@ project:
 javascript:
   dependencies:
     check:
-      allowlist: []
+      allowlist: [GHSA-xxjr-mmjv-4gpg]
     update:
       packageTargets:
         '@types/node': minor

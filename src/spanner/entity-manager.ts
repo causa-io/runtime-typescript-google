@@ -593,9 +593,7 @@ export class SpannerEntityManager {
         yield entityType ? spannerObjectToInstance(row, entityType) : row;
       }
     } catch (error) {
-      // If running in a provided transaction, the error will be caught by `snapshot()` or `transaction()`.
-      // Otherwise, the error should be converted.
-      throw transaction ? error : (convertSpannerToEntityError(error) ?? error);
+      throw convertSpannerToEntityError(error) ?? error;
     } finally {
       snapshot?.end();
     }
