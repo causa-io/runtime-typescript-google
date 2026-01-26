@@ -22,6 +22,7 @@ import {
   FirestoreCollectionsModule,
 } from './firestore/index.js';
 import { PubSubPublisherModule } from './pubsub/index.js';
+import { CloudSchedulerFixture } from './scheduler/testing.js';
 import {
   SpannerColumn,
   SpannerEntityManager,
@@ -265,6 +266,9 @@ describe('AppFixture', () => {
     it('should provide additional fixtures', () => {
       expect(fixture.get(FirebaseFixture)).toBeInstanceOf(FirebaseFixture);
       expect(fixture.get(CloudTasksFixture)).toBeInstanceOf(CloudTasksFixture);
+      expect(fixture.get(CloudSchedulerFixture)).toBeInstanceOf(
+        CloudSchedulerFixture,
+      );
     });
   });
 

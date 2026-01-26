@@ -4,6 +4,7 @@ import type { Type } from '@nestjs/common';
 import { FirestoreFixture } from './firestore/testing.js';
 import { AuthUsersFixture } from './identity-platform/testing.js';
 import { PubSubFixture } from './pubsub/testing.js';
+import { CloudSchedulerFixture } from './scheduler/testing.js';
 import { SpannerFixture } from './spanner/testing.js';
 import { CloudTasksFixture } from './tasks/testing.js';
 import { AppCheckFixture, FirebaseFixture } from './testing.js';
@@ -81,5 +82,6 @@ export function createGoogleFixtures(
     ...(disableAppCheck ? [new AppCheckFixture()] : []),
     ...versionedEntityFixture,
     new CloudTasksFixture(),
+    new CloudSchedulerFixture(),
   ];
 }
