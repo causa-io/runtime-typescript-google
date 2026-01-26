@@ -5,6 +5,7 @@ import { FirestoreFixture } from './firestore/testing.js';
 import { AuthUsersFixture } from './identity-platform/testing.js';
 import { PubSubFixture } from './pubsub/testing.js';
 import { SpannerFixture } from './spanner/testing.js';
+import { CloudTasksFixture } from './tasks/testing.js';
 import { AppCheckFixture, FirebaseFixture } from './testing.js';
 import {
   FirestorePubSubTransactionRunner,
@@ -79,5 +80,6 @@ export function createGoogleFixtures(
     new PubSubFixture(options.pubSubTopics ?? {}),
     ...(disableAppCheck ? [new AppCheckFixture()] : []),
     ...versionedEntityFixture,
+    new CloudTasksFixture(),
   ];
 }
