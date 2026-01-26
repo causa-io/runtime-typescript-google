@@ -24,6 +24,7 @@ import type {
   SpannerReadOnlyTransactionOption,
   SpannerReadWriteTransaction,
   SpannerReadWriteTransactionOption,
+  SqlParamFieldType,
   SqlParamType,
   SqlStatement,
 } from './types.js';
@@ -681,6 +682,9 @@ export class SpannerEntityManager {
     type: 'array',
     child: { type: 'date' },
   };
+  static ParamTypeStructArray(...fields: SqlParamFieldType[]) {
+    return { type: 'array', child: { type: 'struct', fields } };
+  }
 
   /**
    * Converts the given entity or array of entities to Spanner objects, grouping them by table name.
