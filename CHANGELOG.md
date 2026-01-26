@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+Features:
+
+- Export the `SqlParamFieldType` type for Spanner SQL parameters.
+- Provide the `SpannerEntityManager.ParamTypeStructArray` utility.
+
+Chores:
+
+- Make error handling more robust for the Spanner client retry logic.
+
 ## v1.5.3 (2026-01-23)
 
 Fixes:
