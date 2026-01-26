@@ -182,5 +182,38 @@ describe('SpannerEntityManager', () => {
         expect.any(Function),
       );
     });
+
+    it('should rethrow the original Spanner error when a TemporarySpannerError with cause is thrown', async () => {
+      const originalError = Object.assign(new Error('⌛'), {
+        code: status.ABORTED,
+      });
+      const temporaryError = new TemporarySpannerError(
+        originalError.message,
+        status.ABORTED,
+        { cause: originalError },
+      );
+      const mockTransaction = { ended: false, end: () => {} };
+      jest
+        .spyOn(database, 'runTransactionAsync')
+        .mockImplementationOnce(async (_: any, fn: any) => {
+          try {
+            return await fn(mockTransaction);
+          } catch (error: any) {
+            expect(error).toBe(originalError);
+            throw error;
+          }
+        });
+
+      const actualPromise = manager.transaction(() =>
+        Promise.reject(temporaryError),
+      );
+
+      await expect(actualPromise).rejects.not.toBe(temporaryError);
+      await expect(actualPromise).rejects.toThrow(TemporarySpannerError);
+      await expect(actualPromise).rejects.toHaveProperty(
+        'cause',
+        originalError,
+      );
+    });
   });
 });

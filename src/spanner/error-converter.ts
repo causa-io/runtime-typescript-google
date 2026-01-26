@@ -1,10 +1,11 @@
-import { EntityAlreadyExistsError } from '@causa/runtime';
+import { EntityAlreadyExistsError, RetryableError } from '@causa/runtime';
 import { SessionPoolExhaustedError } from '@google-cloud/spanner/build/src/session-pool.js';
 import { status } from '@grpc/grpc-js';
 import {
   InvalidArgumentError,
   InvalidQueryError,
   TemporarySpannerError,
+  UnexpectedSpannerError,
 } from './errors.js';
 
 /**
@@ -14,6 +15,14 @@ import {
  * @returns The specific error, or undefined if it could not be converted.
  */
 export function convertSpannerToEntityError(error: any): Error | undefined {
+  // Those are errors that have already been converted (or that don't come from Spanner).
+  if (
+    error instanceof RetryableError ||
+    error instanceof UnexpectedSpannerError
+  ) {
+    return;
+  }
+
   // Those are not gRPC errors and are thrown by the session pool.
   if (
     error instanceof SessionPoolExhaustedError ||
@@ -39,7 +48,9 @@ export function convertSpannerToEntityError(error: any): Error | undefined {
     case status.UNAVAILABLE:
     case status.ABORTED:
     case status.RESOURCE_EXHAUSTED:
-      return new TemporarySpannerError(error.message, error.code);
+      return new TemporarySpannerError(error.message, error.code, {
+        cause: error,
+      });
     default:
       return;
   }
