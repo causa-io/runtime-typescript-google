@@ -415,5 +415,7 @@ export class PubSubFixture implements Fixture, EventFixture {
     await Promise.all(Object.keys(this.topics).map((t) => this.deleteTopic(t)));
 
     await this.pubSub.close();
+
+    this.appFixture = undefined as any;
   }
 }
