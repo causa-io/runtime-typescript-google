@@ -72,8 +72,9 @@ export class TemporarySpannerError extends RetryableError {
   constructor(
     message: string,
     readonly code?: status,
+    options?: ErrorOptions,
   ) {
-    super(message);
+    super(message, undefined, options);
   }
 
   /**

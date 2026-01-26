@@ -83,7 +83,7 @@ describe('SpannerEntityManager', () => {
       expect(actualEntity).toBeInstanceOf(SomeEntity);
     });
 
-    it('should throw the the specified columns do not include the soft delete column', async () => {
+    it('should throw when the specified columns do not include the soft delete column', async () => {
       await database
         .table('SoftDeleteEntity')
         .insert({ id: '1', deletedAt: new Date() });

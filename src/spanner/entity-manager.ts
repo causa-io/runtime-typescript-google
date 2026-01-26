@@ -12,7 +12,11 @@ import {
   updateInstanceByColumn,
 } from './conversion.js';
 import { convertSpannerToEntityError } from './error-converter.js';
-import { InvalidArgumentError, TransactionFinishedError } from './errors.js';
+import {
+  InvalidArgumentError,
+  TemporarySpannerError,
+  TransactionFinishedError,
+} from './errors.js';
 import { SpannerTableCache } from './table-cache.js';
 import type {
   SpannerKey,
@@ -20,6 +24,7 @@ import type {
   SpannerReadOnlyTransactionOption,
   SpannerReadWriteTransaction,
   SpannerReadWriteTransactionOption,
+  SqlParamFieldType,
   SqlParamType,
   SqlStatement,
 } from './types.js';
@@ -430,7 +435,12 @@ export class SpannerEntityManager {
               }
             }
 
-            throw error;
+            // If the error was already converted and detected as temporary, the original Spanner error is thrown such
+            // that the Spanner client can apply its retry logic. If it decides not to retry, the error will be
+            // converted again outside the transaction.
+            const isTemporaryWithCause =
+              error instanceof TemporarySpannerError && error.cause;
+            throw isTemporaryWithCause ? error.cause : error;
           }
         },
       );
@@ -672,6 +682,9 @@ export class SpannerEntityManager {
     type: 'array',
     child: { type: 'date' },
   };
+  static ParamTypeStructArray(...fields: SqlParamFieldType[]) {
+    return { type: 'array', child: { type: 'struct', fields } };
+  }
 
   /**
    * Converts the given entity or array of entities to Spanner objects, grouping them by table name.

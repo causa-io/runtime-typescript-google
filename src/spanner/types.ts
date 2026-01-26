@@ -1,6 +1,12 @@
 import { protos, Snapshot, Transaction } from '@google-cloud/spanner';
 import type { Type } from '@google-cloud/spanner/build/src/codec.js';
+
 export type SqlParamType = Type;
+
+/**
+ * The type of a single `STRUCT` field in a Spanner SQL parameter.
+ */
+export type SqlParamFieldType = Type & { name: string };
 
 export const SpannerRequestPriority =
   protos.google.spanner.v1.RequestOptions.Priority;
