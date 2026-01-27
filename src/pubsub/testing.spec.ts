@@ -1,8 +1,17 @@
 import { AppFixture } from '@causa/runtime/nestjs/testing';
 import { Module } from '@nestjs/common';
+import 'jest-extended';
 import { PubSubPublisher } from './publisher.js';
 import { PubSubPublisherModule } from './publisher.module.js';
 import { PubSubFixture } from './testing.js';
+
+class SimpleEvent {
+  constructor(data: Partial<SimpleEvent> = {}) {
+    Object.assign(this, data);
+  }
+
+  value!: string;
+}
 
 @Module({ imports: [PubSubPublisherModule.forRoot()] })
 class MyModule {}
@@ -12,11 +21,13 @@ describe('PubSubFixture', () => {
 
   let appFixture: AppFixture;
   let fixture: PubSubFixture;
+  let publisher: PubSubPublisher;
 
   beforeEach(async () => {
-    fixture = new PubSubFixture({ 'my.event.v1': class MyEvent {} });
+    fixture = new PubSubFixture({ 'my.event.v1': SimpleEvent });
     appFixture = new AppFixture(MyModule, { fixtures: [fixture] });
     await appFixture.init();
+    publisher = appFixture.get(PubSubPublisher);
   });
 
   afterEach(() => appFixture.delete());
@@ -30,6 +41,73 @@ describe('PubSubFixture', () => {
 
       expect(actualTopic.name).toEqual(expectedTopicName);
       expect(actualTopic.name).not.toContain('{{projectId}}');
+    });
+  });
+
+  describe('expectEvents', () => {
+    it('should match multiple events published to the same topic', async () => {
+      const event1 = new SimpleEvent({ value: 'first' });
+      const event2 = new SimpleEvent({ value: 'second' });
+      const event3 = new SimpleEvent({ value: 'third' });
+      await publisher.publish('my.event.v1', event1, {
+        attributes: { source: 'test' },
+      });
+      await publisher.publish('my.event.v1', event2, {
+        attributes: { source: 'test' },
+      });
+      await publisher.publish('my.event.v1', event3);
+
+      await fixture.expectEvents(
+        'my.event.v1',
+        [
+          { value: expect.toStartWith('fi') },
+          { value: expect.toEndWith('ond') },
+        ],
+        { attributes: { source: 'test' } },
+      );
+    });
+
+    it('should match events regardless of order', async () => {
+      const event1 = new SimpleEvent({ value: 'first' });
+      const event2 = new SimpleEvent({ value: 'second' });
+      await publisher.publish('my.event.v1', event1);
+      await publisher.publish('my.event.v1', event2);
+
+      await fixture.expectEvents(
+        'my.event.v1',
+        [{ value: 'second' }, { value: 'first' }],
+        { exact: true },
+      );
+    });
+
+    it('should fail when an expected event is missing', async () => {
+      const event1 = new SimpleEvent({ value: 'first' });
+      await publisher.publish('my.event.v1', event1);
+
+      const actual = fixture.expectEvents(
+        'my.event.v1',
+        [{ value: 'first' }, { value: 'missing' }],
+        { timeout: 200 },
+      );
+
+      await expect(actual).rejects.toThrow();
+    });
+
+    it('should fail when exact is true and there are extra messages', async () => {
+      const event1 = new SimpleEvent({ value: 'first' });
+      const event2 = new SimpleEvent({ value: 'second' });
+      const event3 = new SimpleEvent({ value: 'third' });
+      await publisher.publish('my.event.v1', event3);
+      await publisher.publish('my.event.v1', event1);
+      await publisher.publish('my.event.v1', event2);
+
+      const actual = fixture.expectEvents(
+        'my.event.v1',
+        [{ value: 'first' }, { value: 'second' }],
+        { exact: true },
+      );
+
+      await expect(actual).rejects.toThrow();
     });
   });
 });

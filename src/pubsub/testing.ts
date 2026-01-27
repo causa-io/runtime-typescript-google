@@ -7,6 +7,7 @@ import type {
 } from '@causa/runtime/nestjs/testing';
 import { Message, PubSub, Subscription, Topic } from '@google-cloud/pubsub';
 import { HttpStatus, type Type } from '@nestjs/common';
+import 'jest-extended';
 import { setTimeout } from 'timers/promises';
 import * as uuid from 'uuid';
 import { getConfigurationKeyForTopic } from './configuration.js';
@@ -56,6 +57,24 @@ export type ExpectMessageOptions = {
    * Defaults to `2000`.
    */
   timeout?: number;
+
+  /**
+   * When `true`, the received messages must exactly match the expected messages (same members), rather than merely
+   * including all of them.
+   * Defaults to `false`.
+   */
+  exact?: boolean;
+};
+
+/**
+ * Options for the {@link PubSubFixture.expectEvent} method.
+ */
+export type ExpectEventOptions = ExpectMessageOptions & {
+  /**
+   * The attributes expected to have been published with the event.
+   * This may contain only a subset of the attributes.
+   */
+  attributes?: Record<string, string>;
 };
 
 /**
@@ -278,6 +297,52 @@ export class PubSubFixture implements Fixture, EventFixture {
   }
 
   /**
+   * Checks that the given messages have been published to the specified topic.
+   * Each expected message must match a distinct received message.
+   *
+   * @param topic The original name of the event topic.
+   * @param expectedMessages The messages expected to have been published.
+   *   Each can be an `expect` expression, e.g. `expect.objectContaining({})`.
+   * @param options Options for the expectation.
+   */
+  async expectMessages(
+    topic: string,
+    expectedMessages: Partial<ReceivedPubSubEvent>[],
+    options: ExpectMessageOptions = {},
+  ): Promise<void> {
+    const fixture = this.topics[topic];
+    if (!fixture) {
+      throw new Error(`Fixture for topic '${topic}' does not exist.`);
+    }
+
+    const timeoutTime =
+      Date.now() + (options.timeout ?? DEFAULT_EXPECT_TIMEOUT);
+
+    while (true) {
+      try {
+        if (options.exact) {
+          expect(fixture.messages).toIncludeSameMembers(expectedMessages);
+        } else {
+          expect(fixture.messages).toIncludeAllMembers(expectedMessages);
+        }
+        return;
+      } catch (e) {
+        if (Date.now() >= timeoutTime) {
+          if (expectedMessages.length === 1 && fixture.messages.length === 1) {
+            // This throws with a clearer message because the single received message is actually compared to the
+            // expected message.
+            expect(fixture.messages[0]).toEqual(expectedMessages[0]);
+          }
+
+          throw e;
+        }
+
+        await setTimeout(DURATION_BETWEEN_EXPECT_ATTEMPTS);
+      }
+    }
+  }
+
+  /**
    * Checks that the given message has been published to the specified topic.
    *
    * @param topic The original name of the event topic.
@@ -290,32 +355,31 @@ export class PubSubFixture implements Fixture, EventFixture {
     expectedMessage: any,
     options: ExpectMessageOptions = {},
   ): Promise<void> {
-    const fixture = this.topics[topic];
-    if (!fixture) {
-      throw new Error(`Fixture for topic '${topic}' does not exist.`);
-    }
+    await this.expectMessages(topic, [expectedMessage], options);
+  }
 
-    const timeoutTime =
-      new Date().getTime() + (options.timeout ?? DEFAULT_EXPECT_TIMEOUT);
-
-    while (true) {
-      try {
-        expect(fixture.messages).toContainEqual(expectedMessage);
-        return;
-      } catch (e) {
-        if (new Date().getTime() >= timeoutTime) {
-          if (fixture.messages.length === 1) {
-            // This throws with a clearer message than `toContainEqual` because the single received message is actually
-            // compared to the expected message.
-            expect(fixture.messages[0]).toEqual(expectedMessage);
-          }
-
-          throw e;
-        }
-
-        await setTimeout(DURATION_BETWEEN_EXPECT_ATTEMPTS);
-      }
-    }
+  /**
+   * Uses {@link PubSubFixture.expectMessages} to check that the given events have been published to the specified
+   * topic. Each element in `expectedEvents` is the payload of a message, i.e. the `event` property.
+   * If `attributes` are provided, all events are expected to share those attributes.
+   *
+   * @param topic The original name of the event topic.
+   * @param expectedEvents The events expected to have been published.
+   * @param options Options for the expectation.
+   */
+  async expectEvents(
+    topic: string,
+    expectedEvents: any[],
+    options: ExpectEventOptions = {},
+  ): Promise<void> {
+    const attributes = expect.objectContaining(options.attributes ?? {});
+    await this.expectMessages(
+      topic,
+      expectedEvents.map((event) =>
+        expect.objectContaining({ event, attributes }),
+      ),
+      options,
+    );
   }
 
   /**
@@ -329,22 +393,9 @@ export class PubSubFixture implements Fixture, EventFixture {
   async expectEvent(
     topic: string,
     expectedEvent: any,
-    options: ExpectMessageOptions & {
-      /**
-       * The attributes expected to have been published with the event.
-       * This may contain only a subset of the attributes.
-       */
-      attributes?: Record<string, string>;
-    } = {},
+    options: ExpectEventOptions = {},
   ): Promise<void> {
-    await this.expectMessage(
-      topic,
-      expect.objectContaining({
-        event: expectedEvent,
-        attributes: expect.objectContaining(options.attributes ?? {}),
-      }),
-      options,
-    );
+    await this.expectEvents(topic, [expectedEvent], options);
   }
 
   /**
