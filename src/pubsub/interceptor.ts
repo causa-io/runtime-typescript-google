@@ -10,6 +10,7 @@ import {
 import {
   BadRequestErrorDto,
   BaseEventHandlerInterceptor,
+  type EventHandlerInterceptorOptions,
   Logger,
   type ParsedEventRequest,
   throwHttpErrorResponse,
@@ -82,8 +83,9 @@ export class PubSubEventHandlerInterceptor extends BaseEventHandlerInterceptor {
     protected readonly serializer: ObjectSerializer,
     reflector: Reflector,
     logger: Logger,
+    options: EventHandlerInterceptorOptions = {},
   ) {
-    super(PUBSUB_EVENT_HANDLER_ID, reflector, logger);
+    super(PUBSUB_EVENT_HANDLER_ID, reflector, logger, options);
     this.logger.setContext(PubSubEventHandlerInterceptor.name);
   }
 
@@ -162,15 +164,17 @@ export class PubSubEventHandlerInterceptor extends BaseEventHandlerInterceptor {
    * This can be used with the `UseInterceptors` decorator.
    *
    * @param serializer The {@link ObjectSerializer} to use to deserialize the event data.
+   * @param options Options for the interceptor.
    * @returns A class that can be used as an interceptor for Pub/Sub event handlers.
    */
   static withSerializer(
     serializer: ObjectSerializer,
+    options: EventHandlerInterceptorOptions = {},
   ): Type<PubSubEventHandlerInterceptor> {
     @Injectable()
     class PubSubEventHandlerInterceptorWithSerializer extends PubSubEventHandlerInterceptor {
       constructor(reflector: Reflector, logger: Logger) {
-        super(serializer, reflector, logger);
+        super(serializer, reflector, logger, options);
       }
     }
 

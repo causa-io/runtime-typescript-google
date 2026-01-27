@@ -82,11 +82,21 @@ The `PubSubPublisherModule` provides the `PubSub` client, as well as the `PubSub
 
 The `PubSubPublisher` requires the `PUBSUB_TOPIC_*` environment variables to be set for all the topics a service is expected to publish to. The name of the environment variables should be prefixed with `PUBSUB_TOPIC_`, followed by the topic full name in upper case, and using `_` as the only punctuation. For example, `my-domain.my-topic.v1` would become `PUBSUB_TOPIC_MY_DOMAIN_MY_TOPIC_V1`.
 
-For services being triggered by Pub/Sub messages, the `PubSubEventHandlerModule` can be used to automatically parse Pub/Sub messages coming from HTTP requests made by a Pub/Sub push subscription. Any route with a parameter decorated with `@EventBody` will trigger the `PubSubEventHandlerInterceptor`, and will receive the parsed event pushed by Pub/Sub.
+For services being triggered by Pub/Sub messages, the `PubSubEventHandlerInterceptor` automatically parses Pub/Sub messages coming from HTTP requests made by a Pub/Sub push subscription. If the interceptor is set up at the application level, any route with a parameter decorated with `@EventBody` will trigger the interceptor, and will receive the parsed event pushed by Pub/Sub. The `PubSubEventHandlerInterceptor.withSerializer` method should be used to create the interceptor with the desired serializer. It also allows defining whether the interceptor `isDefault`, i.e. whether `@UseEventHandler` is required on route handlers to apply the interceptor.
 
 The `PubSubHealthIndicator` is a `HealthIndicator` which can be used in a health check controller, such as the `GoogleHealthcheckModule`. It attempts to list topics using the Pub/Sub client to check connectivity to the Pub/Sub API.
 
 To test publishers, the `PubSubFixture` handles the creation and deletion of temporary topics, and provides `expect*` utilities to check for published messages. To test event handlers, it also provides the `makeRequester()` utility, which returns a function that can be used to make HTTP requests in the same way a Pub/Sub push subscription would.
+
+### Cloud Tasks
+
+The `CloudTasksEventHandlerInterceptor` handles HTTP requests triggered by Cloud Tasks. It parses task metadata from request headers into a `CloudTasksInfo` object, and validates the request body against the type decorated with `@EventBody`. The `@CloudTasksEventInfo` decorator can be used on a route handler parameter to retrieve the parsed `CloudTasksInfo`. The `CloudTasksEventHandlerInterceptor.withOptions` static method can be used to create the interceptor, defining whether it `isDefault`.
+
+### Cloud Scheduler
+
+The `CloudSchedulerEventHandlerInterceptor` handles HTTP requests triggered by Cloud Scheduler jobs. It parses scheduler job metadata from request headers into a `CloudSchedulerInfo` object. The `@CloudSchedulerEventInfo` decorator can be used on a route handler parameter to retrieve the parsed `CloudSchedulerInfo`. The `CloudSchedulerEventHandlerInterceptor.withOptions` static method can be used to create the interceptor, defining whether it `isDefault`.
+
+Because Cloud Scheduler jobs are often configured to not send a body, the `@EventBody` parameter can be typed as a plain `object`. In that case, body parsing and validation are skipped, and an empty object is returned.
 
 ### Spanner
 

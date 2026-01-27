@@ -6,6 +6,9 @@ Features:
 
 - Export the `SqlParamFieldType` type for Spanner SQL parameters.
 - Provide the `SpannerEntityManager.ParamTypeStructArray` utility.
+- Implement the `CloudTasksEventHandlerInterceptor` for Cloud Tasks event handlers.
+- Implement the `CloudSchedulerEventHandlerInterceptor` for Cloud Scheduler event handlers.
+- Make the `PubSubEventHandlerInterceptor` accept `EventHandlerInterceptorOptions`.
 
 Chores:
 
