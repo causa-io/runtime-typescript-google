@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v1.6.0 (2026-01-27)
+
 Features:
 
 - Export the `SqlParamFieldType` type for Spanner SQL parameters.
