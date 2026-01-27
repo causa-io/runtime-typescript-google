@@ -9,6 +9,7 @@ Features:
 - Implement the `CloudTasksEventHandlerInterceptor` for Cloud Tasks event handlers.
 - Implement the `CloudSchedulerEventHandlerInterceptor` for Cloud Scheduler event handlers.
 - Make the `PubSubEventHandlerInterceptor` accept `EventHandlerInterceptorOptions`.
+- Implement `expectMessages`, `expectEvents`, and `getReceivedMessages` in the `PubSubFixture`.
 
 Chores:
 
