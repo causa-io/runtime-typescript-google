@@ -297,6 +297,21 @@ export class PubSubFixture implements Fixture, EventFixture {
   }
 
   /**
+   * Gets the received messages for the specified topic.
+   *
+   * @param topic The original name of the event topic.
+   * @returns The received messages.
+   */
+  getReceivedMessages(topic: string): ReceivedPubSubEvent[] {
+    const fixture = this.topics[topic];
+    if (!fixture) {
+      throw new Error(`Fixture for topic '${topic}' does not exist.`);
+    }
+
+    return fixture.messages;
+  }
+
+  /**
    * Checks that the given messages have been published to the specified topic.
    * Each expected message must match a distinct received message.
    *
@@ -310,28 +325,25 @@ export class PubSubFixture implements Fixture, EventFixture {
     expectedMessages: Partial<ReceivedPubSubEvent>[],
     options: ExpectMessageOptions = {},
   ): Promise<void> {
-    const fixture = this.topics[topic];
-    if (!fixture) {
-      throw new Error(`Fixture for topic '${topic}' does not exist.`);
-    }
-
     const timeoutTime =
       Date.now() + (options.timeout ?? DEFAULT_EXPECT_TIMEOUT);
 
     while (true) {
+      const actualMessages = this.getReceivedMessages(topic);
+
       try {
         if (options.exact) {
-          expect(fixture.messages).toIncludeSameMembers(expectedMessages);
+          expect(actualMessages).toIncludeSameMembers(expectedMessages);
         } else {
-          expect(fixture.messages).toIncludeAllMembers(expectedMessages);
+          expect(actualMessages).toIncludeAllMembers(expectedMessages);
         }
         return;
       } catch (e) {
         if (Date.now() >= timeoutTime) {
-          if (expectedMessages.length === 1 && fixture.messages.length === 1) {
+          if (expectedMessages.length === 1 && actualMessages.length === 1) {
             // This throws with a clearer message because the single received message is actually compared to the
             // expected message.
-            expect(fixture.messages[0]).toEqual(expectedMessages[0]);
+            expect(actualMessages[0]).toEqual(expectedMessages[0]);
           }
 
           throw e;
@@ -415,17 +427,12 @@ export class PubSubFixture implements Fixture, EventFixture {
       delay?: number;
     } = {},
   ): Promise<void> {
-    const fixture = this.topics[topic];
-    if (!fixture) {
-      throw new Error(`Fixture for topic '${topic}' does not exist.`);
-    }
-
     const delay = options.delay ?? DEFAULT_EXPECT_NO_MESSAGE_DELAY;
     if (delay > 0) {
       await setTimeout(delay);
     }
 
-    const numMessages = fixture.messages.length;
+    const numMessages = this.getReceivedMessages(topic).length;
     if (numMessages > 0) {
       throw new Error(
         `Expected 0 messages in '${topic}' but found ${numMessages}.`,
