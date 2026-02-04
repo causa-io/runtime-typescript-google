@@ -18,7 +18,9 @@ export * from './firebase/testing.js';
 export * from './firestore/testing.js';
 export * from './identity-platform/testing.js';
 export * from './pubsub/testing.js';
+export * from './scheduler/testing.js';
 export * from './spanner/testing.js';
+export * from './tasks/testing.js';
 
 /**
  * Creates a NestJS application using the specified module, and sets up the fixture.
