@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v1.6.1 (2026-02-04)
+
 Fixes:
 
 - Export Cloud Tasks and Cloud Scheduler fixtures.
