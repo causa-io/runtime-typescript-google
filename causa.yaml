@@ -5,9 +5,9 @@ workspace:
 
 causa:
   modules:
-    '@causa/workspace-core': '>= 0.22.3'
-    '@causa/workspace-google': '>= 0.9.4'
-    '@causa/workspace-typescript': '>= 0.10.2'
+    '@causa/workspace-core': '>= 0.27.0'
+    '@causa/workspace-google': '>= 0.13.0'
+    '@causa/workspace-typescript': '>= 0.17.0'
 
 project:
   name: runtime-typescript-google
