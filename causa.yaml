@@ -1,4 +1,4 @@
-version: 1
+# yaml-language-server: $schema=.causa/configuration-schema.yaml
 
 workspace:
   name: causa
