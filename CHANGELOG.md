@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+Features:
+
+- Allow Spanner SQL statement parameter type to be specified as a simple string.
+
 ## v1.6.2 (2026-02-06)
 
 Chore:
