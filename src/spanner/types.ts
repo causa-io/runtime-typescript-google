@@ -67,7 +67,7 @@ export type SqlStatementParams = Record<string, any>;
 /**
  * Types for parameters in a SQL statement run using `SpannerEntityManager.query`.
  */
-export type SqlStatementTypes = Record<string, SqlParamType>;
+export type SqlStatementTypes = Record<string, SqlParamType | string>;
 
 /**
  * A SQL statement run using `SpannerEntityManager.query`.
