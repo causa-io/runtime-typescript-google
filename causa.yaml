@@ -18,10 +18,10 @@ project:
 javascript:
   dependencies:
     check:
-      allowlist: []
+      allowlist: [GHSA-vpq2-c234-7xj6]
     update:
       packageTargets:
-        '@types/node': minor
+        "@types/node": minor
 
 google:
   firestore:
