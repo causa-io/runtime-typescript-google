@@ -5,6 +5,7 @@
 Features:
 
 - Allow Spanner SQL statement parameter type to be specified as a simple string.
+- Wait for all messages to have been received in `PubSubFixture.expectNoMessage` and `PubSubFixture.clear()`.
 
 ## v1.6.2 (2026-02-06)
 
