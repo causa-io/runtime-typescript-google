@@ -1,4 +1,8 @@
-import { JsonObjectSerializer, type ObjectSerializer } from '@causa/runtime';
+import {
+  JsonObjectSerializer,
+  type ObjectSerializer,
+  OutboxEventSender,
+} from '@causa/runtime';
 import type {
   AppFixture,
   EventFixture,
@@ -6,11 +10,13 @@ import type {
   NestJsModuleOverrider,
 } from '@causa/runtime/nestjs/testing';
 import { Message, PubSub, Subscription, Topic } from '@google-cloud/pubsub';
+import { jest } from '@jest/globals';
 import { HttpStatus, type Type } from '@nestjs/common';
 import 'jest-extended';
 import { setTimeout } from 'timers/promises';
 import * as uuid from 'uuid';
 import { getConfigurationKeyForTopic } from './configuration.js';
+import { PubSubPublisher } from './publisher.js';
 import { PUBSUB_PUBLISHER_CONFIGURATION_GETTER_INJECTION_NAME } from './publisher.module.js';
 
 /**
@@ -151,6 +157,16 @@ export class PubSubFixture implements Fixture, EventFixture {
   > = {};
 
   /**
+   * The spy on {@link OutboxEventSender.prototype.publish}, used to access `ongoingPublishing` on each sender instance.
+   */
+  private outboxSenderSpy: jest.Spied<OutboxEventSender['publish']> | undefined;
+
+  /**
+   * The spy on {@link PubSubPublisher.prototype.publish}, used to count how many messages were published per topic.
+   */
+  private publisherSpy: jest.Spied<PubSubPublisher['publish']> | undefined;
+
+  /**
    * Creates a new {@link PubSubFixture}.
    *
    * @param topicsAndTypes The dictionary of topics to test and their event types.
@@ -223,6 +239,9 @@ export class PubSubFixture implements Fixture, EventFixture {
       ),
     );
     const configuration = Object.assign({}, ...configurations);
+
+    this.outboxSenderSpy = jest.spyOn(OutboxEventSender.prototype, 'publish');
+    this.publisherSpy = jest.spyOn(PubSubPublisher.prototype, 'publish');
 
     return (builder) =>
       builder
@@ -445,9 +464,52 @@ export class PubSubFixture implements Fixture, EventFixture {
   }
 
   async clear(): Promise<void> {
+    await this.waitForPublishedMessages();
+
+    this.outboxSenderSpy?.mockClear();
+    this.publisherSpy?.mockClear();
+
     Object.values(this.topics).forEach((t) => {
       t.messages = [];
     });
+  }
+
+  /**
+   * Waits for all messages published during the current test to be received by the fixture's subscriptions.
+   * First waits for any ongoing {@link OutboxEventSender} publishes to complete (as these publish asynchronously
+   * through the {@link PubSubPublisher}), then counts the per-topic publish calls and waits for the fixture's
+   * subscriptions to have received all expected messages.
+   */
+  private async waitForPublishedMessages(): Promise<void> {
+    if (this.outboxSenderSpy) {
+      await Promise.allSettled(
+        this.outboxSenderSpy.mock.contexts.flatMap((sender: any) => [
+          ...sender.ongoingPublishing,
+        ]),
+      );
+    }
+
+    if (this.publisherSpy) {
+      const topicPublishCount = this.publisherSpy.mock.calls
+        .map(([topicOrEvent]) =>
+          typeof topicOrEvent === 'string' ? topicOrEvent : topicOrEvent.topic,
+        )
+        .reduce(
+          (acc, t) => acc.set(t, (acc.get(t) ?? 0) + 1),
+          new Map<string, number>(),
+        );
+
+      await Promise.all(
+        Array.from(topicPublishCount.entries())
+          .filter(([topic]) => topic in this.topics)
+          .map(([topic, count]) =>
+            this.expectMessages(
+              topic,
+              Array.from({ length: count }, () => expect.objectContaining({})),
+            ),
+          ),
+      );
+    }
   }
 
   /**
@@ -470,6 +532,11 @@ export class PubSubFixture implements Fixture, EventFixture {
   }
 
   async delete(): Promise<void> {
+    this.outboxSenderSpy?.mockRestore();
+    this.outboxSenderSpy = undefined;
+    this.publisherSpy?.mockRestore();
+    this.publisherSpy = undefined;
+
     await Promise.all(Object.keys(this.topics).map((t) => this.deleteTopic(t)));
 
     await this.pubSub.close();
