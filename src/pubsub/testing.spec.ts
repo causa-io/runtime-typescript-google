@@ -110,4 +110,21 @@ describe('PubSubFixture', () => {
       await expect(actual).rejects.toThrow();
     });
   });
+
+  describe('clear', () => {
+    it('should not leak messages from the previous test into the next', async () => {
+      const firstPublishPromise = publisher.publish(
+        'my.event.v1',
+        new SimpleEvent({ value: 'c' }),
+      );
+
+      await fixture.clear();
+
+      await publisher.publish('my.event.v1', new SimpleEvent({ value: 'd' }));
+      await fixture.expectEvents('my.event.v1', [{ value: 'd' }], {
+        exact: true,
+      });
+      await firstPublishPromise;
+    });
+  });
 });
