@@ -25,11 +25,6 @@ import { PUBSUB_PUBLISHER_CONFIGURATION_GETTER_INJECTION_NAME } from './publishe
 const DEFAULT_EXPECT_TIMEOUT = 2000;
 
 /**
- * The default delay (in milliseconds) before checking that no message has been received.
- */
-const DEFAULT_EXPECT_NO_MESSAGE_DELAY = 50;
-
-/**
  * When the `expect` operation for a message fails, the wait duration (in milliseconds) before trying again.
  */
 const DURATION_BETWEEN_EXPECT_ATTEMPTS = 50;
@@ -446,10 +441,11 @@ export class PubSubFixture implements Fixture, EventFixture {
       delay?: number;
     } = {},
   ): Promise<void> {
-    const delay = options.delay ?? DEFAULT_EXPECT_NO_MESSAGE_DELAY;
-    if (delay > 0) {
-      await setTimeout(delay);
+    if (options.delay) {
+      await setTimeout(options.delay);
     }
+
+    await this.waitForPublishedMessages();
 
     const numMessages = this.getReceivedMessages(topic).length;
     if (numMessages > 0) {
