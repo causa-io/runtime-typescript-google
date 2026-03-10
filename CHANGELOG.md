@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v1.7.0 (2026-03-10)
+
 Features:
 
 - Allow Spanner SQL statement parameter type to be specified as a simple string.
