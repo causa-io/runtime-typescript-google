@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v1.8.0 (2026-04-02)
+
 Features:
 
 - Implement the `SpannerOutboxFixture`, which disables outbox polling and updates during tests.
