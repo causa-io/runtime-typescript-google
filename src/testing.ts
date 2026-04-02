@@ -12,6 +12,7 @@ import {
   FirestorePubSubTransactionRunner,
   SpannerOutboxTransactionRunner,
 } from './transaction/index.js';
+import { SpannerOutboxFixture } from './transaction/spanner-outbox/testing.js';
 
 export * from './app-check/testing.js';
 export * from './firebase/testing.js';
@@ -21,6 +22,7 @@ export * from './pubsub/testing.js';
 export * from './scheduler/testing.js';
 export * from './spanner/testing.js';
 export * from './tasks/testing.js';
+export * from './transaction/spanner-outbox/testing.js';
 
 /**
  * Creates a NestJS application using the specified module, and sets up the fixture.
@@ -53,6 +55,12 @@ export function createGoogleFixtures(
     disableAppCheck?: boolean;
 
     /**
+     * Whether the Spanner outbox should be disabled using the {@link SpannerOutboxFixture}.
+     * Defaults to `true`.
+     */
+    disableSpannerOutbox?: boolean;
+
+    /**
      * The transaction runner to use with the created {@link VersionedEntityFixture}.
      * Defaults to {@link SpannerOutboxTransactionRunner}.
      * If `null`, no versioned entity fixture is created.
@@ -64,6 +72,7 @@ export function createGoogleFixtures(
   } = {},
 ): Fixture[] {
   const disableAppCheck = options.disableAppCheck ?? true;
+  const disableSpannerOutbox = options.disableSpannerOutbox ?? true;
 
   const versionedEntityFixture =
     options.versionedEntityRunner !== null
@@ -81,6 +90,7 @@ export function createGoogleFixtures(
     new FirestoreFixture(options.firestoreTypes ?? []),
     new SpannerFixture({ types: options.spannerTypes }),
     new PubSubFixture(options.pubSubTopics ?? {}),
+    ...(disableSpannerOutbox ? [new SpannerOutboxFixture()] : []),
     ...(disableAppCheck ? [new AppCheckFixture()] : []),
     ...versionedEntityFixture,
     new CloudTasksFixture(),
