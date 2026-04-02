@@ -36,6 +36,7 @@ import {
   FirebaseFixture,
   FirestoreFixture,
   PubSubFixture,
+  SpannerOutboxFixture,
 } from './testing.js';
 import {
   FirestorePubSubTransactionRunner,
@@ -269,6 +270,19 @@ describe('AppFixture', () => {
       expect(fixture.get(CloudSchedulerFixture)).toBeInstanceOf(
         CloudSchedulerFixture,
       );
+      expect(fixture.get(SpannerOutboxFixture)).toBeInstanceOf(
+        SpannerOutboxFixture,
+      );
+    });
+
+    it('should not provide the SpannerOutboxFixture if disabled', () => {
+      const fixture = new AppFixture(MyModule, {
+        fixtures: createGoogleFixtures({
+          disableSpannerOutbox: false,
+        }),
+      });
+
+      expect(() => fixture.get(SpannerOutboxFixture)).toThrow();
     });
   });
 
