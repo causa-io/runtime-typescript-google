@@ -58,9 +58,9 @@ For testing, the `FirebaseFixture` can be used, which ensures the default Fireba
 
 The `makeFirestoreDataConverter` is a utility that returns a `FirestoreDataConverter`. It converts regular TypeScript classes to Firestore documents and back. Firestore `Timestamp`s are converted to `Date`s, and `class-transformer` decorators are applied.
 
-The `FirestoreCollectionsModule` builds upon the `FirebaseModule` and provides Firestore collections for the listed document types. In services, the `@InjectFirestoreCollection` decorator can be used to retrieve a Firestore collection, prepared with the aforementioned converter.
+The `@FirestoreCollection` decorator declares a class as a type of Firestore document. Its `path` function returns the full path of a document from the root of the database, as an array of segments ending with the document's ID. The `getReferenceForFirestoreDocument` and `getFirestoreCollection` utilities return the `DocumentReference` for a given document and the `CollectionReference` for a given document type respectively, prepared with the aforementioned converter.
 
-Testing utilities are also provided with `FirestoreFixture`. It replaces injected collections with temporary ones, to ensure separate collections are used for each test suite and avoid conflicts. Also, collections are cleared between tests.
+Testing utilities are also provided with `FirestoreFixture`. It makes the application use a separate Firestore database with a random ID, to ensure test suites running in parallel do not conflict. The entire database is cleared between tests using the Firestore emulator REST API (also available as the `clearFirestoreDatabase` utility).
 
 ### NestJS health checks
 
