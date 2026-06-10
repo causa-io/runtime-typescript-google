@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v2.0.0-beta.1 (2026-06-10)
+
 Breaking changes:
 
 - Upgrade the minimum Node.js version to `22`.
