@@ -4,13 +4,13 @@ import {
   IncorrectEntityVersionError,
 } from '@causa/runtime';
 import { status } from '@grpc/grpc-js';
+import { initializeApp } from 'firebase-admin/app';
 import {
   CollectionReference,
   Firestore,
   Timestamp,
   getFirestore,
 } from 'firebase-admin/firestore';
-import { getDefaultFirebaseApp } from '../firebase/index.js';
 import { FirestoreCollection } from './collection.decorator.js';
 import { wrapFirestoreOperation } from './error-converter.js';
 import { TemporaryFirestoreError } from './errors.js';
@@ -29,7 +29,7 @@ describe('error converter', () => {
   let collection: CollectionReference<MyDocument>;
 
   beforeAll(() => {
-    firestore = getFirestore(getDefaultFirebaseApp());
+    firestore = getFirestore(initializeApp());
     collection = createFirestoreTemporaryCollection(firestore, MyDocument);
   });
 

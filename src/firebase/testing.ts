@@ -2,7 +2,7 @@ import type {
   Fixture,
   NestJsModuleOverrider,
 } from '@causa/runtime/nestjs/testing';
-import { getDefaultFirebaseApp } from './app.js';
+import { initializeApp } from 'firebase-admin/app';
 import { FIREBASE_APP_TOKEN } from './inject-firebase-app.decorator.js';
 import { FirebaseLifecycleService } from './lifecycle.service.js';
 
@@ -14,7 +14,7 @@ export class FirebaseFixture implements Fixture {
     return (builder) =>
       builder
         .overrideProvider(FIREBASE_APP_TOKEN)
-        .useValue(getDefaultFirebaseApp())
+        .useValue(initializeApp())
         .overrideProvider(FirebaseLifecycleService)
         .useValue({});
   }

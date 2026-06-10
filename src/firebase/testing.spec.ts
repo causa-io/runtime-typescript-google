@@ -1,7 +1,6 @@
 import { AppFixture } from '@causa/runtime/nestjs/testing';
 import { Module } from '@nestjs/common';
-import type { App } from 'firebase-admin/app';
-import { getDefaultFirebaseApp } from './app.js';
+import { getApp, type App } from 'firebase-admin/app';
 import { FIREBASE_APP_TOKEN } from './inject-firebase-app.decorator.js';
 import { FirebaseModule } from './module.js';
 import { FirebaseFixture } from './testing.js';
@@ -24,7 +23,7 @@ describe('FirebaseFixture', () => {
     }
 
     // If `FirebaseLifecycleService` is not overridden, this throws because `app.close()` has deleted the app.
-    const expectedApp = getDefaultFirebaseApp();
+    const expectedApp = getApp();
     expect(actualFirebaseApp).toBe(expectedApp);
   });
 });

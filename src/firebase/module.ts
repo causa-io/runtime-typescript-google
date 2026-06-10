@@ -16,7 +16,6 @@ import {
   type Settings,
 } from 'firebase-admin/firestore';
 import { getMessaging, Messaging } from 'firebase-admin/messaging';
-import { getDefaultFirebaseApp } from './app.js';
 import { FirestoreAdminClient } from './firestore-admin-client.type.js';
 import { FIREBASE_APP_TOKEN } from './inject-firebase-app.decorator.js';
 import { FirebaseLifecycleService } from './lifecycle.service.js';
@@ -104,7 +103,7 @@ export type FirebaseModuleOptions = AppOptions &
 /**
  * Creates the module metadata for the {@link FirebaseModule}.
  *
- * @param useDefaultFactory Whether to use {@link getDefaultFirebaseApp} to (re)use the default Firebase app.
+ * @param useDefaultFactory Whether to call {@link initializeApp} to (re)use the default Firebase app.
  * @param options Options when configuring the {@link FirebaseModule}.
  *   If the default Firebase app is used, app options are ignored.
  * @returns The module metadata.
@@ -116,7 +115,7 @@ function createModuleMetadata(
   const { appName, firestore, ...appOptions } = options;
 
   const appFactory = useDefaultFactory
-    ? getDefaultFirebaseApp
+    ? () => initializeApp()
     : () => initializeApp(appOptions, appName);
 
   const providers: Provider[] = [
@@ -174,8 +173,7 @@ export class FirebaseModule {
 
   /**
    * Creates a global NestJS module that exports providers for the Firebase `App` and service-specific clients.
-   * The default Firebase app will be (re)used using {@link getDefaultFirebaseApp}, and no options will be passed to
-   * {@link initializeApp}.
+   * The default Firebase app will be (re)used by calling {@link initializeApp} without any options.
    * When testing, this avoids repeatedly initializing the same app, which would result in an error.
    *
    * @param options Options for the Firebase services (other than the base Firebase app).
