@@ -13,8 +13,8 @@ import { Message, PubSub, Subscription, Topic } from '@google-cloud/pubsub';
 import { jest } from '@jest/globals';
 import { HttpStatus, type Type } from '@nestjs/common';
 import 'jest-extended';
+import { randomUUID } from 'node:crypto';
 import { setTimeout } from 'timers/promises';
-import * as uuid from 'uuid';
 import { getConfigurationKeyForTopic } from './configuration.js';
 import { PubSubPublisher } from './publisher.js';
 import { PUBSUB_PUBLISHER_CONFIGURATION_GETTER_INJECTION_NAME } from './publisher.module.js';
@@ -193,7 +193,7 @@ export class PubSubFixture implements Fixture, EventFixture {
   ): Promise<Record<string, string>> {
     await this.deleteTopic(sourceTopic);
 
-    const suffix = uuid.v4().slice(-10);
+    const suffix = randomUUID().slice(-10);
     const topicName = `${sourceTopic}-${suffix}`;
     const subscriptionName = `fixture-${suffix}`;
 
@@ -264,7 +264,7 @@ export class PubSubFixture implements Fixture, EventFixture {
     } = {},
   ): EventRequester {
     return async (event, requestOptions) => {
-      const messageId = uuid.v4();
+      const messageId = randomUUID();
       const publishTime = (
         requestOptions?.publishTime ?? new Date()
       ).toISOString();

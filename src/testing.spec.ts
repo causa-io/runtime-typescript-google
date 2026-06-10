@@ -14,7 +14,7 @@ import { Controller, Get, Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { IsString, IsUUID } from 'class-validator';
 import 'jest-extended';
-import * as uuid from 'uuid';
+import { randomUUID } from 'node:crypto';
 import { AppCheckGuard } from './app-check/index.js';
 import { FirebaseModule } from './firebase/index.js';
 import {
@@ -48,7 +48,7 @@ import {
 class MyEntity implements VersionedEntity {
   constructor(data: Partial<MyEntity> = {}) {
     Object.assign(this, {
-      id: uuid.v4(),
+      id: randomUUID(),
       createdAt: new Date(),
       updatedAt: new Date(),
       deletedAt: null,
@@ -87,7 +87,7 @@ class MyEntity implements VersionedEntity {
 class MyDocument implements MyEntity {
   constructor(data: Partial<MyDocument> = {}) {
     Object.assign(this, {
-      id: uuid.v4(),
+      id: randomUUID(),
       createdAt: new Date(),
       updatedAt: new Date(),
       deletedAt: null,
@@ -116,7 +116,7 @@ class MyDocument implements MyEntity {
 class MyEvent implements Event {
   constructor(data: Partial<MyEvent> = {}) {
     Object.assign(this, {
-      id: uuid.v4(),
+      id: randomUUID(),
       producedAt: new Date(),
       name: 'entityCreated',
       data: new MyEntity(),
