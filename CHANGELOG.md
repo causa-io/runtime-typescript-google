@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+Breaking changes:
+
+- Upgrade the minimum Node.js version to `22`.
+- Remove the `getDefaultFirebaseApp` utility in favor of `initializeApp`.
+
+Chores:
+
+- Upgrade dependencies.
+
 ## v1.8.0 (2026-04-02)
 
 Features:

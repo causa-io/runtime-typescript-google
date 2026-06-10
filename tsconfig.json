@@ -1,13 +1,17 @@
 {
-  "extends": "@tsconfig/node20/tsconfig.json",
+  "extends": "@tsconfig/node22/tsconfig.json",
   "compilerOptions": {
+    "types": [
+      "node",
+      "jest"
+    ],
     "declaration": true,
     "removeComments": false,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "sourceMap": true,
+    "rootDir": "./src",
     "outDir": "./dist",
-    "incremental": true,
     "verbatimModuleSyntax": true
   }
 }

@@ -1,11 +1,11 @@
 import type { VersionedEntity } from '@causa/runtime';
+import { initializeApp } from 'firebase-admin/app';
 import {
   CollectionReference,
   Firestore,
   getFirestore,
 } from 'firebase-admin/firestore';
 import 'jest-extended';
-import { getDefaultFirebaseApp } from '../../firebase/index.js';
 import {
   FirestoreCollection,
   makeFirestoreDataConverter,
@@ -89,7 +89,7 @@ describe('FirestoreStateTransaction', () => {
   let resolver: FirestoreCollectionResolver;
 
   beforeAll(() => {
-    firestore = getFirestore(getDefaultFirebaseApp());
+    firestore = getFirestore(initializeApp());
     activeCollection = createFirestoreTemporaryCollection(
       firestore,
       MyDocument,

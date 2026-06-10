@@ -1,6 +1,6 @@
+import { initializeApp } from 'firebase-admin/app';
 import { Firestore, getFirestore } from 'firebase-admin/firestore';
 import 'reflect-metadata';
-import { getDefaultFirebaseApp } from '../firebase/index.js';
 import {
   FirestoreCollection,
   getFirestoreCollectionMetadataForType,
@@ -32,7 +32,7 @@ describe('FirestoreCollection', () => {
   let firestore: Firestore;
 
   beforeAll(() => {
-    firestore = getFirestore(getDefaultFirebaseApp());
+    firestore = getFirestore(initializeApp());
   });
 
   describe('getFirestoreCollectionMetadataForType', () => {

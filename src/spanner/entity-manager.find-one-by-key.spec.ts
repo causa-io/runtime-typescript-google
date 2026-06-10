@@ -1,8 +1,8 @@
 import { Database, Transaction } from '@google-cloud/spanner';
 import { jest } from '@jest/globals';
 import 'jest-extended';
+import { randomUUID } from 'node:crypto';
 import { setTimeout } from 'node:timers/promises';
-import * as uuid from 'uuid';
 import { SpannerEntityManager } from './entity-manager.js';
 import {
   clearAllTestEntities,
@@ -128,7 +128,7 @@ describe('SpannerEntityManager', () => {
       // Ensures the database has been existing for this long.
       await setTimeout(1500);
 
-      const id = uuid.v4();
+      const id = randomUUID();
       await database
         .table('IndexedEntity')
         .insert({ id, value: 10, otherValue: '🎁' });

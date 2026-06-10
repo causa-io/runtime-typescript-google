@@ -1,13 +1,12 @@
 import { jest } from '@jest/globals';
 import { Injectable } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { type App, deleteApp } from 'firebase-admin/app';
+import { type App, deleteApp, initializeApp } from 'firebase-admin/app';
 import { AppCheck } from 'firebase-admin/app-check';
 import { Auth, getAuth } from 'firebase-admin/auth';
 import { Firestore, v1 } from 'firebase-admin/firestore';
 import { Messaging } from 'firebase-admin/messaging';
 import 'jest-extended';
-import { getDefaultFirebaseApp } from './app.js';
 import { FirestoreAdminClient } from './firestore-admin-client.type.js';
 import { InjectFirebaseApp } from './inject-firebase-app.decorator.js';
 import { FirebaseModule, type FirebaseModuleOptions } from './module.js';
@@ -124,7 +123,7 @@ describe('FirebaseModule', () => {
   });
 
   it('should create a module using the default Firebase app', async () => {
-    const expectedApp = getDefaultFirebaseApp();
+    const expectedApp = initializeApp();
 
     await createInjectedService('testing');
 

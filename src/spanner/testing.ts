@@ -4,7 +4,7 @@ import type {
 } from '@causa/runtime/nestjs/testing';
 import { Database, Instance, Spanner } from '@google-cloud/spanner';
 import type { Type } from '@nestjs/common';
-import * as uuid from 'uuid';
+import { randomUUID } from 'node:crypto';
 import { SpannerEntityManager } from './entity-manager.js';
 
 /**
@@ -24,7 +24,7 @@ type CreateDatabaseParameters = Pick<
 function makeDatabaseParameters(
   options: Partial<CreateDatabaseParameters>,
 ): CreateDatabaseParameters {
-  const name = options.name ?? `test-${uuid.v4().slice(-10)}`;
+  const name = options.name ?? `test-${randomUUID().slice(-10)}`;
   const spanner = options.instance?.parent ?? options.spanner ?? new Spanner();
   const instance =
     options.instance ?? spanner.instance(process.env.SPANNER_INSTANCE ?? '');

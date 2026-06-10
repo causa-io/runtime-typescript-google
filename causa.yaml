@@ -5,9 +5,9 @@ workspace:
 
 causa:
   modules:
-    "@causa/workspace-core": ">= 0.28.0"
-    "@causa/workspace-google": ">= 0.14.0"
-    "@causa/workspace-typescript": ">= 0.18.0"
+    "@causa/workspace-core": ^1.0.0
+    "@causa/workspace-google": ^1.0.0
+    "@causa/workspace-typescript": ^1.0.0
 
 project:
   name: runtime-typescript-google
@@ -19,11 +19,7 @@ javascript:
   dependencies:
     check:
       allowlist:
-        - GHSA-vpq2-c234-7xj6
-        - GHSA-27v5-c462-wpq7
-        - GHSA-f23m-r3pf-42rh
-        - GHSA-j3q9-mxjg-w52f
-        - GHSA-r5fr-rjxr-66jc
+        - GHSA-w5hq-g745-h8pq
     update:
       packageTargets:
         "@types/node": minor

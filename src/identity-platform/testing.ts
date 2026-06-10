@@ -2,7 +2,7 @@ import type { User } from '@causa/runtime';
 import type { AppFixture, Fixture } from '@causa/runtime/nestjs/testing';
 import { Auth } from 'firebase-admin/auth';
 import jwt from 'jsonwebtoken';
-import * as uuid from 'uuid';
+import { randomUUID } from 'node:crypto';
 
 /**
  * A {@link Fixture} to create and delete Identity Platform users in the emulator.
@@ -70,7 +70,7 @@ export class AuthUsersFixture implements Fixture {
   ): Promise<{ user: User; token: string }> {
     const { id: userId, ...customClaims } = partialUser;
     const user: User = {
-      id: userId ?? uuid.v4(),
+      id: userId ?? randomUUID(),
       ...customClaims,
     };
 

@@ -5,7 +5,7 @@ import type {
 } from '@causa/runtime/nestjs/testing';
 import type { Type } from '@nestjs/common';
 import { CollectionReference, Firestore } from 'firebase-admin/firestore';
-import * as uuid from 'uuid';
+import { randomUUID } from 'node:crypto';
 import { getFirestoreCollectionMetadataForType } from './collection.decorator.js';
 import { makeFirestoreDataConverter } from './converter.js';
 import { getFirestoreCollectionInjectionName } from './inject-collection.decorator.js';
@@ -22,7 +22,7 @@ export function createFirestoreTemporaryCollection<T>(
   firestore: Firestore,
   documentType: Type<T>,
 ): CollectionReference<T> {
-  const prefix = `${uuid.v4().slice(-10)}-`;
+  const prefix = `${randomUUID().slice(-10)}-`;
   const { name } = getFirestoreCollectionMetadataForType(documentType);
   return firestore
     .collection(`${prefix}${name}`)

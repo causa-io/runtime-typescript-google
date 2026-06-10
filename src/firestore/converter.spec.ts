@@ -1,9 +1,9 @@
+import { initializeApp } from 'firebase-admin/app';
 import {
   CollectionReference,
   Timestamp,
   getFirestore,
 } from 'firebase-admin/firestore';
-import { getDefaultFirebaseApp } from '../firebase/index.js';
 import { FirestoreCollection } from './collection.decorator.js';
 import {
   clearFirestoreCollection,
@@ -27,7 +27,7 @@ class SomeDocument {
 
 describe('converter', () => {
   describe('makeFirestoreDataConverter', () => {
-    const app = getDefaultFirebaseApp();
+    const app = initializeApp();
     const firestore = getFirestore(app);
     let collection: CollectionReference<SomeDocument>;
 
