@@ -39,11 +39,6 @@ export function createGoogleFixtures(
     pubSubTopics?: Record<string, Type>;
 
     /**
-     * Temporary Firestore collections to create and to clear during teardown.
-     */
-    firestoreTypes?: Type[];
-
-    /**
      * Spanner entities to clear during teardown.
      */
     spannerTypes?: Type[];
@@ -87,7 +82,7 @@ export function createGoogleFixtures(
   return [
     new FirebaseFixture(),
     new AuthUsersFixture(),
-    new FirestoreFixture(options.firestoreTypes ?? []),
+    new FirestoreFixture(),
     new SpannerFixture({ types: options.spannerTypes }),
     new PubSubFixture(options.pubSubTopics ?? {}),
     ...(disableSpannerOutbox ? [new SpannerOutboxFixture()] : []),

@@ -17,10 +17,7 @@ import 'jest-extended';
 import { randomUUID } from 'node:crypto';
 import { AppCheckGuard } from './app-check/index.js';
 import { FirebaseModule } from './firebase/index.js';
-import {
-  FirestoreCollection,
-  FirestoreCollectionsModule,
-} from './firestore/index.js';
+import { FirestoreCollection } from './firestore/index.js';
 import { PubSubPublisherModule } from './pubsub/index.js';
 import { CloudSchedulerFixture } from './scheduler/testing.js';
 import {
@@ -80,8 +77,7 @@ class MyEntity implements VersionedEntity {
 }
 
 @FirestoreCollection({
-  name: 'myCollection',
-  path: (d) => d.id,
+  path: (d) => ['myCollection', d.id],
 })
 @SoftDeletedFirestoreCollection()
 class MyDocument implements MyEntity {
@@ -148,7 +144,6 @@ class MyController {
     FirebaseModule.forRoot(),
     SpannerModule.forRoot(),
     PubSubPublisherModule.forRoot(),
-    FirestoreCollectionsModule.forRoot([MyDocument]),
   ],
   providers: [
     AppCheckGuard,
@@ -194,7 +189,6 @@ describe('AppFixture', () => {
       fixtures: createGoogleFixtures({
         spannerTypes: [MyEntity],
         pubSubTopics: { 'my.event.v1': MyEvent },
-        firestoreTypes: [MyDocument],
       }),
     });
     await fixture.init();
@@ -219,13 +213,16 @@ describe('AppFixture', () => {
       expect(actualName).not.toContain('test-google');
     });
 
-    it('should create a temporary Firestore collection', () => {
-      const actualCollection = fixture
-        .get(FirestoreFixture)
-        .collection(MyDocument);
+    it('should use a separate Firestore database', () => {
+      const firestoreFixture = fixture.get(FirestoreFixture);
 
-      // The temporary collection includes a suffix.
-      expect(actualCollection.path).not.toStartWith('myCollection');
+      expect(firestoreFixture.databaseId).toStartWith('test-');
+      expect(firestoreFixture.firestore.databaseId).toEqual(
+        firestoreFixture.databaseId,
+      );
+      expect(firestoreFixture.collection(MyDocument).path).toEqual(
+        'myCollection',
+      );
     });
 
     it('should provide the default versioned entity fixture', () => {
