@@ -8,6 +8,11 @@ import {
 } from 'firebase-admin/firestore';
 
 /**
+ * The cache of converters, ensuring a single converter instance exists per document type.
+ */
+const converters = new Map<Type, FirestoreDataConverter<any>>();
+
+/**
  * Makes a converter that transforms Firestore data from and to the given class type.
  *
  * @returns The converter.
@@ -15,7 +20,12 @@ import {
 export function makeFirestoreDataConverter<T>(
   classType: Type<T>,
 ): FirestoreDataConverter<T> {
-  return {
+  const existing = converters.get(classType);
+  if (existing) {
+    return existing;
+  }
+
+  const converter = {
     toFirestore: (data: PartialWithFieldValue<T>) => instanceToPlain(data),
     fromFirestore: (snapshot: QueryDocumentSnapshot) => {
       const data = snapshot.data();
@@ -24,6 +34,9 @@ export function makeFirestoreDataConverter<T>(
       return typed;
     },
   };
+  converters.set(classType, converter);
+
+  return converter;
 }
 
 /**

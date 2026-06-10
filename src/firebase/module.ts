@@ -23,7 +23,7 @@ import { FirebaseLifecycleService } from './lifecycle.service.js';
 /**
  * The NestJS injection token for Firestore settings.
  */
-const FIRESTORE_SETTINGS_TOKEN = 'CAUSA_FIRESTORE_SETTINGS';
+export const FIRESTORE_SETTINGS_TOKEN = 'CAUSA_FIRESTORE_SETTINGS';
 
 /**
  * The default Firestore settings to use when initializing the Firestore client.
@@ -31,6 +31,39 @@ const FIRESTORE_SETTINGS_TOKEN = 'CAUSA_FIRESTORE_SETTINGS';
 const DEFAULT_FIRESTORE_SETTINGS: Settings = {
   ignoreUndefinedProperties: true,
 };
+
+/**
+ * Returns the {@link Firestore} instance for the given app, configured with the given settings.
+ * If {@link Settings.databaseId} is set, the instance for the corresponding named database is returned.
+ *
+ * @param app The Firebase app for which the Firestore instance should be returned.
+ * @param settings The settings to apply to the Firestore instance.
+ * @returns The {@link Firestore} instance.
+ */
+export function createFirestore(app: App, settings: Settings): Firestore {
+  const { databaseId, ...firestoreSettings } = settings;
+  const firestore =
+    databaseId === undefined
+      ? getFirestore(app)
+      : getFirestore(app, databaseId);
+
+  try {
+    // Firestore settings can only be set once, but we cannot know if they've already been set without using private
+    // APIs. Calling this several times could occur in testing, when the default app is reused.
+    firestore.settings(firestoreSettings);
+    return firestore;
+  } catch (error) {
+    // The Firestore SDK does not type the error more precisely.
+    if (
+      error instanceof Error &&
+      error.message.includes('Firestore has already been initialized.')
+    ) {
+      return firestore;
+    }
+
+    throw error;
+  }
+}
 
 /**
  * The providers for service-specific Firebase clients.
@@ -44,26 +77,7 @@ const childProviders: (
   { provide: Auth, useFactory: getAuth, inject: [FIREBASE_APP_TOKEN] },
   {
     provide: Firestore,
-    useFactory: (app: App, settings: Settings) => {
-      const firestore = getFirestore(app);
-
-      try {
-        // Firestore settings can only be set once, but we cannot know if they've already been set without using private
-        // APIs. Calling this several times could occur in testing, when the default app is reused.
-        firestore.settings(settings);
-        return firestore;
-      } catch (error) {
-        // The Firestore SDK does not type the error more precisely.
-        if (
-          error instanceof Error &&
-          error.message.includes('Firestore has already been initialized.')
-        ) {
-          return firestore;
-        }
-
-        throw error;
-      }
-    },
+    useFactory: createFirestore,
     inject: [FIREBASE_APP_TOKEN, FIRESTORE_SETTINGS_TOKEN],
   },
   { provide: AppCheck, useFactory: getAppCheck, inject: [FIREBASE_APP_TOKEN] },

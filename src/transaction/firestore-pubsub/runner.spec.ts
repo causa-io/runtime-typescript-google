@@ -22,8 +22,8 @@ import 'jest-extended';
 import { FirebaseModule } from '../../firebase/module.js';
 import {
   FirestoreCollection,
-  FirestoreCollectionsModule,
   getReferenceForFirestoreDocument,
+  makeFirestoreDataConverter,
 } from '../../firestore/index.js';
 import { FirestoreFixture } from '../../firestore/testing.js';
 import { PubSubPublisherModule } from '../../pubsub/publisher.module.js';
@@ -34,7 +34,7 @@ import { FirestorePubSubTransactionRunner } from './runner.js';
 import { SoftDeletedFirestoreCollection } from './soft-deleted-collection.decorator.js';
 import { FirestorePubSubTransaction } from './transaction.js';
 
-@FirestoreCollection({ name: 'myDocuments', path: (doc) => doc.id })
+@FirestoreCollection({ path: (doc) => ['myDocuments', doc.id] })
 @SoftDeletedFirestoreCollection()
 class MyDocument implements VersionedEntity {
   constructor(data: Partial<MyDocument> = {}) {
@@ -93,7 +93,6 @@ class MyEntityManager extends VersionedEntityManager<
 @Module({
   imports: [
     FirebaseModule.forRoot(),
-    FirestoreCollectionsModule.forRoot([MyDocument]),
     PubSubPublisherModule.forRoot(),
     FirestorePubSubTransactionModule.forRoot(),
   ],
@@ -117,20 +116,16 @@ describe('FirestorePubSubTransactionRunner', () => {
   beforeAll(async () => {
     pubSubFixture = new PubSubFixture({ 'my.entity.v1': MyEvent });
     appFixture = new AppFixture(MyModule, {
-      fixtures: [
-        new FirebaseFixture(),
-        new FirestoreFixture([MyDocument]),
-        pubSubFixture,
-      ],
+      fixtures: [new FirebaseFixture(), new FirestoreFixture(), pubSubFixture],
     });
     await appFixture.init();
     firestore = appFixture.get(Firestore);
     runner = appFixture.get(FirestorePubSubTransactionRunner);
     myEntityManager = appFixture.get(MyEntityManager);
     activeCollection = appFixture.get(FirestoreFixture).collection(MyDocument);
-    deletedCollection =
-      runner.collectionResolver.getCollectionsForType(MyDocument).softDelete!
-        .collection;
+    deletedCollection = firestore
+      .collection(`${activeCollection.path}$deleted`)
+      .withConverter(makeFirestoreDataConverter(MyDocument));
   });
 
   afterEach(() => appFixture.clear());
@@ -139,14 +134,8 @@ describe('FirestorePubSubTransactionRunner', () => {
 
   it('should commit the transaction and publish the events', async () => {
     const document = new MyDocument();
-    const activeDocRef = getReferenceForFirestoreDocument(
-      activeCollection,
-      document,
-    );
-    const deletedDocRef = getReferenceForFirestoreDocument(
-      deletedCollection,
-      document,
-    );
+    const activeDocRef = getReferenceForFirestoreDocument(firestore, document);
+    const deletedDocRef = deletedCollection.doc(document.id);
     await activeDocRef.set(document);
 
     const actualEvent = await runner.run(async (transaction) => {

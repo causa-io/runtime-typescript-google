@@ -110,6 +110,19 @@ describe('FirebaseModule', () => {
     });
   });
 
+  it('should use the configured Firestore database ID', async () => {
+    await createInjectedService({
+      appName: '💽',
+      projectId: 'demo-project',
+      firestore: { databaseId: 'my-database' },
+    });
+
+    expect(service.firestore.databaseId).toEqual('my-database');
+    expect((service.firestore as any)._settings).toMatchObject({
+      ignoreUndefinedProperties: true,
+    });
+  });
+
   it('should create a global module', async () => {
     const actualModule = FirebaseModule.forRoot();
 

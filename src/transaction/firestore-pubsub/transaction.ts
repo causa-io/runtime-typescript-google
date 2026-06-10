@@ -5,10 +5,12 @@ import {
   type TransactionOption,
 } from '@causa/runtime';
 import type { Type } from '@nestjs/common';
-import { Transaction as FirestoreTransaction } from 'firebase-admin/firestore';
+import {
+  Firestore,
+  Transaction as FirestoreTransaction,
+} from 'firebase-admin/firestore';
 import { FirestoreReadOnlyStateTransaction } from './readonly-state-transaction.js';
 import type { FirestoreStateTransaction } from './state-transaction.js';
-import type { FirestoreCollectionResolver } from './types.js';
 
 /**
  * Option for a function that accepts a {@link FirestorePubSubTransaction}.
@@ -38,8 +40,11 @@ export class FirestorePubSubTransaction
     return this.stateTransaction.firestoreTransaction;
   }
 
-  get collectionResolver(): FirestoreCollectionResolver {
-    return this.stateTransaction.collectionResolver;
+  /**
+   * The {@link Firestore} instance used by the state transaction.
+   */
+  get firestore(): Firestore {
+    return this.stateTransaction.firestore;
   }
 
   set<T extends object>(entity: T): Promise<void> {

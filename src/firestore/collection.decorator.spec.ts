@@ -3,29 +3,34 @@ import { Firestore, getFirestore } from 'firebase-admin/firestore';
 import 'reflect-metadata';
 import {
   FirestoreCollection,
+  getFirestoreCollection,
   getFirestoreCollectionMetadataForType,
   getReferenceForFirestoreDocument,
 } from './collection.decorator.js';
 
 @FirestoreCollection({
-  name: '🔖',
-  path: (doc) => doc.id,
+  path: (doc) => ['🔖', doc.id],
 })
 class MyDocument {
   constructor(readonly id: string = '🐑') {}
 }
 
 @FirestoreCollection({
-  name: '🔖',
-  path: (doc) => [doc.grandParentId, doc.parentId, doc.id],
+  path: (doc) => ['📂', doc.parentId, '🔖', doc.id],
 })
-class MyDocumentWithArrayPath {
+class MyNestedDocument {
   constructor(
-    readonly grandParentId: string | undefined = '📁',
     readonly parentId: string | null = '🗃️',
     readonly id: string = '🐑',
     readonly unused?: string,
   ) {}
+}
+
+@FirestoreCollection({
+  path: (doc) => [doc.id],
+})
+class MyInvalidDocument {
+  constructor(readonly id: string = '🐑') {}
 }
 
 describe('FirestoreCollection', () => {
@@ -36,11 +41,10 @@ describe('FirestoreCollection', () => {
   });
 
   describe('getFirestoreCollectionMetadataForType', () => {
-    it('should return the name of the Firestore collection corresponding to the given class', () => {
+    it('should return the metadata of the Firestore collection corresponding to the given class', () => {
       const actualMetadata = getFirestoreCollectionMetadataForType(MyDocument);
 
-      expect(actualMetadata.name).toEqual('🔖');
-      expect(actualMetadata.path({ id: '🎁' })).toEqual('🎁');
+      expect(actualMetadata.path({ id: '🎁' })).toEqual(['🔖', '🎁']);
     });
 
     it('should throw if the class is not decorated with FirestoreCollection', () => {
@@ -57,94 +61,111 @@ describe('FirestoreCollection', () => {
       const document = new MyDocument();
 
       const actualReference = getReferenceForFirestoreDocument(
-        firestore.collection('🗃️'),
+        firestore,
         document,
       );
 
-      expect(actualReference.path).toEqual('🗃️/🐑');
+      expect(actualReference.path).toEqual('🔖/🐑');
     });
 
     it('should return the reference for the Firestore document corresponding to the given partial document', () => {
-      const document = { id: '🎁/🗃️/🪆' };
+      const document = { id: '🪆' };
 
       const actualReference = getReferenceForFirestoreDocument(
-        firestore.collection('🗃️'),
+        firestore,
         document,
         MyDocument,
       );
 
-      expect(actualReference.path).toEqual('🗃️/🎁/🗃️/🪆');
+      expect(actualReference.path).toEqual('🔖/🪆');
+    });
+
+    it('should return the reference for a document in a nested collection', () => {
+      const document = new MyNestedDocument();
+
+      const actualReference = getReferenceForFirestoreDocument(
+        firestore,
+        document,
+      );
+
+      expect(actualReference.path).toEqual('📂/🗃️/🔖/🐑');
     });
 
     it('should throw if the document is not decorated with FirestoreCollection', () => {
       class MyDocument {}
 
       expect(() =>
-        getReferenceForFirestoreDocument(
-          firestore.collection('🗃️'),
-          new MyDocument(),
-        ),
+        getReferenceForFirestoreDocument(firestore, new MyDocument()),
       ).toThrow(
         `Class 'MyDocument' is not declared as a Firestore collection.`,
       );
     });
 
-    it('should throw if the returned path is undefined', () => {
+    it('should throw if the returned path contains an undefined segment', () => {
       expect(() =>
-        getReferenceForFirestoreDocument(
-          firestore.collection('🗃️'),
-          {},
-          MyDocument,
-        ),
+        getReferenceForFirestoreDocument(firestore, {}, MyDocument),
       ).toThrow(
         `The path of the 'MyDocument' document cannot be obtained from the given object.`,
       );
     });
 
-    it('should return the reference when the path function returns an array', () => {
-      const document = new MyDocumentWithArrayPath();
-
-      const actualReference = getReferenceForFirestoreDocument(
-        firestore.collection('🗃️'),
-        document,
-      );
-
-      expect(actualReference.path).toEqual('🗃️/📁/🗃️/🐑');
-    });
-
-    it('should return the reference for a partial document with array path', () => {
-      const document = { grandParentId: '🎁', parentId: '🗃️', id: '🪆' };
-
-      const actualReference = getReferenceForFirestoreDocument(
-        firestore.collection('🗃️'),
-        document,
-        MyDocumentWithArrayPath,
-      );
-
-      expect(actualReference.path).toEqual('🗃️/🎁/🗃️/🪆');
-    });
-
-    it('should throw if the returned path array contains undefined', () => {
+    it('should throw if the returned path contains a null segment', () => {
       expect(() =>
         getReferenceForFirestoreDocument(
-          firestore.collection('🗃️'),
-          { parentId: '🗃️', id: '🐑' },
-          MyDocumentWithArrayPath,
+          firestore,
+          { parentId: null, id: '🐑' },
+          MyNestedDocument,
         ),
       ).toThrow(
-        `The path of the 'MyDocumentWithArrayPath' document cannot be obtained from the given object.`,
+        `The path of the 'MyNestedDocument' document cannot be obtained from the given object.`,
       );
     });
 
-    it('should throw if the returned path array contains null', () => {
+    it('should throw if the returned path has an odd number of segments', () => {
       expect(() =>
-        getReferenceForFirestoreDocument(
-          firestore.collection('🗃️'),
-          { grandParentId: '🎁', parentId: null, id: '🐑' },
-          MyDocumentWithArrayPath,
-        ),
+        getReferenceForFirestoreDocument(firestore, new MyInvalidDocument()),
       ).toThrow(
-        `The path of the 'MyDocumentWithArrayPath' document cannot be obtained from the given object.`,
+        `The path of the 'MyInvalidDocument' document should have an even number of at least 2 segments.`,
+      );
+    });
+  });
+
+  describe('getFirestoreCollection', () => {
+    it('should return the collection for a document type in a root collection', () => {
+      const actualCollection = getFirestoreCollection(firestore, MyDocument);
+
+      expect(actualCollection.path).toEqual('🔖');
+    });
+
+    it('should return the collection for a document type in a nested collection', () => {
+      const actualCollection = getFirestoreCollection(
+        firestore,
+        MyNestedDocument,
+        { parentId: '🎁' },
+      );
+
+      expect(actualCollection.path).toEqual('📂/🎁/🔖');
+    });
+
+    it('should throw if the class is not decorated with FirestoreCollection', () => {
+      class MyDocument {}
+
+      expect(() => getFirestoreCollection(firestore, MyDocument)).toThrow(
+        `Class 'MyDocument' is not declared as a Firestore collection.`,
+      );
+    });
+
+    it('should throw if a parent document ID cannot be computed', () => {
+      expect(() => getFirestoreCollection(firestore, MyNestedDocument)).toThrow(
+        `The collection path of the 'MyNestedDocument' document cannot be obtained from the given object.`,
+      );
+    });
+
+    it('should throw if the returned path has an odd number of segments', () => {
+      expect(() =>
+        getFirestoreCollection(firestore, MyInvalidDocument),
+      ).toThrow(
+        `The path of the 'MyInvalidDocument' document should have an even number of at least 2 segments.`,
       );
     });
   });

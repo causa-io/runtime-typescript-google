@@ -6,22 +6,17 @@ import {
   getFirestore,
 } from 'firebase-admin/firestore';
 import 'jest-extended';
+import { randomUUID } from 'node:crypto';
 import {
   FirestoreCollection,
+  getFirestoreCollection,
   makeFirestoreDataConverter,
 } from '../../firestore/index.js';
-import {
-  clearFirestoreCollection,
-  createFirestoreTemporaryCollection,
-} from '../../firestore/testing.js';
+import { clearFirestoreDatabase } from '../../firestore/testing.js';
 import { SoftDeletedFirestoreCollection } from './soft-deleted-collection.decorator.js';
 import { FirestoreStateTransaction } from './state-transaction.js';
-import type {
-  FirestoreCollectionResolver,
-  FirestoreCollectionsForDocumentType,
-} from './types.js';
 
-@FirestoreCollection({ name: 'myDocument', path: (doc) => doc.id })
+@FirestoreCollection({ path: (doc) => ['myDocument', doc.id] })
 @SoftDeletedFirestoreCollection()
 class MyDocument implements VersionedEntity {
   constructor(data: Partial<MyDocument> = {}) {
@@ -40,7 +35,7 @@ class MyDocument implements VersionedEntity {
   readonly deletedAt!: Date | null;
 }
 
-@FirestoreCollection({ name: 'myOtherDocument', path: (doc) => doc.id })
+@FirestoreCollection({ path: (doc) => ['myOtherDocument', doc.id] })
 class MyNonSoftDeletedDocument implements VersionedEntity {
   constructor(data: Partial<MyNonSoftDeletedDocument> = {}) {
     Object.assign(this, {
@@ -58,10 +53,7 @@ class MyNonSoftDeletedDocument implements VersionedEntity {
   readonly deletedAt!: Date | null;
 }
 
-@FirestoreCollection({
-  name: 'parent',
-  path: (doc) => `${doc.id1}/child/${doc.id2}`,
-})
+@FirestoreCollection({ path: (doc) => ['parent', doc.id1, 'child', doc.id2] })
 @SoftDeletedFirestoreCollection()
 class MyNestedDocument {
   constructor(data: Partial<MyNestedDocument> = {}) {
@@ -86,82 +78,37 @@ describe('FirestoreStateTransaction', () => {
   let deletedCollection: CollectionReference<MyDocument>;
   let nonSoftDeleteCollection: CollectionReference<MyNonSoftDeletedDocument>;
   let parentCollection: CollectionReference<MyNestedDocument>;
-  let resolver: FirestoreCollectionResolver;
 
   beforeAll(() => {
-    firestore = getFirestore(initializeApp());
-    activeCollection = createFirestoreTemporaryCollection(
-      firestore,
-      MyDocument,
-    );
+    firestore = getFirestore(initializeApp(), `test-${randomUUID()}`);
+    activeCollection = getFirestoreCollection(firestore, MyDocument);
     deletedCollection = firestore
       .collection(`${activeCollection.path}$deleted`)
       .withConverter(makeFirestoreDataConverter(MyDocument));
-    nonSoftDeleteCollection = createFirestoreTemporaryCollection(
+    nonSoftDeleteCollection = getFirestoreCollection(
       firestore,
       MyNonSoftDeletedDocument,
     );
-    parentCollection = createFirestoreTemporaryCollection(
-      firestore,
-      MyNestedDocument,
-    );
-    resolver = {
-      getCollectionsForType<T>(documentType: {
-        new (): T;
-      }): FirestoreCollectionsForDocumentType<any> {
-        if (documentType === MyDocument) {
-          return {
-            activeCollection,
-            softDelete: {
-              collection: deletedCollection,
-              expirationField: '_expirationDate',
-              expirationDelay: 24 * 3600 * 1000,
-            },
-          };
-        }
-
-        if (documentType === MyNonSoftDeletedDocument) {
-          return {
-            activeCollection: nonSoftDeleteCollection,
-            softDelete: null,
-          };
-        }
-
-        if (documentType === MyNestedDocument) {
-          return {
-            activeCollection: parentCollection,
-            softDelete: {
-              // This should not be used anyway, as it is not correct for nested collections.
-              collection: parentCollection,
-              expirationField: '_expirationDate',
-              expirationDelay: 24 * 3600 * 1000,
-            },
-          };
-        }
-
-        throw new Error('Unexpected document type.');
-      },
-    };
+    parentCollection = firestore
+      .collection('parent')
+      .withConverter(makeFirestoreDataConverter(MyNestedDocument));
   });
 
-  afterEach(async () => {
-    await clearFirestoreCollection(activeCollection);
-    await clearFirestoreCollection(deletedCollection);
-    await clearFirestoreCollection(nonSoftDeleteCollection);
-    await clearFirestoreCollection(parentCollection);
-  });
+  afterEach(() => clearFirestoreDatabase(firestore));
+
+  afterAll(() => firestore.terminate());
 
   describe('constructor', () => {
-    it('should expose the transaction and the collection resolver', () => {
+    it('should expose the transaction and the Firestore instance', () => {
       const transaction = {} as any;
 
       const stateTransaction = new FirestoreStateTransaction(
         transaction,
-        resolver,
+        firestore,
       );
 
       expect(stateTransaction.firestoreTransaction).toBe(transaction);
-      expect(stateTransaction.collectionResolver).toBe(resolver);
+      expect(stateTransaction.firestore).toBe(firestore);
     });
   });
 
@@ -173,7 +120,7 @@ describe('FirestoreStateTransaction', () => {
       await firestore.runTransaction(async (transaction) => {
         const stateTransaction = new FirestoreStateTransaction(
           transaction,
-          resolver,
+          firestore,
         );
 
         await stateTransaction.delete(MyDocument, {
@@ -198,7 +145,7 @@ describe('FirestoreStateTransaction', () => {
       await firestore.runTransaction(async (transaction) => {
         const stateTransaction = new FirestoreStateTransaction(
           transaction,
-          resolver,
+          firestore,
         );
 
         await stateTransaction.delete(MyDocument, {
@@ -220,7 +167,7 @@ describe('FirestoreStateTransaction', () => {
       await firestore.runTransaction(async (transaction) => {
         const stateTransaction = new FirestoreStateTransaction(
           transaction,
-          resolver,
+          firestore,
         );
 
         await stateTransaction.delete(MyDocument, {
@@ -241,7 +188,7 @@ describe('FirestoreStateTransaction', () => {
       await firestore.runTransaction(async (transaction) => {
         const stateTransaction = new FirestoreStateTransaction(
           transaction,
-          resolver,
+          firestore,
         );
 
         await stateTransaction.delete(MyNonSoftDeletedDocument, {
@@ -262,7 +209,7 @@ describe('FirestoreStateTransaction', () => {
       await firestore.runTransaction(async (transaction) => {
         const stateTransaction = new FirestoreStateTransaction(
           transaction,
-          resolver,
+          firestore,
         );
 
         await stateTransaction.delete(document);
@@ -296,7 +243,7 @@ describe('FirestoreStateTransaction', () => {
       await firestore.runTransaction(async (transaction) => {
         const stateTransaction = new FirestoreStateTransaction(
           transaction,
-          resolver,
+          firestore,
         );
 
         await stateTransaction.delete(document);
@@ -320,7 +267,7 @@ describe('FirestoreStateTransaction', () => {
       await firestore.runTransaction(async (transaction) => {
         const stateTransaction = new FirestoreStateTransaction(
           transaction,
-          resolver,
+          firestore,
         );
 
         await stateTransaction.set(document);
@@ -341,7 +288,7 @@ describe('FirestoreStateTransaction', () => {
       await firestore.runTransaction(async (transaction) => {
         const stateTransaction = new FirestoreStateTransaction(
           transaction,
-          resolver,
+          firestore,
         );
 
         await stateTransaction.set(document);
@@ -370,7 +317,7 @@ describe('FirestoreStateTransaction', () => {
       await firestore.runTransaction(async (transaction) => {
         const stateTransaction = new FirestoreStateTransaction(
           transaction,
-          resolver,
+          firestore,
         );
 
         await stateTransaction.set(document);
@@ -394,7 +341,7 @@ describe('FirestoreStateTransaction', () => {
       await firestore.runTransaction(async (transaction) => {
         const stateTransaction = new FirestoreStateTransaction(
           transaction,
-          resolver,
+          firestore,
         );
 
         await stateTransaction.set(document);
@@ -417,7 +364,7 @@ describe('FirestoreStateTransaction', () => {
       await firestore.runTransaction(async (transaction) => {
         const stateTransaction = new FirestoreStateTransaction(
           transaction,
-          resolver,
+          firestore,
         );
 
         await stateTransaction.set(document);
@@ -440,7 +387,7 @@ describe('FirestoreStateTransaction', () => {
       await firestore.runTransaction(async (transaction) => {
         const stateTransaction = new FirestoreStateTransaction(
           transaction,
-          resolver,
+          firestore,
         );
 
         await stateTransaction.set(document);

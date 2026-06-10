@@ -1,32 +1,24 @@
 import { AppFixture } from '@causa/runtime/nestjs/testing';
 import { Injectable, Module } from '@nestjs/common';
-import { CollectionReference } from 'firebase-admin/firestore';
+import { CollectionReference, Firestore } from 'firebase-admin/firestore';
 import 'jest-extended';
 import { FirebaseFixture } from '../firebase/testing.js';
 import { FirebaseModule } from '../index.js';
 import { FirestoreCollection } from './collection.decorator.js';
-import { FirestoreCollectionsModule } from './collections.module.js';
-import { InjectFirestoreCollection } from './inject-collection.decorator.js';
 import { FirestoreFixture } from './testing.js';
 
-@FirestoreCollection({ name: 'myCol', path: (doc) => doc.id })
+@FirestoreCollection({ path: (doc) => ['myCol', doc.id] })
 class MyDocument {
   constructor(readonly id: string = '1234') {}
 }
 
 @Injectable()
 class TestService {
-  constructor(
-    @InjectFirestoreCollection(MyDocument)
-    readonly myCol: CollectionReference<MyDocument>,
-  ) {}
+  constructor(readonly firestore: Firestore) {}
 }
 
 @Module({
-  imports: [
-    FirebaseModule.forTesting(),
-    FirestoreCollectionsModule.forRoot([MyDocument]),
-  ],
+  imports: [FirebaseModule.forTesting()],
   providers: [TestService],
 })
 class MyModule {}
@@ -37,7 +29,7 @@ describe('FirestoreFixture', () => {
   let service: TestService;
 
   beforeAll(async () => {
-    fixture = new FirestoreFixture([MyDocument]);
+    fixture = new FirestoreFixture();
     appFixture = new AppFixture(MyModule, {
       fixtures: [new FirebaseFixture(), fixture],
     });
@@ -45,41 +37,56 @@ describe('FirestoreFixture', () => {
     service = appFixture.get(TestService);
   });
 
+  afterAll(() => appFixture.delete());
+
   describe('init', () => {
-    it('should override the collection name with a prefix during tests', async () => {
+    it('should override the Firestore instance with one using a random database', async () => {
+      expect(fixture.databaseId).toStartWith('test-');
+      expect(service.firestore.databaseId).toEqual(fixture.databaseId);
+      expect(fixture.firestore).toBe(service.firestore);
+    });
+
+    it('should use a database that can be read and written', async () => {
       const document = new MyDocument('❄️');
 
-      const actualCollection = service.myCol;
-      await actualCollection.doc('someDoc').set(document);
+      const actualCollection = fixture.collection(MyDocument);
+      await actualCollection.doc(document.id).set(document);
       const actualDocument = (
-        await actualCollection.doc('someDoc').get()
+        await actualCollection.doc(document.id).get()
       ).data();
 
       expect(actualDocument).toBeInstanceOf(MyDocument);
       expect(actualDocument).toEqual({ id: '❄️' });
-      expect(actualCollection).toBeInstanceOf(CollectionReference);
-      expect(actualCollection.path).toEndWith('-myCol');
-      expect(actualCollection.path).not.toStartWith('-myCol');
     });
   });
 
   describe('clear', () => {
-    it('should clear the collection', async () => {
+    it('should clear all the documents in the database', async () => {
       const actualCollection = fixture.collection(MyDocument);
-      await actualCollection.doc('test').set(new MyDocument('test'));
+      const docRef1 = actualCollection.doc('test');
+      const docRef2 = actualCollection
+        .doc('test')
+        .collection('subCollection')
+        .doc('nested');
+      await docRef1.set(new MyDocument('test'));
+      await docRef2.set({ value: '🐑' });
 
       await fixture.clear();
 
-      const actualDocument = await actualCollection.doc('test').get();
+      const actualDocument = await docRef1.get();
       expect(actualDocument.exists).toBeFalse();
+      const actualNestedDocument = await docRef2.get();
+      expect(actualNestedDocument.exists).toBeFalse();
     });
   });
 
   describe('collection', () => {
-    it('should retrieve the collection from the test module', async () => {
+    it('should return the collection in the test database', async () => {
       const actualCollection = fixture.collection(MyDocument);
 
-      expect(actualCollection).toBe(service.myCol);
+      expect(actualCollection).toBeInstanceOf(CollectionReference);
+      expect(actualCollection.path).toEqual('myCol');
+      expect(actualCollection.firestore).toBe(fixture.firestore);
     });
   });
 });

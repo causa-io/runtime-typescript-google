@@ -11,15 +11,14 @@ import {
   Timestamp,
   getFirestore,
 } from 'firebase-admin/firestore';
-import { FirestoreCollection } from './collection.decorator.js';
+import {
+  FirestoreCollection,
+  getFirestoreCollection,
+} from './collection.decorator.js';
 import { wrapFirestoreOperation } from './error-converter.js';
 import { TemporaryFirestoreError } from './errors.js';
-import {
-  clearFirestoreCollection,
-  createFirestoreTemporaryCollection,
-} from './testing.js';
 
-@FirestoreCollection({ name: 'tmpCol', path: (doc) => doc.id })
+@FirestoreCollection({ path: (doc) => ['errorConverterCollection', doc.id] })
 class MyDocument {
   constructor(readonly id: string) {}
 }
@@ -30,12 +29,10 @@ describe('error converter', () => {
 
   beforeAll(() => {
     firestore = getFirestore(initializeApp());
-    collection = createFirestoreTemporaryCollection(firestore, MyDocument);
+    collection = getFirestoreCollection(firestore, MyDocument);
   });
 
-  afterEach(async () => {
-    await clearFirestoreCollection(collection);
-  });
+  afterEach(() => firestore.recursiveDelete(collection));
 
   describe('wrapFirestoreOperation', () => {
     it('should run the operation and return the result', async () => {
