@@ -6,6 +6,15 @@ Breaking changes:
 
 - Upgrade the minimum Node.js version to `22`.
 - Remove the `getDefaultFirebaseApp` utility in favor of `initializeApp`.
+- The `@FirestoreCollection` decorator no longer accepts a `name`. Instead, the `path` function returns the full path of a document from the root of the database, as an array of segments.
+- Remove the `FirestoreCollectionsModule`, the `@InjectFirestoreCollection` decorator, and the `FirestoreCollectionResolver`. Document and collection references can be obtained from the `Firestore` instance using `getReferenceForFirestoreDocument` and the new `getFirestoreCollection` utility.
+- The `FirestoreFixture` no longer creates temporary collections. Instead, it makes the application use a separate Firestore database with a random ID, which is entirely cleared between tests using the Firestore emulator REST API.
+- Remove the `firestoreTypes` option from `createGoogleFixtures`.
+
+Features:
+
+- Support the `databaseId` setting in the `FirebaseModule` Firestore options, to use a named database.
+- Implement the `clearFirestoreDatabase` testing utility, which clears all documents in a database using the Firestore emulator REST API.
 
 Chores:
 
