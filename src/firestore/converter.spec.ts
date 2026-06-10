@@ -4,13 +4,12 @@ import {
   Timestamp,
   getFirestore,
 } from 'firebase-admin/firestore';
-import { FirestoreCollection } from './collection.decorator.js';
 import {
-  clearFirestoreCollection,
-  createFirestoreTemporaryCollection,
-} from './testing.js';
+  FirestoreCollection,
+  getFirestoreCollection,
+} from './collection.decorator.js';
 
-@FirestoreCollection({ name: 'someCollection', path: (doc) => doc.field1 })
+@FirestoreCollection({ path: (doc) => ['converterCollection', doc.field1] })
 class SomeDocument {
   constructor(data: Partial<SomeDocument> = {}) {
     Object.assign(this, {
@@ -31,13 +30,11 @@ describe('converter', () => {
     const firestore = getFirestore(app);
     let collection: CollectionReference<SomeDocument>;
 
-    beforeAll(async () => {
-      collection = createFirestoreTemporaryCollection(firestore, SomeDocument);
+    beforeAll(() => {
+      collection = getFirestoreCollection(firestore, SomeDocument);
     });
 
-    afterEach(async () => {
-      await clearFirestoreCollection(collection);
-    });
+    afterEach(() => firestore.recursiveDelete(collection));
 
     it('should transform the class to a plain object and store it', async () => {
       const document = new SomeDocument();
