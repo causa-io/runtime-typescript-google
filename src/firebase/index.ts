@@ -1,4 +1,3 @@
-export { getDefaultFirebaseApp } from './app.js';
 export { FirestoreAdminClient } from './firestore-admin-client.type.js';
 export {
   FIREBASE_APP_TOKEN,
