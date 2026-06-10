@@ -6,5 +6,9 @@ export default defineConfig({
   extends: [...tseslint.configs.recommended, prettier],
   rules: {
     '@typescript-eslint/no-explicit-any': 'off',
+    '@typescript-eslint/no-unused-vars': [
+      'error',
+      { ignoreRestSiblings: true },
+    ],
   },
 });
