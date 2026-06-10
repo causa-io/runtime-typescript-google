@@ -35,11 +35,8 @@ export class FirestoreStateTransaction
     ) as Type<T>;
     key ??= typeOrEntity as Partial<T>;
 
-    const { activeCollection } =
-      this.collectionResolver.getCollectionsForType(type);
-
     const activeDocRef = getReferenceForFirestoreDocument(
-      activeCollection,
+      this.firestore,
       key,
       type,
     );
@@ -55,11 +52,9 @@ export class FirestoreStateTransaction
 
   async set<T extends object>(entity: T): Promise<void> {
     const documentType = entity.constructor as Type<T>;
-    const { activeCollection } =
-      this.collectionResolver.getCollectionsForType(documentType);
 
     const activeDocRef = getReferenceForFirestoreDocument(
-      activeCollection,
+      this.firestore,
       entity,
     );
 

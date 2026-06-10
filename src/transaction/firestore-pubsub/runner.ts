@@ -12,7 +12,6 @@ import { PubSubPublisher } from '../../pubsub/index.js';
 import { FirestoreReadOnlyStateTransaction } from './readonly-state-transaction.js';
 import { FirestoreStateTransaction } from './state-transaction.js';
 import { FirestorePubSubTransaction } from './transaction.js';
-import type { FirestoreCollectionResolver } from './types.js';
 
 /**
  * A {@link TransactionRunner} that uses Firestore for state and Pub/Sub for events.
@@ -29,7 +28,6 @@ export class FirestorePubSubTransactionRunner extends TransactionRunner<
   constructor(
     readonly firestore: Firestore,
     readonly pubSubPublisher: PubSubPublisher,
-    readonly collectionResolver: FirestoreCollectionResolver,
     private readonly logger: Logger,
   ) {
     super();
@@ -46,7 +44,7 @@ export class FirestorePubSubTransactionRunner extends TransactionRunner<
       this.firestore.runTransaction(async (firestoreTransaction) => {
         const stateTransaction = new FirestoreStateTransaction(
           firestoreTransaction,
-          this.collectionResolver,
+          this.firestore,
         );
         const eventTransaction = new OutboxEventTransaction(
           this.pubSubPublisher,
@@ -82,7 +80,7 @@ export class FirestorePubSubTransactionRunner extends TransactionRunner<
         async (firestoreTransaction) => {
           const transaction = new FirestoreReadOnlyStateTransaction(
             firestoreTransaction,
-            this.collectionResolver,
+            this.firestore,
           );
 
           return await runFn(transaction);

@@ -3,10 +3,9 @@ import type {
   ReadOnlyTransactionOption,
 } from '@causa/runtime';
 import type { Type } from '@nestjs/common';
-import { Transaction } from 'firebase-admin/firestore';
+import { Firestore, Transaction } from 'firebase-admin/firestore';
 import { getReferenceForFirestoreDocument } from '../../firestore/index.js';
 import { getSoftDeleteInfo } from './soft-deleted-collection.decorator.js';
-import type { FirestoreCollectionResolver } from './types.js';
 
 /**
  * Option for a function that accepts a {@link FirestoreReadOnlyStateTransaction}.
@@ -31,20 +30,17 @@ export class FirestoreReadOnlyStateTransaction implements ReadOnlyStateTransacti
     readonly firestoreTransaction: Transaction,
 
     /**
-     * The resolver that provides the Firestore collections for a given document type.
+     * The {@link Firestore} instance to use.
      */
-    readonly collectionResolver: FirestoreCollectionResolver,
+    readonly firestore: Firestore,
   ) {}
 
   async get<T extends object>(
     type: Type<T>,
     entity: Partial<T>,
   ): Promise<T | null> {
-    const { activeCollection } =
-      this.collectionResolver.getCollectionsForType(type);
-
     const activeDocRef = getReferenceForFirestoreDocument(
-      activeCollection,
+      this.firestore,
       entity,
       type,
     );
