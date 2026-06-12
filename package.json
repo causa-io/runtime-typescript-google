@@ -33,7 +33,7 @@
     "test:cov": "npm run test -- --coverage"
   },
   "dependencies": {
-    "@causa/runtime": "^2.0.0-beta.1",
+    "@causa/runtime": "^2.0.0",
     "@google-cloud/precise-date": "^5.0.1",
     "@google-cloud/pubsub": "^5.3.1",
     "@google-cloud/spanner": "^8.7.1",
@@ -60,7 +60,7 @@
     "@tsconfig/node22": "^22.0.5",
     "@types/jest": "^30.0.0",
     "@types/jsonwebtoken": "^9.0.10",
-    "@types/node": "^20.19.42",
+    "@types/node": "^22.19.21",
     "@types/passport-http-bearer": "^1.0.42",
     "@types/supertest": "^7.2.0",
     "dotenv": "^17.4.2",
