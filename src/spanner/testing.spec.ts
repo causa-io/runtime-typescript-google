@@ -1,6 +1,9 @@
+import { AppFixture } from '@causa/runtime/nestjs/testing';
 import { Database, Instance, Spanner } from '@google-cloud/spanner';
+import { Module, type Type } from '@nestjs/common';
 import 'jest-extended';
-import { createDatabase } from './testing.js';
+import { SpannerModule } from './module.js';
+import { createDatabase, SpannerFixture } from './testing.js';
 
 describe('createDatabase', () => {
   let previousEnv: NodeJS.ProcessEnv;
@@ -173,5 +176,80 @@ describe('createDatabase', () => {
       await existingDatabase.delete();
       await actualDatabase.delete();
     }
+  });
+});
+
+describe('SpannerFixture', () => {
+  let fixture: SpannerFixture;
+  let appFixture: AppFixture;
+
+  beforeEach(() => {
+    fixture = new SpannerFixture();
+  });
+
+  afterEach(() => appFixture.delete());
+
+  async function temporaryDatabaseExists(): Promise<boolean> {
+    const database = fixture.instance.database(fixture.name);
+    try {
+      const [exists] = await database.exists();
+      return exists;
+    } finally {
+      await database.close();
+    }
+  }
+
+  it('should create a temporary database and inject it into the application', async () => {
+    @Module({ imports: [SpannerModule.forRoot()] })
+    class ModuleWithSpanner {}
+    appFixture = new AppFixture(ModuleWithSpanner, { fixtures: [fixture] });
+
+    await appFixture.init();
+
+    expect(appFixture.get(Database).formattedName_).toEndWith(
+      `/databases/${fixture.name}`,
+    );
+    expect(await temporaryDatabaseExists()).toBeTrue();
+  });
+
+  it('should not create a database if the application does not provide one', async () => {
+    @Module({})
+    class ModuleWithoutSpanner {}
+    appFixture = new AppFixture(ModuleWithoutSpanner, { fixtures: [fixture] });
+
+    await appFixture.init();
+    await appFixture.clear();
+
+    expect(await temporaryDatabaseExists()).toBeFalse();
+  });
+
+  it('should create a single database if several modules provide it', async () => {
+    function makeDatabaseModule(): Type {
+      @Module({
+        providers: [
+          {
+            provide: Database,
+            useFactory: () => {
+              throw new Error('Should be overridden.');
+            },
+          },
+        ],
+        exports: [Database],
+      })
+      class DatabaseModule {}
+
+      return DatabaseModule;
+    }
+    @Module({ imports: [makeDatabaseModule(), makeDatabaseModule()] })
+    class ModuleWithTwoDatabaseProviders {}
+    appFixture = new AppFixture(ModuleWithTwoDatabaseProviders, {
+      fixtures: [fixture],
+    });
+
+    await appFixture.init();
+
+    const actualDatabases = appFixture.get(Database, { each: true });
+    expect(actualDatabases).toHaveLength(2);
+    expect(actualDatabases[0]).toBe(actualDatabases[1]);
   });
 });

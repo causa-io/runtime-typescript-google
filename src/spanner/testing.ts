@@ -111,13 +111,14 @@ export class SpannerFixture implements Fixture {
 
   /**
    * The {@link SpannerEntityManager} used to clear tables.
+   * This is only set once the temporary database has been created.
    */
-  private entityManager!: SpannerEntityManager;
+  private entityManager: SpannerEntityManager | undefined;
 
   /**
-   * The temporary test database created by this fixture.
+   * The promise creating the temporary test database.
    */
-  private database!: Database;
+  private databasePromise: Promise<Database> | undefined;
 
   constructor(
     options: Partial<CreateDatabaseParameters> &
@@ -133,24 +134,38 @@ export class SpannerFixture implements Fixture {
   }
 
   async init(): Promise<NestJsModuleOverrider> {
-    this.database = await createDatabase(this);
-
-    this.entityManager = new SpannerEntityManager(this.database);
-
+    // This ensures that the temporary database is only created if the application provides a `Database` (uses Spanner).
     return (builder) =>
-      builder.overrideProvider(Database).useValue(this.database);
+      builder
+        .overrideProvider(Database)
+        .useFactory({ factory: () => this.getOrCreateDatabase() });
+  }
+
+  /**
+   * Creates the temporary test database if it does not exist yet.
+   *
+   * @returns The temporary test {@link Database}.
+   */
+  private getOrCreateDatabase(): Promise<Database> {
+    this.databasePromise ??= createDatabase(this).then((database) => {
+      this.entityManager = new SpannerEntityManager(database);
+      return database;
+    });
+
+    return this.databasePromise;
   }
 
   async clear(): Promise<void> {
-    await this.entityManager.transaction(async (transaction) => {
+    await this.entityManager?.transaction(async (transaction) => {
       for (const entity of this.types) {
-        await this.entityManager.clear(entity, { transaction });
+        await this.entityManager?.clear(entity, { transaction });
       }
     });
   }
 
   async delete(): Promise<void> {
-    await this.database.delete();
+    const database = await this.databasePromise?.catch(() => undefined);
+    await database?.delete();
 
     this.spanner.close();
   }
