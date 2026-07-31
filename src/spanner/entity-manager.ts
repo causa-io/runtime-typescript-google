@@ -399,8 +399,7 @@ export class SpannerEntityManager {
   ): Promise<T>;
   async transaction<T>(
     optionsOrRunFn:
-      | SpannerReadWriteTransactionOption
-      | SpannerTransactionFunction<T>,
+      SpannerReadWriteTransactionOption | SpannerTransactionFunction<T>,
     runFn?: SpannerTransactionFunction<T>,
   ): Promise<T> {
     const options = runFn

@@ -70,9 +70,7 @@ export function createFirestore(app: App, settings: Settings): Firestore {
  * Options for the services can be passed using injection tokens.
  */
 const childProviders: (
-  | ClassProvider<any>
-  | ValueProvider<any>
-  | FactoryProvider<any>
+  ClassProvider<any> | ValueProvider<any> | FactoryProvider<any>
 )[] = [
   { provide: Auth, useFactory: getAuth, inject: [FIREBASE_APP_TOKEN] },
   {
