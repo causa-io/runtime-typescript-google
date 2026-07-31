@@ -28,8 +28,7 @@ export class SpannerReadOnlyStateTransaction implements ReadOnlyStateTransaction
   constructor(
     readonly entityManager: SpannerEntityManager,
     readonly spannerTransaction:
-      | SpannerReadWriteTransaction
-      | SpannerReadOnlyTransaction,
+      SpannerReadWriteTransaction | SpannerReadOnlyTransaction,
   ) {}
 
   async get<T extends object>(

@@ -15,16 +15,14 @@ export class SpannerOutboxFixture implements Fixture {
    * The spy on {@link SpannerOutboxSender.prototype.updateOutbox}, mocked to resolve immediately.
    */
   private updateOutboxSpy:
-    | jest.Spied<SpannerOutboxSender['updateOutbox']>
-    | undefined;
+    jest.Spied<SpannerOutboxSender['updateOutbox']> | undefined;
 
   /**
    * The spy on {@link SpannerOutboxSender.prototype.fetchEvents}, mocked to return an empty array.
    * This makes polling harmless without needing to set `SPANNER_OUTBOX_POLLING_INTERVAL` to `0`.
    */
   private fetchEventsSpy:
-    | jest.Spied<SpannerOutboxSender['fetchEvents']>
-    | undefined;
+    jest.Spied<SpannerOutboxSender['fetchEvents']> | undefined;
 
   async init(): Promise<NestJsModuleOverrider | undefined> {
     this.updateOutboxSpy = jest

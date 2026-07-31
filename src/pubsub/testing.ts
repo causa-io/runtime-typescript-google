@@ -327,7 +327,9 @@ export class PubSubFixture implements Fixture, EventFixture {
 
   /**
    * Checks that the given messages have been published to the specified topic.
-   * Each expected message must match a distinct received message.
+   * By default, each expected message is matched independently against the received messages, such that a single
+   * received message can satisfy several expected messages. Set the `exact` option to require a one-to-one match
+   * between expected and received messages.
    *
    * @param topic The original name of the event topic.
    * @param expectedMessages The messages expected to have been published.
@@ -485,27 +487,49 @@ export class PubSubFixture implements Fixture, EventFixture {
       );
     }
 
-    if (this.publisherSpy) {
-      const topicPublishCount = this.publisherSpy.mock.calls
-        .map(([topicOrEvent]) =>
-          typeof topicOrEvent === 'string' ? topicOrEvent : topicOrEvent.topic,
-        )
-        .reduce(
-          (acc, t) => acc.set(t, (acc.get(t) ?? 0) + 1),
-          new Map<string, number>(),
-        );
-
-      await Promise.all(
-        Array.from(topicPublishCount.entries())
-          .filter(([topic]) => topic in this.topics)
-          .map(([topic, count]) =>
-            this.expectMessages(
-              topic,
-              Array.from({ length: count }, () => expect.objectContaining({})),
-            ),
-          ),
-      );
+    if (!this.publisherSpy) {
+      return;
     }
+
+    const { calls, results } = this.publisherSpy.mock;
+
+    // Rejected outcomes are failed publishes, which will never be received by the subscriptions.
+    const publishOutcomes = await Promise.allSettled(
+      calls.map(async ([topicOrEvent], index) => {
+        const result = results[index];
+        if (result.type !== 'return') {
+          throw result.value;
+        }
+        await result.value;
+
+        return typeof topicOrEvent === 'string'
+          ? topicOrEvent
+          : topicOrEvent.topic;
+      }),
+    );
+
+    const topicPublishCount = publishOutcomes
+      .filter(
+        (o): o is PromiseFulfilledResult<string> => o.status === 'fulfilled',
+      )
+      .reduce(
+        (acc, { value }) => acc.set(value, (acc.get(value) ?? 0) + 1),
+        new Map<string, number>(),
+      );
+
+    await Promise.all(
+      Array.from(topicPublishCount.entries())
+        .filter(([topic]) => topic in this.topics)
+        .map(([topic, count]) =>
+          this.expectMessages(
+            topic,
+            Array.from({ length: count }, () => expect.objectContaining({})),
+            // `exact` ensures as many messages as publish calls are received. Without it, a single received message
+            // would satisfy all the (identical) expected messages.
+            { exact: true },
+          ),
+        ),
+    );
   }
 
   /**
