@@ -23,6 +23,9 @@ class TestService {
 })
 class MyModule {}
 
+@Module({})
+class ModuleWithoutFirestore {}
+
 describe('FirestoreFixture', () => {
   let appFixture: AppFixture;
   let fixture: FirestoreFixture;
@@ -77,6 +80,22 @@ describe('FirestoreFixture', () => {
       expect(actualDocument.exists).toBeFalse();
       const actualNestedDocument = await docRef2.get();
       expect(actualNestedDocument.exists).toBeFalse();
+    });
+
+    it('should do nothing if the application does not provide a Firestore instance', async () => {
+      const otherFixture = new FirestoreFixture();
+      const otherAppFixture = new AppFixture(ModuleWithoutFirestore, {
+        fixtures: [otherFixture],
+      });
+      await otherAppFixture.init();
+
+      try {
+        await otherAppFixture.clear();
+
+        expect(() => otherFixture.firestore).toThrow();
+      } finally {
+        await otherAppFixture.delete();
+      }
     });
   });
 
