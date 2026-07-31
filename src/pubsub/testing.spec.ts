@@ -1,6 +1,9 @@
 import { AppFixture } from '@causa/runtime/nestjs/testing';
+import type { Topic } from '@google-cloud/pubsub';
+import { jest } from '@jest/globals';
 import { Module } from '@nestjs/common';
 import 'jest-extended';
+import { setTimeout } from 'timers/promises';
 import { PubSubPublisher } from './publisher.js';
 import { PubSubPublisherModule } from './publisher.module.js';
 import { PubSubFixture } from './testing.js';
@@ -112,19 +115,47 @@ describe('PubSubFixture', () => {
   });
 
   describe('clear', () => {
-    it('should not leak messages from the previous test into the next', async () => {
-      const firstPublishPromise = publisher.publish(
-        'my.event.v1',
-        new SimpleEvent({ value: 'c' }),
+    it('should wait for all the published messages', async () => {
+      // `getTopic` creates the `Topic` in the publisher's cache.
+      const topic = (publisher as any).getTopic('my.event.v1') as Topic;
+      // The first message is slower to be published, such that it is received after the second one.
+      const publishMessage = topic.publishMessage.bind(topic);
+      jest
+        .spyOn(topic, 'publishMessage')
+        .mockImplementationOnce(async (message) => {
+          await setTimeout(500);
+          return await publishMessage(message);
+        });
+      const publishPromises = ['a', 'b'].map((value) =>
+        publisher.publish('my.event.v1', new SimpleEvent({ value })),
       );
 
       await fixture.clear();
 
-      await publisher.publish('my.event.v1', new SimpleEvent({ value: 'd' }));
-      await fixture.expectEvents('my.event.v1', [{ value: 'd' }], {
+      // Messages published before the `clear` should not leak into the messages published afterwards.
+      await Promise.all(publishPromises);
+      await publisher.publish('my.event.v1', new SimpleEvent({ value: 'c' }));
+      await fixture.expectEvents('my.event.v1', [{ value: 'c' }], {
         exact: true,
       });
-      await firstPublishPromise;
+    });
+
+    it('should not wait for messages that failed to be published', async () => {
+      await publisher.publish('my.event.v1', new SimpleEvent({ value: 'a' }));
+      await fixture.expectEvent('my.event.v1', { value: 'a' });
+      jest
+        .spyOn(publisher['topicCache']['my.event.v1'] as any, 'publishMessage')
+        .mockRejectedValueOnce(new Error('📫💥'));
+      const failedPublish = publisher.publish(
+        'my.event.v1',
+        new SimpleEvent({ value: 'b' }),
+      );
+      await expect(failedPublish).rejects.toThrow('📫💥');
+
+      // This would time out and throw if the failed publish was expected to be received.
+      await fixture.clear();
+
+      await fixture.expectNoMessage('my.event.v1');
     });
   });
 });
