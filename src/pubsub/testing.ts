@@ -202,7 +202,15 @@ export class PubSubFixture implements Fixture, EventFixture {
     await this.pubSub.getClientConfig();
 
     const [topic] = await this.pubSub.createTopic(topicName);
-    const [subscription] = await topic.createSubscription(subscriptionName);
+
+    let subscription: Subscription;
+    try {
+      [subscription] = await topic.createSubscription(subscriptionName);
+    } catch (error) {
+      // The topic is not referenced in `topics` yet, which means it would never be deleted by `deleteTopic`.
+      await topic.delete();
+      throw error;
+    }
 
     this.topics[sourceTopic] = { topic, subscription, messages: [] };
 

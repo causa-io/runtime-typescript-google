@@ -5,6 +5,9 @@
 Fixes:
 
 - Ensure `PubSubFixture.expectNoMessage` and `PubSubFixture.clear()` wait for all the published messages, and do not wait for messages that failed to be published.
+- Make `FirestoreFixture.clear()` a no-op when the application does not provide a `Firestore` instance, such that the fixture (and `createGoogleFixtures`) can be used with applications that do not rely on Firestore.
+- Ensure the `PubSubFixture` deletes the temporary topic it created when the corresponding subscription cannot be created.
+- Make the `SpannerFixture` create its temporary database from the factory replacing the `Database` provider, rather than eagerly during initialization. No database is created for applications that do not provide a `Database`.
 
 ## v2.0.0 (2026-06-12)
 

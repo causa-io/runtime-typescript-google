@@ -1,5 +1,4 @@
 import type {
-  AppFixture,
   Fixture,
   NestJsModuleOverrider,
 } from '@causa/runtime/nestjs/testing';
@@ -58,14 +57,14 @@ export async function clearFirestoreDatabase(
  */
 export class FirestoreFixture implements Fixture {
   /**
-   * The parent {@link AppFixture}.
-   */
-  private appFixture!: AppFixture;
-
-  /**
    * The ID of the Firestore database used during tests.
    */
   readonly databaseId: string;
+
+  /**
+   * The {@link Firestore} instance for the test database.
+   */
+  private testFirestore: Firestore | undefined;
 
   constructor(
     options: {
@@ -78,39 +77,57 @@ export class FirestoreFixture implements Fixture {
     this.databaseId = options.databaseId ?? `test-${randomUUID()}`;
   }
 
-  async init(appFixture: AppFixture): Promise<NestJsModuleOverrider> {
-    this.appFixture = appFixture;
-
+  async init(): Promise<NestJsModuleOverrider> {
     return (builder) =>
       builder.overrideProvider(Firestore).useFactory({
-        factory: (app: App, settings: Settings) => {
-          const firestore = createFirestore(app, {
-            ...settings,
-            databaseId: this.databaseId,
-          });
-          // The `FirebaseLifecycleService` is disabled by the `FirebaseFixture`, such that the shared Firebase app is
-          // not deleted. The instance for the test database is however not shared and should be terminated.
-          return Object.assign(firestore, {
-            onApplicationShutdown: () => firestore.terminate(),
-          });
-        },
+        factory: (app: App, settings: Settings) =>
+          this.getOrCreateFirestore(app, settings),
         inject: [FIREBASE_APP_TOKEN, FIRESTORE_SETTINGS_TOKEN],
       });
   }
 
+  /**
+   * Creates the {@link Firestore} instance for the test database if it does not exist yet.
+   *
+   * @param app The Firebase application for which the instance should be created.
+   * @param settings The Firestore settings to use.
+   * @returns The {@link Firestore} instance for the test database.
+   */
+  private getOrCreateFirestore(app: App, settings: Settings): Firestore {
+    this.testFirestore ??= createFirestore(app, {
+      ...settings,
+      databaseId: this.databaseId,
+    });
+
+    return this.testFirestore;
+  }
+
   async clear(): Promise<void> {
-    await clearFirestoreDatabase(this.firestore);
+    if (!this.testFirestore) {
+      return;
+    }
+
+    await clearFirestoreDatabase(this.testFirestore);
   }
 
   async delete(): Promise<void> {
-    this.appFixture = undefined as any;
+    // The `FirebaseLifecycleService` is disabled by the `FirebaseFixture`, such that the shared Firebase app is not
+    // deleted. The instance for the test database is however not shared and should be terminated.
+    await this.testFirestore?.terminate();
+    this.testFirestore = undefined;
   }
 
   /**
    * The underlying {@link Firestore} instance used by this fixture.
    */
   get firestore(): Firestore {
-    return this.appFixture.get(Firestore);
+    if (!this.testFirestore) {
+      throw new Error(
+        'The Firestore instance is not available because the application does not provide one.',
+      );
+    }
+
+    return this.testFirestore;
   }
 
   /**
