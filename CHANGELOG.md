@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+Fixes:
+
+- Ensure `PubSubFixture.expectNoMessage` and `PubSubFixture.clear()` wait for all the published messages, and do not wait for messages that failed to be published.
+
 ## v2.0.0 (2026-06-12)
 
 See the changelog of the beta releases.
