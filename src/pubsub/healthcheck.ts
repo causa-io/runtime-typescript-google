@@ -1,8 +1,5 @@
 import { orFallbackFn, tryMap } from '@causa/runtime';
-import {
-  BaseHealthIndicatorService,
-  type HealthChecker,
-} from '@causa/runtime/nestjs';
+import type { HealthChecker } from '@causa/runtime/nestjs';
 import { PubSub } from '@google-cloud/pubsub';
 import { status } from '@grpc/grpc-js';
 import { Injectable } from '@nestjs/common';
@@ -20,16 +17,11 @@ const PUBSUB_HEALTH_KEY = 'google.pubSub';
  * A service testing the availability of the Pub/Sub service.
  */
 @Injectable()
-export class PubSubHealthIndicator
-  extends BaseHealthIndicatorService
-  implements HealthChecker
-{
+export class PubSubHealthIndicator implements HealthChecker {
   constructor(
     private readonly pubSub: PubSub,
     private readonly healthIndicatorService: HealthIndicatorService,
-  ) {
-    super();
-  }
+  ) {}
 
   async check(): Promise<HealthIndicatorResult> {
     const check = this.healthIndicatorService.check(PUBSUB_HEALTH_KEY);
