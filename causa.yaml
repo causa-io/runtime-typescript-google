@@ -22,8 +22,6 @@ javascript:
         - GHSA-w5hq-g745-h8pq
         - GHSA-4x5r-pxfx-6jf8
         - GHSA-8988-4f7v-96qf
-        - GHSA-mh99-v99m-4gvg
-        - GHSA-pm4m-ph32-ghv5
     update:
       packageTargets:
         "@types/node": minor
