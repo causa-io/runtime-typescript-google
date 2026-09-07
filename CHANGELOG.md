@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v3.0.0-beta.1 (2026-09-07)
+
 Breaking changes:
 
 - Upgrade to NestJS 12 and `@causa/runtime` 3.
