@@ -7,6 +7,20 @@ Breaking changes:
 - Upgrade to NestJS 12 and `@causa/runtime` 3.
 - Upgrade the minimum Node.js version to `22.12`, as required by NestJS 12.
 - The `SpannerHealthIndicator`, `PubSubHealthIndicator`, and `FirestoreHealthIndicator` no longer extend the (removed) `BaseHealthIndicatorService`.
+- Remove the deprecated `SpannerEntityManager.sqlTableName` method, in favor of `SpannerEntityManager.sqlTable`.
+
+Features:
+
+- Export the `SnapshotFunction` and `SpannerTransactionFunction` types.
+
+Chores:
+
+- Set most logs to debug level.
+
+Fixes:
+
+- Map the pino `trace` level to the `DEBUG` Cloud Logging severity, instead of `CRITICAL`.
+- Ensure `CloudTasksScheduler.schedule` does not mutate the HTTP request passed by the caller.
 
 ## v2.0.1 (2026-07-31)
 

@@ -7,7 +7,8 @@ import { PubSubFixture } from './pubsub/testing.js';
 import { CloudSchedulerFixture } from './scheduler/testing.js';
 import { SpannerFixture } from './spanner/testing.js';
 import { CloudTasksFixture } from './tasks/testing.js';
-import { AppCheckFixture, FirebaseFixture } from './testing.js';
+import { AppCheckFixture } from './app-check/testing.js';
+import { FirebaseFixture } from './firebase/testing.js';
 import {
   FirestorePubSubTransactionRunner,
   SpannerOutboxTransactionRunner,

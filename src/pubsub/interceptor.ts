@@ -128,7 +128,7 @@ export class PubSubEventHandlerInterceptor extends BaseEventHandlerInterceptor {
     }
 
     this.logger.assign({ pubSubMessageId: message.messageId });
-    this.logger.info('Successfully parsed Pub/Sub message.');
+    this.logger.debug('Successfully parsed Pub/Sub message.');
 
     return { ...message, body };
   }

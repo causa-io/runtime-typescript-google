@@ -47,7 +47,7 @@ export class CloudTasksEventHandlerInterceptor extends BaseEventHandlerIntercept
         forbidNonWhitelisted: false,
       });
       this.assignEventId(info.taskName);
-      this.logger.info('Successfully parsed Cloud Tasks request.');
+      this.logger.debug('Successfully parsed Cloud Tasks request.');
       return info;
     } catch (error: any) {
       this.logger.error(

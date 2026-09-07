@@ -200,7 +200,7 @@ export class PubSubPublisher implements EventPublisher, OnApplicationShutdown {
       orderingKey: key,
     });
 
-    this.logger.info(
+    this.logger.debug(
       { publishedMessage: { ...messageInfo, messageId } },
       'Published message to Pub/Sub.',
     );

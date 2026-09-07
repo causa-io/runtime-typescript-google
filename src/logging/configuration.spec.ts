@@ -16,7 +16,7 @@ describe('configuration', () => {
     getLogs = getLoggedObjects;
     updatePinoConfiguration({
       ...googlePinoConfiguration,
-      level: 'debug',
+      level: 'trace',
     });
     spyOnLogger();
     logger = getDefaultLogger();
@@ -68,10 +68,12 @@ describe('configuration', () => {
   });
 
   it('should map the severity levels', () => {
+    logger.trace('🔍');
     logger.debug('🐛');
     logger.info('📢');
     logger.warn('⚠️');
     logger.error('❌');
+    logger.fatal('💀');
 
     const actualLogs = getLogs();
 
@@ -79,13 +81,19 @@ describe('configuration', () => {
       severity: 'DEBUG',
     });
     expect(actualLogs[1]).toMatchObject({
-      severity: 'INFO',
+      severity: 'DEBUG',
     });
     expect(actualLogs[2]).toMatchObject({
-      severity: 'WARNING',
+      severity: 'INFO',
     });
     expect(actualLogs[3]).toMatchObject({
+      severity: 'WARNING',
+    });
+    expect(actualLogs[4]).toMatchObject({
       severity: 'ERROR',
+    });
+    expect(actualLogs[5]).toMatchObject({
+      severity: 'CRITICAL',
     });
   });
 

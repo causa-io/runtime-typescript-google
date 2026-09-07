@@ -38,7 +38,7 @@ export class FirestorePubSubTransactionRunner extends TransactionRunner<
     options: ReadWriteTransactionOptions,
     runFn: TransactionFn<FirestorePubSubTransaction, RT>,
   ): Promise<RT> {
-    this.logger.info('Creating a Firestore Pub/Sub transaction.');
+    this.logger.debug('Creating a Firestore Pub/Sub transaction.');
 
     const { result, eventTransaction } = await wrapFirestoreOperation(() =>
       this.firestore.runTransaction(async (firestoreTransaction) => {
@@ -57,13 +57,13 @@ export class FirestorePubSubTransactionRunner extends TransactionRunner<
 
         const result = await runFn(transaction);
 
-        this.logger.info('Committing the Firestore transaction.');
+        this.logger.debug('Committing the Firestore transaction.');
         return { result, eventTransaction };
       }),
     );
 
     if (eventTransaction.events.length > 0) {
-      this.logger.info('Publishing Pub/Sub events.');
+      this.logger.debug('Publishing Pub/Sub events.');
       await Promise.all(
         eventTransaction.events.map((e) => this.pubSubPublisher.publish(e)),
       );

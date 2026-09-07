@@ -50,7 +50,7 @@ export class CloudSchedulerEventHandlerInterceptor extends BaseEventHandlerInter
         ...validatorOptions,
         forbidNonWhitelisted: false,
       });
-      this.logger.info('Successfully parsed Cloud Scheduler request.');
+      this.logger.debug('Successfully parsed Cloud Scheduler request.');
       return info;
     } catch (error: any) {
       this.logger.error(
