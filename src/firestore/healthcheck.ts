@@ -1,8 +1,5 @@
 import { orFallbackFn, tryMap } from '@causa/runtime';
-import {
-  BaseHealthIndicatorService,
-  type HealthChecker,
-} from '@causa/runtime/nestjs';
+import type { HealthChecker } from '@causa/runtime/nestjs';
 import { Injectable } from '@nestjs/common';
 import {
   HealthIndicatorService,
@@ -19,16 +16,11 @@ const FIRESTORE_HEALTH_KEY = 'google.firestore';
  * A service testing the availability of the Firestore service.
  */
 @Injectable()
-export class FirestoreHealthIndicator
-  extends BaseHealthIndicatorService
-  implements HealthChecker
-{
+export class FirestoreHealthIndicator implements HealthChecker {
   constructor(
     private readonly firestore: Firestore,
     private readonly healthIndicatorService: HealthIndicatorService,
-  ) {
-    super();
-  }
+  ) {}
 
   async check(): Promise<HealthIndicatorResult> {
     const check = this.healthIndicatorService.check(FIRESTORE_HEALTH_KEY);
