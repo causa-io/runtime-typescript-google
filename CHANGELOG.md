@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## v3.0.0 (2026-09-07)
+
+See the changelog of the beta releases.
+
 ## v3.0.0-beta.1 (2026-09-07)
 
 Breaking changes:
