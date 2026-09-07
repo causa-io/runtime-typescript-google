@@ -67,7 +67,6 @@ let database!: Database;
  * Instantiates a database object using the configuration found in the environment variables and the (`gbase`) default
  * session pool options.
  *
- * @param options Session pool options when instantiating the database. Default is {@link SPANNER_SESSION_POOL_OPTIONS_FOR_CLOUD_FUNCTIONS}.
  * @returns The database.
  */
 export function getDefaultSpannerDatabaseForCloudFunction(): Database {
@@ -88,7 +87,7 @@ export function getDefaultSpannerDatabaseForCloudFunction(): Database {
 }
 
 /**
- * Catches errors emitted from a database object, logging them as errors using the given logger.
+ * Catches errors emitted from a database object, logging them using the given logger.
  *
  * @param database The database for which errors should be caught.
  * @param logger The logger used to log database errors.
