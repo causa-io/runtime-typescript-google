@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+Breaking changes:
+
+- Upgrade to NestJS 12 and `@causa/runtime` 3.
+- Upgrade the minimum Node.js version to `22.12`, as required by NestJS 12.
+- The `SpannerHealthIndicator`, `PubSubHealthIndicator`, and `FirestoreHealthIndicator` no longer extend the (removed) `BaseHealthIndicatorService`.
+
 ## v2.0.1 (2026-07-31)
 
 Fixes:
