@@ -25,7 +25,7 @@ export type HttpRequestCreation = Omit<HttpRequest, 'body' | 'oidcToken'> & {
 };
 
 /**
- * The default retry options when creating a Cloud Tasks using {@link scheduleCloudFunctionTask}.
+ * The default retry options when creating a Cloud Tasks task using {@link CloudTasksScheduler.schedule}.
  * The `createTask` method of the client does not retry creations by default. The parameters below are the default
  * parameters for idempotent operations in the `cloud_tasks_client_config.json` configuration file.
  */
@@ -109,21 +109,28 @@ export class CloudTasksScheduler {
   private async makeHttpRequest(
     httpRequest: HttpRequestCreation,
   ): Promise<HttpRequest> {
-    if (typeof httpRequest.body === 'object') {
-      const jsonString = JSON.stringify(httpRequest.body);
-      httpRequest.body = Buffer.from(jsonString).toString('base64');
-      httpRequest.headers = {
-        ...httpRequest.headers,
+    const { body, oidcToken, ...rest } = httpRequest;
+    const request: HttpRequest = rest;
+
+    if (typeof body === 'object') {
+      const jsonString = JSON.stringify(body);
+      request.body = Buffer.from(jsonString).toString('base64');
+      request.headers = {
+        ...request.headers,
         'Content-Type': 'application/json',
       };
+    } else {
+      request.body = body;
     }
 
-    if (httpRequest.oidcToken === 'self') {
+    if (oidcToken === 'self') {
       const serviceAccountEmail = await this.getSelfServiceAccountEmail();
-      httpRequest.oidcToken = { serviceAccountEmail };
+      request.oidcToken = { serviceAccountEmail };
+    } else {
+      request.oidcToken = oidcToken;
     }
 
-    return httpRequest as HttpRequest;
+    return request;
   }
 
   /**
@@ -131,7 +138,7 @@ export class CloudTasksScheduler {
    *
    * @param queue The Cloud Tasks queue to schedule the task in.
    * @param scheduleDate The date at which the task should be scheduled.
-   * @param httpRequest The HTTP request to perform by the task.
+   * @param creation The HTTP request to perform by the task.
    * @param options Options when creating the task.
    * @returns The created task.
    */
