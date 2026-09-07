@@ -26,6 +26,8 @@ javascript:
       packageTargets:
         "@types/node": minor
         typescript: minor
+        # PreciseDate must stay in sync with Spanner's required version.
+        "@google-cloud/precise-date": minor
 
 google:
   firestore:
