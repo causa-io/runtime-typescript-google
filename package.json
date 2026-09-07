@@ -33,7 +33,7 @@
     "test:cov": "npm run test -- --coverage"
   },
   "dependencies": {
-    "@causa/runtime": "^3.0.0-beta.2",
+    "@causa/runtime": "^3.0.0",
     "@google-cloud/precise-date": "^5.2.0",
     "@google-cloud/pubsub": "^6.0.1",
     "@google-cloud/spanner": "^8.11.0",
