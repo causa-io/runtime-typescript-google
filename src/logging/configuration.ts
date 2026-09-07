@@ -29,6 +29,7 @@ export const googlePinoConfiguration: LoggerOptions = {
       // https://cloud.google.com/logging/docs/reference/v2/rest/v2/LogEntry#LogSeverity
       binding.severity =
         {
+          [levelMapping.trace]: 'DEBUG',
           [levelMapping.debug]: 'DEBUG',
           [levelMapping.info]: 'INFO',
           [levelMapping.warn]: 'WARNING',
