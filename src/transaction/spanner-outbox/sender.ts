@@ -6,12 +6,15 @@ import {
   type OutboxEventSenderOptions,
 } from '@causa/runtime';
 import { Logger } from '@causa/runtime/nestjs';
-import type { Statement } from '@google-cloud/spanner/build/src/transaction.js';
+import { MutationSet } from '@google-cloud/spanner';
 import type { Type } from '@nestjs/common';
 import {
+  InvalidEntityDefinitionError,
   SpannerEntityManager,
   SpannerRequestPriority,
 } from '../../spanner/index.js';
+import { getSpannerColumnsMetadata } from '../../spanner/column.decorator.js';
+import { getSpannerTableMetadataFromType } from '../../spanner/table.decorator.js';
 
 /**
  * The sharding configuration for the {@link SpannerOutboxSender}.
@@ -54,32 +57,10 @@ export type SpannerOutboxSenderOptions = OutboxEventSenderOptions & {
   readonly sharding?: SpannerOutboxSenderShardingOptions;
 
   /**
-   * The name of the column used to store the event ID.
-   * Defaults to `id`.
-   */
-  readonly idColumn?: string;
-
-  /**
-   * The name of the column used to store the lease expiration.
-   * Defaults to `leaseExpiration`.
-   */
-  readonly leaseExpirationColumn?: string;
-
-  /**
    * The index used to fetch events.
    */
   readonly index?: string;
 };
-
-/**
- * The default name for the {@link OutboxEvent.id} column.
- */
-const DEFAULT_ID_COLUMN = 'id';
-
-/**
- * The default name for the {@link OutboxEvent.leaseExpiration} column.
- */
-const DEFAULT_LEASE_EXPIRATION_COLUMN = 'leaseExpiration';
 
 /**
  * An {@link OutboxEventSender} that uses a Spanner table to store events.
@@ -104,7 +85,12 @@ export class SpannerOutboxSender extends OutboxEventSender {
   private shardsPermutationIndex: number | undefined;
 
   /**
-   * The name of the column used for the {@link OutboxEvent.id} property.
+   * The name of the outbox table.
+   */
+  readonly tableName: string;
+
+  /**
+   * The name of the column used for the {@link OutboxEvent.id} property, which is the primary key of the outbox table.
    */
   readonly idColumn: string;
 
@@ -131,11 +117,6 @@ export class SpannerOutboxSender extends OutboxEventSender {
   readonly acquireLeaseSql: string;
 
   /**
-   * The SQL query used to update events in the outbox after they have been successfully published.
-   */
-  readonly successfulUpdateSql: string;
-
-  /**
    * The SQL query used to update events in the outbox after they have failed to be published.
    */
   readonly failedUpdateSql: string;
@@ -145,6 +126,7 @@ export class SpannerOutboxSender extends OutboxEventSender {
    *
    * @param entityManager The {@link SpannerEntityManager} to use to access the outbox.
    * @param outboxEventType The type for the Spanner table used to store outbox events.
+   *   Its `id` and `leaseExpiration` properties should be Spanner columns, and `id` should be its only primary key column.
    * @param publisher The {@link EventPublisher} to use to publish events.
    * @param logger The {@link Logger} to use.
    * @param options Options for the {@link SpannerOutboxSender}.
@@ -156,14 +138,37 @@ export class SpannerOutboxSender extends OutboxEventSender {
     logger: Logger,
     options: SpannerOutboxSenderOptions = {},
   ) {
+    // Validation occurs before calling the parent constructor, which starts polling the outbox.
+    const tableMetadata = getSpannerTableMetadataFromType(outboxEventType);
+    const columnsMetadata = getSpannerColumnsMetadata(outboxEventType);
+    const idColumn = columnsMetadata.id?.name;
+    const leaseExpirationColumn = columnsMetadata.leaseExpiration?.name;
+    if (!tableMetadata || !idColumn || !leaseExpirationColumn) {
+      throw new InvalidEntityDefinitionError(
+        outboxEventType,
+        `The outbox event type should be a Spanner table defining the 'id' and 'leaseExpiration' columns.`,
+      );
+    }
+    // Successfully published events are deleted using their ID as the primary key.
+    if (
+      tableMetadata.primaryKey.length !== 1 ||
+      tableMetadata.primaryKey[0] !== idColumn
+    ) {
+      throw new InvalidEntityDefinitionError(
+        outboxEventType,
+        `The primary key of the outbox table should only consist of the '${idColumn}' column.`,
+      );
+    }
+
     super(publisher, logger, options);
+
+    this.tableName = tableMetadata.name;
 
     this.sharding = options.sharding
       ? { roundRobin: true, ...options.sharding }
       : undefined;
-    this.idColumn = options.idColumn ?? DEFAULT_ID_COLUMN;
-    this.leaseExpirationColumn =
-      options.leaseExpirationColumn ?? DEFAULT_LEASE_EXPIRATION_COLUMN;
+    this.idColumn = idColumn;
+    this.leaseExpirationColumn = leaseExpirationColumn;
     this.index = options.index;
 
     if (this.sharding?.roundRobin) {
@@ -179,7 +184,6 @@ export class SpannerOutboxSender extends OutboxEventSender {
     ({
       fetchEventsSql: this.fetchEventsSql,
       acquireLeaseSql: this.acquireLeaseSql,
-      successfulUpdateSql: this.successfulUpdateSql,
       failedUpdateSql: this.failedUpdateSql,
     } = this.buildSql());
   }
@@ -191,10 +195,7 @@ export class SpannerOutboxSender extends OutboxEventSender {
    */
   protected buildSql(): Pick<
     SpannerOutboxSender,
-    | 'fetchEventsSql'
-    | 'acquireLeaseSql'
-    | 'successfulUpdateSql'
-    | 'failedUpdateSql'
+    'fetchEventsSql' | 'acquireLeaseSql' | 'failedUpdateSql'
   > {
     const table = this.entityManager.sqlTable(this.outboxEventType);
     const tableWithIndex = this.entityManager.sqlTable(this.outboxEventType, {
@@ -236,12 +237,6 @@ export class SpannerOutboxSender extends OutboxEventSender {
       THEN RETURN
         ${this.entityManager.sqlColumns(this.outboxEventType)}`;
 
-    const successfulUpdateSql = `
-      DELETE FROM
-        ${table}
-      WHERE
-        \`${this.idColumn}\` IN UNNEST(@ids)`;
-
     const failedUpdateSql = `
       UPDATE
         ${table}
@@ -250,12 +245,7 @@ export class SpannerOutboxSender extends OutboxEventSender {
       WHERE
         \`${this.idColumn}\` IN UNNEST(@ids)`;
 
-    return {
-      fetchEventsSql,
-      acquireLeaseSql,
-      successfulUpdateSql,
-      failedUpdateSql,
-    };
+    return { fetchEventsSql, acquireLeaseSql, failedUpdateSql };
   }
 
   protected async fetchEvents(): Promise<OutboxEvent[]> {
@@ -303,26 +293,31 @@ export class SpannerOutboxSender extends OutboxEventSender {
       (success ? successfulSends : failedSends).push(id),
     );
 
-    const batchUpdates: Statement[] = [];
+    const updates: Promise<unknown>[] = [];
     if (successfulSends.length > 0) {
-      batchUpdates.push({
-        sql: this.successfulUpdateSql,
-        params: { ids: successfulSends },
-      });
+      // Blindly deleting rows does not require a read-write transaction, and can safely be replayed.
+      const mutations = new MutationSet();
+      mutations.deleteRows(this.tableName, successfulSends);
+      updates.push(this.entityManager.database.writeAtLeastOnce(mutations));
     }
     if (failedSends.length > 0) {
-      batchUpdates.push({
-        sql: this.failedUpdateSql,
-        params: { ids: failedSends },
-      });
+      updates.push(
+        this.entityManager.transaction((transaction) =>
+          transaction.runUpdate({
+            sql: this.failedUpdateSql,
+            params: { ids: failedSends },
+          }),
+        ),
+      );
     }
 
-    if (batchUpdates.length === 0) {
-      return;
-    }
-
-    await this.entityManager.transaction((transaction) =>
-      transaction.batchUpdate(batchUpdates),
+    // Both updates are awaited before throwing, such that no update is still running when the error is handled.
+    const results = await Promise.allSettled(updates);
+    const failure = results.find(
+      (r): r is PromiseRejectedResult => r.status === 'rejected',
     );
+    if (failure) {
+      throw failure.reason;
+    }
   }
 }

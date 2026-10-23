@@ -56,10 +56,6 @@ function parseSenderOptions(
   const pollingInterval = validateIntOrUndefined(
     'SPANNER_OUTBOX_POLLING_INTERVAL',
   );
-  const idColumn = config.get<string>('SPANNER_OUTBOX_ID_COLUMN');
-  const leaseExpirationColumn = config.get<string>(
-    'SPANNER_OUTBOX_LEASE_EXPIRATION_COLUMN',
-  );
   const index = config.get<string>('SPANNER_OUTBOX_INDEX');
   const shardingColumn = config.get<string>('SPANNER_OUTBOX_SHARDING_COLUMN');
   const shardingCount = validateIntOrUndefined('SPANNER_OUTBOX_SHARDING_COUNT');
@@ -80,8 +76,6 @@ function parseSenderOptions(
   const envOptionsWithUndefined = {
     batchSize,
     pollingInterval,
-    idColumn,
-    leaseExpirationColumn,
     index,
     sharding,
     leaseDuration,
