@@ -1,4 +1,4 @@
-import { ValidationError, parseObject, validatorOptions } from '@causa/runtime';
+import { ValidationError, parseObject } from '@causa/runtime';
 import {
   BadRequestErrorDto,
   BaseEventHandlerInterceptor,
@@ -10,6 +10,7 @@ import {
 import { type ExecutionContext, Injectable, type Type } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
+import type { IncomingHttpHeaders } from 'node:http';
 import { CloudSchedulerInfo } from './cloud-scheduler-info.js';
 import type { RequestWithCloudSchedulerInfo } from './scheduler-event-info.decorator.js';
 
@@ -17,6 +18,43 @@ import type { RequestWithCloudSchedulerInfo } from './scheduler-event-info.decor
  * The ID of the Cloud Scheduler event handler interceptor, that can be passed to the `UseEventHandler` decorator.
  */
 export const CLOUD_SCHEDULER_EVENT_HANDLER_ID = 'google.cloudScheduler';
+
+/**
+ * Parses the Cloud Scheduler headers of a request.
+ * The headers are checked manually rather than using `parseObject`, which would copy all the headers of the request.
+ *
+ * @param headers The headers of the request.
+ * @returns The parsed {@link CloudSchedulerInfo}.
+ */
+function parseCloudSchedulerHeaders(
+  headers: IncomingHttpHeaders,
+): CloudSchedulerInfo {
+  const messages: string[] = [];
+  const fields: string[] = [];
+  const fail = (field: string, message: string) => {
+    fields.push(field);
+    messages.push(message);
+  };
+
+  const jobName = headers['x-cloudscheduler-jobname'];
+  if (typeof jobName !== 'string') {
+    fail('jobName', 'jobName must be a string');
+  }
+  const rawScheduleTime = headers['x-cloudscheduler-scheduletime'];
+  const scheduleTime =
+    rawScheduleTime !== undefined
+      ? new Date(rawScheduleTime as string)
+      : undefined;
+  if (scheduleTime && isNaN(scheduleTime.getTime())) {
+    fail('scheduleTime', 'scheduleTime must be a Date instance');
+  }
+
+  if (messages.length > 0) {
+    throw new ValidationError(messages, fields);
+  }
+
+  return new CloudSchedulerInfo({ jobName: jobName as string, scheduleTime });
+}
 
 /**
  * The interceptor that should be added to controllers handling Cloud Scheduler events.
@@ -46,10 +84,7 @@ export class CloudSchedulerEventHandlerInterceptor extends BaseEventHandlerInter
     request: Request,
   ): Promise<CloudSchedulerInfo> {
     try {
-      const info = await parseObject(CloudSchedulerInfo, request.headers, {
-        ...validatorOptions,
-        forbidNonWhitelisted: false,
-      });
+      const info = parseCloudSchedulerHeaders(request.headers);
       this.logger.debug('Successfully parsed Cloud Scheduler request.');
       return info;
     } catch (error: any) {
