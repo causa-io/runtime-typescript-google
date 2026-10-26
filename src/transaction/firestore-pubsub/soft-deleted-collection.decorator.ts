@@ -128,17 +128,31 @@ export type SoftDeletableDocumentState = {
 
   /**
    * Whether the document exists in the soft-deleted collection.
+   * This is `undefined` if the soft-deleted document was not read.
    */
-  readonly deleted: boolean;
+  readonly deleted?: boolean;
+};
+
+/**
+ * Options when reading a document that may be soft-deleted.
+ */
+export type SoftDeletableDocumentReadOptions = {
+  /**
+   * Whether the soft-deleted document should only be read if the active document does not exist, in a second request.
+   * By default, both documents are read in a single request.
+   */
+  readonly sequentialSoftDeleteLookups?: boolean;
 };
 
 /**
  * Reads a document in a transaction, from either the active or the soft-deleted collection.
- * For types supporting soft-deletion, both documents are read in a single request.
+ * For types supporting soft-deletion, both documents are read in a single request, unless
+ * {@link SoftDeletableDocumentReadOptions.sequentialSoftDeleteLookups} is set.
  *
  * @param transaction The Firestore transaction to use.
  * @param activeDocRef The reference to the active document.
  * @param type The type of the document.
+ * @param options Options when reading the document.
  * @returns The document (or `null` if it does not exist), and the {@link SoftDeletableDocumentState} if the document
  *   type supports soft-deletion.
  */
@@ -146,6 +160,7 @@ export async function getSoftDeletableDocument<T extends object>(
   transaction: FirebaseFirestore.Transaction,
   activeDocRef: FirebaseFirestore.DocumentReference<T>,
   type: Type<T>,
+  options: SoftDeletableDocumentReadOptions = {},
 ): Promise<{
   document: T | null;
   state: SoftDeletableDocumentState | null;
@@ -156,13 +171,22 @@ export async function getSoftDeletableDocument<T extends object>(
     return { document: snapshot.data() ?? null, state: null };
   }
 
-  const [activeSnapshot, deletedSnapshot] = await transaction.getAll(
-    activeDocRef,
-    softDeleteInfo.ref,
-  );
+  let activeSnapshot: FirebaseFirestore.DocumentSnapshot<T>;
+  let deletedSnapshot: FirebaseFirestore.DocumentSnapshot<T> | undefined;
+  if (options.sequentialSoftDeleteLookups) {
+    activeSnapshot = await transaction.get(activeDocRef);
+    if (!activeSnapshot.exists) {
+      deletedSnapshot = await transaction.get(softDeleteInfo.ref);
+    }
+  } else {
+    [activeSnapshot, deletedSnapshot] = await transaction.getAll(
+      activeDocRef,
+      softDeleteInfo.ref,
+    );
+  }
   const state = {
     active: activeSnapshot.exists,
-    deleted: deletedSnapshot.exists,
+    deleted: deletedSnapshot?.exists,
   };
 
   const activeDocument = activeSnapshot.data();
@@ -170,7 +194,7 @@ export async function getSoftDeletableDocument<T extends object>(
     return { document: activeDocument, state };
   }
 
-  const deletedDocument = deletedSnapshot.data();
+  const deletedDocument = deletedSnapshot?.data();
   if (!deletedDocument) {
     return { document: null, state };
   }

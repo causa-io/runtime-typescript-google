@@ -5,7 +5,15 @@ import type {
 import type { Type } from '@nestjs/common';
 import { Firestore, Transaction } from 'firebase-admin/firestore';
 import { getReferenceForFirestoreDocument } from '../../firestore/index.js';
-import { getSoftDeletableDocument } from './soft-deleted-collection.decorator.js';
+import {
+  getSoftDeletableDocument,
+  type SoftDeletableDocumentReadOptions,
+} from './soft-deleted-collection.decorator.js';
+
+/**
+ * Options for the {@link FirestoreReadOnlyStateTransaction} and the `FirestoreStateTransaction`.
+ */
+export type FirestoreStateTransactionOptions = SoftDeletableDocumentReadOptions;
 
 /**
  * Option for a function that accepts a {@link FirestoreReadOnlyStateTransaction}.
@@ -33,6 +41,11 @@ export class FirestoreReadOnlyStateTransaction implements ReadOnlyStateTransacti
      * The {@link Firestore} instance to use.
      */
     readonly firestore: Firestore,
+
+    /**
+     * Options for the transaction.
+     */
+    readonly options: FirestoreStateTransactionOptions = {},
   ) {}
 
   async get<T extends object>(
@@ -48,6 +61,7 @@ export class FirestoreReadOnlyStateTransaction implements ReadOnlyStateTransacti
       this.firestoreTransaction,
       activeDocRef,
       type,
+      this.options,
     );
     return document;
   }

@@ -218,6 +218,46 @@ describe('FirestoreReadOnlyStateTransaction', () => {
       expect(firestoreTransaction.get).not.toHaveBeenCalled();
     });
 
+    it('should only read the soft-deleted document if the active one does not exist when using sequential lookups', async () => {
+      const activeDocument = new MyDocument({ id: 'active' });
+      await activeCollection.doc(activeDocument.id).set(activeDocument);
+      const deletedDocument = new MyDocument({
+        id: 'deleted',
+        deletedAt: new Date(),
+      });
+      await deletedCollection.doc(deletedDocument.id).set({
+        ...deletedDocument,
+        _expirationDate: new Date(),
+      } as any);
+      let firestoreTransaction!: Transaction;
+
+      const [actualActiveDocument, actualDeletedDocument] =
+        await firestore.runTransaction(
+          async (transaction) => {
+            firestoreTransaction = transaction;
+            jest.spyOn(transaction, 'get');
+            jest.spyOn(transaction, 'getAll');
+            const stateTransaction = new FirestoreReadOnlyStateTransaction(
+              transaction,
+              firestore,
+              { sequentialSoftDeleteLookups: true },
+            );
+
+            return [
+              await stateTransaction.get(MyDocument, { id: 'active' }),
+              await stateTransaction.get(MyDocument, { id: 'deleted' }),
+            ];
+          },
+          { readOnly: true },
+        );
+
+      expect(actualActiveDocument).toEqual(activeDocument);
+      expect(actualDeletedDocument).toEqual(deletedDocument);
+      // One read for the active document, and two for the soft-deleted document.
+      expect(firestoreTransaction.get).toHaveBeenCalledTimes(3);
+      expect(firestoreTransaction.getAll).not.toHaveBeenCalled();
+    });
+
     it('should return a document without a soft delete collection', async () => {
       const document = new MyNonSoftDeletedDocument();
       await nonSoftDeleteCollection.doc(document.id).set(document);

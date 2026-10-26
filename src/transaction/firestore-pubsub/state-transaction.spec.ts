@@ -432,6 +432,59 @@ describe('FirestoreStateTransaction', () => {
       expect(actualDeletedDocument.exists).toBeFalse();
     });
 
+    it('should delete the deleted document after reading the active document using sequential lookups', async () => {
+      const document = new MyDocument();
+      await activeCollection.doc(document.id).set(document);
+      const updatedDocument = new MyDocument({ updatedAt: new Date() });
+      let firestoreTransaction!: Transaction;
+
+      await firestore.runTransaction(async (transaction) => {
+        firestoreTransaction = transaction;
+        jest.spyOn(transaction, 'getAll');
+        jest.spyOn(transaction, 'delete');
+        const stateTransaction = new FirestoreStateTransaction(
+          transaction,
+          firestore,
+          { sequentialSoftDeleteLookups: true },
+        );
+
+        await stateTransaction.get(MyDocument, { id: document.id });
+        await stateTransaction.set(updatedDocument);
+      });
+
+      expect(firestoreTransaction.getAll).not.toHaveBeenCalled();
+      // The soft-deleted document was not read, so it is deleted as it may exist.
+      expect(firestoreTransaction.delete).toHaveBeenCalledExactlyOnceWith(
+        deletedCollection.doc(document.id),
+      );
+      const actualDocument = await activeCollection.doc(document.id).get();
+      expect(actualDocument.data()).toEqual(updatedDocument);
+    });
+
+    it('should not delete the deleted document after reading a missing document using sequential lookups', async () => {
+      const document = new MyDocument();
+      let firestoreTransaction!: Transaction;
+
+      await firestore.runTransaction(async (transaction) => {
+        firestoreTransaction = transaction;
+        jest.spyOn(transaction, 'get');
+        jest.spyOn(transaction, 'delete');
+        const stateTransaction = new FirestoreStateTransaction(
+          transaction,
+          firestore,
+          { sequentialSoftDeleteLookups: true },
+        );
+
+        await stateTransaction.get(MyDocument, { id: document.id });
+        await stateTransaction.set(document);
+      });
+
+      expect(firestoreTransaction.get).toHaveBeenCalledTimes(2);
+      expect(firestoreTransaction.delete).not.toHaveBeenCalled();
+      const actualDocument = await activeCollection.doc(document.id).get();
+      expect(actualDocument.data()).toEqual(document);
+    });
+
     it('should insert a document without a soft delete collection', async () => {
       const document = new MyNonSoftDeletedDocument();
 

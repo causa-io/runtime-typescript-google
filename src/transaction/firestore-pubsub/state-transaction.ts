@@ -55,6 +55,7 @@ export class FirestoreStateTransaction
       this.firestoreTransaction,
       activeDocRef,
       type,
+      this.options,
     );
     if (state) {
       this.softDeleteStates.set(activeDocRef.path, state);
