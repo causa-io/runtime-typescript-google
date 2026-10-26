@@ -1,10 +1,5 @@
 export { SpannerColumn } from './column.decorator.js';
-export {
-  catchSpannerDatabaseErrors,
-  getDefaultSpannerDatabaseForCloudFunction,
-  SPANNER_SESSION_POOL_OPTIONS_FOR_CLOUD_FUNCTIONS,
-  SPANNER_SESSION_POOL_OPTIONS_FOR_SERVICE,
-} from './database.js';
+export { getDefaultSpannerDatabaseForCloudFunction } from './database.js';
 export { SpannerEntityManager } from './entity-manager.js';
 export type {
   SnapshotFunction,

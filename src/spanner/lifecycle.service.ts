@@ -1,6 +1,5 @@
 import { Logger } from '@causa/runtime/nestjs';
 import { Database, Spanner } from '@google-cloud/spanner';
-import { SessionLeakError } from '@google-cloud/spanner/build/src/session-pool.js';
 import { Injectable, type OnApplicationShutdown } from '@nestjs/common';
 
 /**
@@ -21,11 +20,7 @@ export class SpannerLifecycleService implements OnApplicationShutdown {
       this.spanner.close();
     } catch (error: any) {
       this.logger.error(
-        {
-          error: error.stack,
-          spannerLeaks:
-            error instanceof SessionLeakError ? error.messages : undefined,
-        },
+        { error: error.stack },
         'Failed to close Spanner client.',
       );
     }

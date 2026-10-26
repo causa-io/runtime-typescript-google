@@ -1,5 +1,4 @@
 import { EntityAlreadyExistsError, RetryableError } from '@causa/runtime';
-import { SessionPoolExhaustedError } from '@google-cloud/spanner/build/src/session-pool.js';
 import { status } from '@grpc/grpc-js';
 import { convertSpannerToEntityError } from './error-converter.js';
 import {
@@ -42,22 +41,6 @@ describe('convertSpannerToEntityError', () => {
     const actual = convertSpannerToEntityError(error);
 
     expect(actual).toBeUndefined();
-  });
-
-  it('should convert a SessionPoolExhaustedError to a TemporarySpannerError', () => {
-    const error = new SessionPoolExhaustedError([]);
-
-    const actual = convertSpannerToEntityError(error);
-
-    expect(actual).toBeInstanceOf(TemporarySpannerError);
-  });
-
-  it('should convert a session acquisition timeout error to a TemporarySpannerError', () => {
-    const error = new Error('Timeout occurred while acquiring session.');
-
-    const actual = convertSpannerToEntityError(error);
-
-    expect(actual).toBeInstanceOf(TemporarySpannerError);
   });
 
   it('should convert an INVALID_ARGUMENT error to an InvalidArgumentError', () => {

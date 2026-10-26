@@ -83,14 +83,6 @@ describe('SpannerEntityManager', () => {
       await expect(actualPromise).rejects.toThrow(TemporarySpannerError);
     });
 
-    it('should catch and rethrow a temporary Spanner error due to a session acquisition timeout', async () => {
-      const actualPromise = manager.transaction(async () => {
-        throw new Error('Timeout occurred while acquiring session.');
-      });
-
-      await expect(actualPromise).rejects.toThrow(TemporarySpannerError);
-    });
-
     it('should rethrow unknown errors and rollback', async () => {
       let actualTransaction!: SpannerReadWriteTransaction;
       const actualPromise = manager.transaction(async (transaction) => {

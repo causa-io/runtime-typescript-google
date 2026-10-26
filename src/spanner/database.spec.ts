@@ -1,4 +1,3 @@
-import { getLoggedInfos, spyOnLogger } from '@causa/runtime/testing';
 import { Database } from '@google-cloud/spanner';
 import { getDefaultSpannerDatabaseForCloudFunction } from './database.js';
 import { createDatabase } from './testing.js';
@@ -11,8 +10,6 @@ describe('database', () => {
     database = await createDatabase();
     previousEnv = { ...process.env };
     process.env.SPANNER_DATABASE = database.formattedName_.split('/').at(-1);
-
-    spyOnLogger();
   });
 
   afterAll(async () => {
@@ -31,19 +28,5 @@ describe('database', () => {
       database.formattedName_.split('/').slice(2),
     );
     expect(db1).toBe(db2);
-  });
-
-  it('should catch emitted errors', async () => {
-    const db = getDefaultSpannerDatabaseForCloudFunction();
-
-    db.emit('error', new Error('💥'));
-
-    expect(getLoggedInfos()).toEqual([
-      expect.objectContaining({
-        message:
-          'Uncaught Spanner database error. This might be due to the background keep alive mechanism running in an idle Cloud Function.',
-        error: expect.stringContaining('💥'),
-      }),
-    ]);
   });
 });
