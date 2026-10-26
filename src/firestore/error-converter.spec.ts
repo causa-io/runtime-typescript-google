@@ -53,7 +53,7 @@ describe('error converter', () => {
         throw new Error('🐑');
       });
 
-      expect(actualPromise).rejects.toThrow('🐑');
+      await expect(actualPromise).rejects.toThrow('🐑');
     });
 
     it('should throw an EntityNotFoundError', async () => {
