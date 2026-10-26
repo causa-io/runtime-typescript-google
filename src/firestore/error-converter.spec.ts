@@ -3,7 +3,6 @@ import {
   EntityNotFoundError,
   IncorrectEntityVersionError,
 } from '@causa/runtime';
-import { status } from '@grpc/grpc-js';
 import { initializeApp } from 'firebase-admin/app';
 import {
   CollectionReference,
@@ -11,12 +10,15 @@ import {
   Timestamp,
   getFirestore,
 } from 'firebase-admin/firestore';
+import { grpc } from 'google-gax';
 import {
   FirestoreCollection,
   getFirestoreCollection,
 } from './collection.decorator.js';
 import { wrapFirestoreOperation } from './error-converter.js';
 import { TemporaryFirestoreError } from './errors.js';
+
+const { status } = grpc;
 
 @FirestoreCollection({ path: (doc) => ['errorConverterCollection', doc.id] })
 class MyDocument {

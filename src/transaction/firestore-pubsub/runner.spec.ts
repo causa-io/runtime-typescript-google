@@ -9,7 +9,6 @@ import {
   VersionedEntityManager,
 } from '@causa/runtime';
 import { AppFixture } from '@causa/runtime/nestjs/testing';
-import { status } from '@grpc/grpc-js';
 import { jest } from '@jest/globals';
 import { Injectable, Module } from '@nestjs/common';
 import { IsString, IsUUID } from 'class-validator';
@@ -18,6 +17,7 @@ import {
   Firestore,
   Transaction,
 } from 'firebase-admin/firestore';
+import { grpc } from 'google-gax';
 import 'jest-extended';
 import { FirebaseModule } from '../../firebase/module.js';
 import {
@@ -33,6 +33,8 @@ import { FirestoreReadOnlyStateTransaction } from './readonly-state-transaction.
 import { FirestorePubSubTransactionRunner } from './runner.js';
 import { SoftDeletedFirestoreCollection } from './soft-deleted-collection.decorator.js';
 import { FirestorePubSubTransaction } from './transaction.js';
+
+const { status } = grpc;
 
 @FirestoreCollection({ path: (doc) => ['myDocuments', doc.id] })
 @SoftDeletedFirestoreCollection()

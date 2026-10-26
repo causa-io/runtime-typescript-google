@@ -1,11 +1,13 @@
 import { EntityAlreadyExistsError, RetryableError } from '@causa/runtime';
-import { status } from '@grpc/grpc-js';
+import { grpc } from 'google-gax';
 import {
   InvalidArgumentError,
   InvalidQueryError,
   TemporarySpannerError,
   UnexpectedSpannerError,
 } from './errors.js';
+
+const { status } = grpc;
 
 /**
  * Converts an error thrown by Spanner to an entity error or a Spanner error subclass.

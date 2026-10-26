@@ -4,10 +4,12 @@ import {
   type MockedConfigService,
 } from '@causa/runtime/nestjs/testing';
 import { CloudTasksClient } from '@google-cloud/tasks';
-import { status } from '@grpc/grpc-js';
 import { jest } from '@jest/globals';
+import { grpc } from 'google-gax';
 import 'jest-extended';
 import { CloudTasksScheduler, HttpMethod } from './scheduler.js';
+
+const { status } = grpc;
 
 const EXPECTED_TASK = { name: '📋' };
 const EXPECTED_SERVICE_ACCOUNT_EMAIL = 'eixample@heetch.com';

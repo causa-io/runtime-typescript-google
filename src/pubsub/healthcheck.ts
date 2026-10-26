@@ -1,12 +1,14 @@
 import { orFallbackFn, tryMap } from '@causa/runtime';
 import type { HealthChecker } from '@causa/runtime/nestjs';
 import { PubSub } from '@google-cloud/pubsub';
-import { status } from '@grpc/grpc-js';
 import { Injectable } from '@nestjs/common';
 import {
   HealthIndicatorService,
   type HealthIndicatorResult,
 } from '@nestjs/terminus';
+import { grpc } from 'google-gax';
+
+const { status } = grpc;
 
 /**
  * The key used to identify the Pub/Sub health indicator.

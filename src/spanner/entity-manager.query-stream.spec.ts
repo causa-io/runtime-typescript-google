@@ -1,6 +1,6 @@
 import { Database, Transaction } from '@google-cloud/spanner';
-import { status } from '@grpc/grpc-js';
 import { jest } from '@jest/globals';
+import { grpc } from 'google-gax';
 import 'jest-extended';
 import { SpannerEntityManager } from './entity-manager.js';
 import {
@@ -11,6 +11,8 @@ import {
 } from './entity-manager.test.js';
 import { InvalidArgumentError, TemporarySpannerError } from './errors.js';
 import { SpannerRequestPriority } from './types.js';
+
+const { status } = grpc;
 
 describe('SpannerEntityManager', () => {
   let database: Database;

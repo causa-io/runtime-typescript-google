@@ -1,5 +1,5 @@
 import { EntityAlreadyExistsError, RetryableError } from '@causa/runtime';
-import { status } from '@grpc/grpc-js';
+import { grpc } from 'google-gax';
 import { convertSpannerToEntityError } from './error-converter.js';
 import {
   InvalidArgumentError,
@@ -7,6 +7,8 @@ import {
   TemporarySpannerError,
   UnexpectedSpannerError,
 } from './errors.js';
+
+const { status } = grpc;
 
 describe('convertSpannerToEntityError', () => {
   it('should return undefined for an unknown error', () => {

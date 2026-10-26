@@ -1,6 +1,8 @@
 import { RetryableError } from '@causa/runtime';
-import { status } from '@grpc/grpc-js';
 import type { Type } from '@nestjs/common';
+import { grpc } from 'google-gax';
+
+const { status } = grpc;
 
 /**
  * Error raised when the class for a Spanner table is not correctly defined (e.g. a decorator is missing).
@@ -71,7 +73,7 @@ export class InvalidArgumentError extends UnexpectedSpannerError {
 export class TemporarySpannerError extends RetryableError {
   constructor(
     message: string,
-    readonly code?: status,
+    readonly code?: grpc.status,
     options?: ErrorOptions,
   ) {
     super(message, undefined, options);
