@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase-admin/app';
 import {
   CollectionReference,
+  QueryDocumentSnapshot,
   Timestamp,
   getFirestore,
 } from 'firebase-admin/firestore';
@@ -8,6 +9,7 @@ import {
   FirestoreCollection,
   getFirestoreCollection,
 } from './collection.decorator.js';
+import { makeFirestoreDataConverter } from './converter.js';
 
 @FirestoreCollection({ path: (doc) => ['converterCollection', doc.field1] })
 class SomeDocument {
@@ -79,6 +81,28 @@ describe('converter', () => {
       expect(actualData).toBeInstanceOf(SomeDocument);
       expect(actualData).toEqual(document);
       expect(actualData?.field2).toBeInstanceOf(Date);
+    });
+
+    it('should convert nested timestamps in place in the snapshot data', () => {
+      const date = new Date('2023-01-01');
+      const timestamp = Timestamp.fromDate(date);
+      const data = {
+        field1: '🎁',
+        field2: timestamp,
+        nested: { timestamps: [timestamp, { value: timestamp }] },
+      };
+      const snapshot = { data: () => data } as unknown as QueryDocumentSnapshot;
+
+      const actualDocument =
+        makeFirestoreDataConverter(SomeDocument).fromFirestore(snapshot);
+
+      expect(data).toEqual({
+        field1: '🎁',
+        field2: date,
+        nested: { timestamps: [date, { value: date }] },
+      });
+      expect(actualDocument).toBeInstanceOf(SomeDocument);
+      expect(actualDocument).toEqual(data);
     });
   });
 });
