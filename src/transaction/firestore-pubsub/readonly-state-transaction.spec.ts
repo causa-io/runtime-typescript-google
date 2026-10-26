@@ -1,9 +1,11 @@
 import type { VersionedEntity } from '@causa/runtime';
+import { jest } from '@jest/globals';
 import { initializeApp } from 'firebase-admin/app';
 import {
   CollectionReference,
   Firestore,
   getFirestore,
+  Transaction,
 } from 'firebase-admin/firestore';
 import 'jest-extended';
 import { randomUUID } from 'node:crypto';
@@ -191,8 +193,13 @@ describe('FirestoreReadOnlyStateTransaction', () => {
     });
 
     it('should return null if the document does not exist', async () => {
+      let firestoreTransaction!: Transaction;
+
       const actualDocument = await firestore.runTransaction(
         async (transaction) => {
+          firestoreTransaction = transaction;
+          jest.spyOn(transaction, 'get');
+          jest.spyOn(transaction, 'getAll');
           const stateTransaction = new FirestoreReadOnlyStateTransaction(
             transaction,
             firestore,
@@ -206,14 +213,21 @@ describe('FirestoreReadOnlyStateTransaction', () => {
       );
 
       expect(actualDocument).toBeNull();
+      // The active and deleted documents should be read in a single request.
+      expect(firestoreTransaction.getAll).toHaveBeenCalledOnce();
+      expect(firestoreTransaction.get).not.toHaveBeenCalled();
     });
 
     it('should return a document without a soft delete collection', async () => {
       const document = new MyNonSoftDeletedDocument();
       await nonSoftDeleteCollection.doc(document.id).set(document);
+      let firestoreTransaction!: Transaction;
 
       const actualDocument = await firestore.runTransaction(
         async (transaction) => {
+          firestoreTransaction = transaction;
+          jest.spyOn(transaction, 'get');
+          jest.spyOn(transaction, 'getAll');
           const stateTransaction = new FirestoreReadOnlyStateTransaction(
             transaction,
             firestore,
@@ -228,6 +242,8 @@ describe('FirestoreReadOnlyStateTransaction', () => {
 
       expect(actualDocument).toEqual(document);
       expect(actualDocument).toBeInstanceOf(MyNonSoftDeletedDocument);
+      expect(firestoreTransaction.get).toHaveBeenCalledOnce();
+      expect(firestoreTransaction.getAll).not.toHaveBeenCalled();
     });
 
     it('should handle nested collections', async () => {

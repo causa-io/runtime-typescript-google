@@ -116,3 +116,65 @@ export function getSoftDeleteInfo<T extends object>(
 
   return { ...info, ref };
 }
+
+/**
+ * Whether the active and soft-deleted versions of a document exist, as observed in a transaction.
+ */
+export type SoftDeletableDocumentState = {
+  /**
+   * Whether the document exists in the active collection.
+   */
+  readonly active: boolean;
+
+  /**
+   * Whether the document exists in the soft-deleted collection.
+   */
+  readonly deleted: boolean;
+};
+
+/**
+ * Reads a document in a transaction, from either the active or the soft-deleted collection.
+ * For types supporting soft-deletion, both documents are read in a single request.
+ *
+ * @param transaction The Firestore transaction to use.
+ * @param activeDocRef The reference to the active document.
+ * @param type The type of the document.
+ * @returns The document (or `null` if it does not exist), and the {@link SoftDeletableDocumentState} if the document
+ *   type supports soft-deletion.
+ */
+export async function getSoftDeletableDocument<T extends object>(
+  transaction: FirebaseFirestore.Transaction,
+  activeDocRef: FirebaseFirestore.DocumentReference<T>,
+  type: Type<T>,
+): Promise<{
+  document: T | null;
+  state: SoftDeletableDocumentState | null;
+}> {
+  const softDeleteInfo = getSoftDeleteInfo(activeDocRef, type);
+  if (!softDeleteInfo) {
+    const snapshot = await transaction.get(activeDocRef);
+    return { document: snapshot.data() ?? null, state: null };
+  }
+
+  const [activeSnapshot, deletedSnapshot] = await transaction.getAll(
+    activeDocRef,
+    softDeleteInfo.ref,
+  );
+  const state = {
+    active: activeSnapshot.exists,
+    deleted: deletedSnapshot.exists,
+  };
+
+  const activeDocument = activeSnapshot.data();
+  if (activeDocument) {
+    return { document: activeDocument, state };
+  }
+
+  const deletedDocument = deletedSnapshot.data();
+  if (!deletedDocument) {
+    return { document: null, state };
+  }
+
+  delete (deletedDocument as any)[softDeleteInfo.expirationField];
+  return { document: deletedDocument, state };
+}

@@ -5,7 +5,7 @@ import type {
 import type { Type } from '@nestjs/common';
 import { Firestore, Transaction } from 'firebase-admin/firestore';
 import { getReferenceForFirestoreDocument } from '../../firestore/index.js';
-import { getSoftDeleteInfo } from './soft-deleted-collection.decorator.js';
+import { getSoftDeletableDocument } from './soft-deleted-collection.decorator.js';
 
 /**
  * Option for a function that accepts a {@link FirestoreReadOnlyStateTransaction}.
@@ -44,26 +44,11 @@ export class FirestoreReadOnlyStateTransaction implements ReadOnlyStateTransacti
       entity,
       type,
     );
-    const activeSnapshot = await this.firestoreTransaction.get(activeDocRef);
-    const activeDocument = activeSnapshot.data();
-    if (activeDocument) {
-      return activeDocument;
-    }
-
-    const softDeleteInfo = getSoftDeleteInfo(activeDocRef, type);
-    if (!softDeleteInfo) {
-      return null;
-    }
-
-    const deletedSnapshot = await this.firestoreTransaction.get(
-      softDeleteInfo.ref,
+    const { document } = await getSoftDeletableDocument(
+      this.firestoreTransaction,
+      activeDocRef,
+      type,
     );
-    const deletedDocument = deletedSnapshot.data();
-    if (!deletedDocument) {
-      return null;
-    }
-
-    delete (deletedDocument as any)[softDeleteInfo.expirationField];
-    return deletedDocument;
+    return document;
   }
 }
