@@ -734,6 +734,33 @@ export class SpannerEntityManager {
   }
 
   /**
+   * Inserts or updates the given entities in the database, using an `insert_or_update` mutation.
+   * Contrary to {@link SpannerEntityManager.replace}, interleaved child rows are kept, and the columns of `undefined`
+   * properties keep their current value if the entity already exists. Properties should be set to `null` to clear the
+   * corresponding columns.
+   * Contrary to {@link SpannerEntityManager.update} with the `upsert` option, the entity is not read first, and
+   * soft-deleted entities are also updated.
+   *
+   * Either a single entity or an array of entities can be provided. If an array is provided, all entities should
+   * specify the same set of columns.
+   *
+   * @param entity The entity or array of entities to write.
+   * @param options Options for the operation.
+   */
+  async upsert(
+    entity: object | object[],
+    options: SpannerReadWriteTransactionOption = {},
+  ): Promise<void> {
+    const objs = this.entitiesToSpannerObjects(entity);
+
+    await this.transaction(options, async (transaction) =>
+      Object.entries(objs).forEach(([tableName, objs]) =>
+        transaction.upsert(tableName, objs),
+      ),
+    );
+  }
+
+  /**
    * Updates the given entity in the database.
    *
    * The update should also contain the primary key of the entity.
