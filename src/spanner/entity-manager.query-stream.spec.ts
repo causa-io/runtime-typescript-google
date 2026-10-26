@@ -1,3 +1,4 @@
+import { PreciseDate } from '@google-cloud/precise-date';
 import { Database, Transaction } from '@google-cloud/spanner';
 import { jest } from '@jest/globals';
 import { grpc } from 'google-gax';
@@ -69,6 +70,42 @@ describe('SpannerEntityManager', () => {
 
       expect(actualEntities).toEqual([{ id: '1', value: 10 }]);
       expect(actualEntities[0]).not.toBeInstanceOf(IntEntity);
+    });
+
+    it('should convert timestamps to dates in rows without typed entities', async () => {
+      const actualRows: any[] = [];
+      for await (const row of manager.queryStream({
+        sql: `SELECT TIMESTAMP '2026-10-23T10:11:12.345678Z' AS timestamp, [TIMESTAMP '2026-10-24T10:11:12.345678Z'] AS timestamps`,
+      })) {
+        actualRows.push(row);
+      }
+
+      expect(actualRows).toEqual([
+        {
+          timestamp: new Date('2026-10-23T10:11:12.345Z'),
+          timestamps: [new Date('2026-10-24T10:11:12.345Z')],
+        },
+      ]);
+      expect(actualRows[0].timestamp.constructor).toBe(Date);
+      expect(actualRows[0].timestamps[0].constructor).toBe(Date);
+    });
+
+    it('should keep precise dates in rows without typed entities if requested', async () => {
+      const actualRows: any[] = [];
+      for await (const row of manager.queryStream(
+        { preciseDates: true },
+        {
+          sql: `SELECT TIMESTAMP '2026-10-23T10:11:12.345678Z' AS timestamp, [TIMESTAMP '2026-10-24T10:11:12.345678Z'] AS timestamps`,
+        },
+      )) {
+        actualRows.push(row);
+      }
+
+      expect(actualRows[0].timestamp).toBeInstanceOf(PreciseDate);
+      expect(actualRows[0].timestamp.toISOString()).toEqual(
+        '2026-10-23T10:11:12.345678000Z',
+      );
+      expect(actualRows[0].timestamps[0]).toBeInstanceOf(PreciseDate);
     });
 
     it('should use a read only transaction by default', async () => {

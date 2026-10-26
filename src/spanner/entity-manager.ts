@@ -6,6 +6,7 @@ import type {
 } from '@google-cloud/spanner/build/src/transaction.js';
 import { Injectable, type Type } from '@nestjs/common';
 import {
+  convertPreciseDatesInSpannerRow,
   copyInstanceWithMissingColumnsToNull,
   instanceToSpannerObject,
   spannerObjectToInstance,
@@ -64,6 +65,13 @@ export type QueryOptions<T> = SpannerReadOnlyTransactionOption &
      * The type of entity to return in the list of results.
      */
     entityType?: Type<T>;
+
+    /**
+     * When {@link QueryOptions.entityType} is not set, `TIMESTAMP` values in returned rows are converted to regular
+     * `Date`s, losing the sub-millisecond precision. Set this to `true` to keep them as `PreciseDate`s instead.
+     * Only top-level values and the elements of top-level arrays are converted.
+     */
+    preciseDates?: boolean;
   };
 
 /**
@@ -550,7 +558,7 @@ export class SpannerEntityManager {
       ? (optionsOrStatement as QueryOptions<T>)
       : {};
     const sqlStatement = statement ?? (optionsOrStatement as SqlStatement);
-    const { entityType, requestOptions, transaction } = options;
+    const { entityType, preciseDates, requestOptions, transaction } = options;
 
     let snapshot: Snapshot | undefined;
     try {
@@ -568,7 +576,11 @@ export class SpannerEntityManager {
       });
 
       for await (const row of stream) {
-        yield entityType ? spannerObjectToInstance(row, entityType) : row;
+        if (entityType) {
+          yield spannerObjectToInstance(row, entityType);
+        } else {
+          yield preciseDates ? row : convertPreciseDatesInSpannerRow(row);
+        }
       }
     } catch (error) {
       throw convertSpannerToEntityError(error) ?? error;

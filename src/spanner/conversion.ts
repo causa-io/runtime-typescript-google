@@ -71,18 +71,49 @@ function spannerValueToJavaScript(
     return value.valueOf();
   }
 
-  if (
-    value instanceof Date &&
-    // `PreciseDate` extends `Date`. This was previously used to handle conflicting versions of `PreciseDate`.
-    value.constructor.name === PreciseDate.name &&
-    !columnMetadata.isPreciseDate
-  ) {
-    // PreciseDate adds micro and nano seconds but leaves the `time` (up to milliseconds) unchanged.
-    const time = value.getTime();
-    return new Date(time);
+  if (value instanceof PreciseDate && !columnMetadata.isPreciseDate) {
+    return preciseDateToDate(value);
   }
 
   return value;
+}
+
+/**
+ * Converts a {@link PreciseDate} to a regular `Date`, losing the sub-millisecond precision.
+ *
+ * @param value The {@link PreciseDate} to convert.
+ * @returns The `Date`.
+ */
+function preciseDateToDate(value: PreciseDate): Date {
+  // PreciseDate adds micro and nano seconds but leaves the `time` (up to milliseconds) unchanged.
+  return new Date(value.getTime());
+}
+
+/**
+ * Converts the {@link PreciseDate}s in a row returned by the Spanner API to regular `Date`s, in place.
+ * Only top-level values and the elements of top-level arrays are converted. Values in structs are left unchanged.
+ *
+ * @param row The row returned by Spanner, which is modified in place.
+ * @returns The same row, with `Date`s instead of {@link PreciseDate}s.
+ */
+export function convertPreciseDatesInSpannerRow<T extends Record<string, any>>(
+  row: T,
+): T {
+  const values: Record<string, any> = row;
+  for (const key of Object.keys(values)) {
+    const value = values[key];
+    if (value instanceof PreciseDate) {
+      values[key] = preciseDateToDate(value);
+    } else if (Array.isArray(value)) {
+      for (let i = 0; i < value.length; i++) {
+        if (value[i] instanceof PreciseDate) {
+          value[i] = preciseDateToDate(value[i]);
+        }
+      }
+    }
+  }
+
+  return row;
 }
 
 /**
