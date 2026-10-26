@@ -338,6 +338,8 @@ export class PubSubFixture implements Fixture, EventFixture {
    * By default, each expected message is matched independently against the received messages, such that a single
    * received message can satisfy several expected messages. Set the `exact` option to require a one-to-one match
    * between expected and received messages.
+   * This relies on `jest-extended` matchers, which must be registered in the Jest configuration (e.g. using
+   * `jest-extended/all`).
    *
    * @param topic The original name of the event topic.
    * @param expectedMessages The messages expected to have been published.
