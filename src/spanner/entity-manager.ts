@@ -400,7 +400,9 @@ export class SpannerEntityManager {
           } catch (error) {
             if (!transaction.ended) {
               if (transaction.id) {
-                await transaction.rollback();
+                // The rollback response is not awaited, such that the error is rethrown immediately. Spanner releases
+                // the locks as soon as it receives the request. Failing to roll back should not replace the error.
+                transaction.rollback().catch(() => {});
               } else {
                 transaction.end();
               }

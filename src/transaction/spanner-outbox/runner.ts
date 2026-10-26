@@ -63,8 +63,8 @@ export class SpannerOutboxTransactionRunner extends OutboxTransactionRunner<
     options: SpannerOutboxReadWriteTransactionOptions,
     runFn: TransactionFn<SpannerOutboxTransaction, RT>,
   ): Promise<RT> {
-    // `TransactionOldTimestampError`s are retried outside of the Spanner transaction. The transaction is rolled back
-    // (releasing locks) before waiting.
+    // `TransactionOldTimestampError`s are retried outside of the Spanner transaction. The rollback (releasing locks) is
+    // sent before waiting.
     for (let attempt = 1; ; attempt++) {
       try {
         return await this.entityManager.transaction(

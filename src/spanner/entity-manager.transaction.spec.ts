@@ -3,6 +3,7 @@ import { Database } from '@google-cloud/spanner';
 import { jest } from '@jest/globals';
 import { grpc } from 'google-gax';
 import 'jest-extended';
+import { once } from 'node:events';
 import { SpannerEntityManager } from './entity-manager.js';
 import {
   clearAllTestEntities,
@@ -85,10 +86,11 @@ describe('SpannerEntityManager', () => {
       await expect(actualPromise).rejects.toThrow(TemporarySpannerError);
     });
 
-    it('should rethrow unknown errors and rollback', async () => {
+    it('should rethrow unknown errors and rollback without waiting for the response', async () => {
       let actualTransaction!: SpannerReadWriteTransaction;
       const actualPromise = manager.transaction(async (transaction) => {
         actualTransaction = transaction;
+        jest.spyOn(transaction, 'rollback');
 
         // This ensures the transaction is started and should be rolled back.
         await transaction.read('MyEntity', { keys: ['1'], columns: ['id'] });
@@ -100,11 +102,31 @@ describe('SpannerEntityManager', () => {
       });
 
       await expect(actualPromise).rejects.toThrow('💥');
+      expect(actualTransaction.rollback).toHaveBeenCalledExactlyOnceWith();
+      await once(actualTransaction, 'end');
       const [actualRows] = await database
         .table('MyEntity')
         .read({ keys: ['12'], columns: ['id'], json: true });
       expect(actualRows).toBeEmpty();
-      expect(actualTransaction.ended).toBeTrue();
+    });
+
+    it('should rethrow the original error if the rollback fails', async () => {
+      let actualTransaction!: SpannerReadWriteTransaction;
+      const actualPromise = manager.transaction(async (transaction) => {
+        actualTransaction = transaction;
+        const rollback = transaction.rollback.bind(transaction);
+        jest.spyOn(transaction, 'rollback').mockImplementationOnce(async () => {
+          await rollback();
+          throw new Error('🙅');
+        });
+
+        await transaction.read('MyEntity', { keys: ['1'], columns: ['id'] });
+
+        throw new Error('💥');
+      });
+
+      await expect(actualPromise).rejects.toThrow('💥');
+      await once(actualTransaction, 'end');
     });
 
     it('should rethrow unknown errors and end the transaction', async () => {
