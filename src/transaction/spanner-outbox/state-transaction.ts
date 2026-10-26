@@ -42,9 +42,8 @@ export class SpannerStateTransaction
     key ??= typeOrEntity as Partial<T>;
     const primaryKey = this.entityManager.getPrimaryKey(key, type);
 
-    await this.entityManager.delete(type, primaryKey, {
+    await this.entityManager.blindDelete(type, primaryKey, {
       transaction: this.spannerTransaction,
-      includeSoftDeletes: true,
     });
   }
 }

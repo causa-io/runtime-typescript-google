@@ -837,4 +837,30 @@ export class SpannerEntityManager {
       },
     );
   }
+
+  /**
+   * Deletes the entity with the given primary key from the database, without reading it first.
+   * This only adds a delete mutation to the transaction, and is a no-op if the entity does not exist. Soft-deleted
+   * entities are also deleted.
+   *
+   * Use {@link SpannerEntityManager.delete} to check that the entity exists, to validate it, or to retrieve it.
+   *
+   * @param entityType The type of entity to delete.
+   * @param key The primary key of the entity to delete.
+   * @param options Options for the operation.
+   */
+  async blindDelete<T>(
+    entityType: Type<T>,
+    key: SpannerKey | SpannerKey[number],
+    options: SpannerReadWriteTransactionOption = {},
+  ): Promise<void> {
+    if (!Array.isArray(key)) {
+      key = [key];
+    }
+    const { tableName } = this.tableCache.getMetadata(entityType);
+
+    await this.transaction(options, async (transaction) =>
+      transaction.deleteRows(tableName, [key as any]),
+    );
+  }
 }
