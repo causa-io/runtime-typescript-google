@@ -2,6 +2,39 @@
 
 ## Unreleased
 
+Breaking changes:
+
+- Declare most dependencies as peer dependencies.
+- Remove the `idColumn` and `leaseExpirationColumn` options of the `SpannerOutboxSender` and `SpannerOutboxTransactionModule`, along with the `SPANNER_OUTBOX_ID_COLUMN` and `SPANNER_OUTBOX_LEASE_EXPIRATION_COLUMN` environment variables. The column names are now obtained from the `@SpannerColumn` decorators of the outbox event type's `id` and `leaseExpiration` properties, and an `InvalidEntityDefinitionError` is thrown at startup if either decorator is missing.
+- `SpannerOutboxSender` requires the `id` column to be the only column in the primary key of the outbox table, and throws an `InvalidEntityDefinitionError` otherwise. The `successfulUpdateSql` property is removed.
+- `CloudTasksInfo` and `CloudSchedulerInfo` no longer have `class-transformer` and `class-validator` decorators, and can no longer be parsed from request headers using `parseObject`. They now have a constructor accepting all their properties.
+- Remove the `FirestoreAdminClient` provider from the `FirebaseModule`, along with its export. Creating the client at startup was costly, and it was not used by the runtime. Services needing it should create it themselves.
+- Remove the `poolOptions` option of `SpannerModule.forRoot`, the `SPANNER_SESSION_POOL_OPTIONS_FOR_SERVICE` and `SPANNER_SESSION_POOL_OPTIONS_FOR_CLOUD_FUNCTIONS` constants, the conversion of session pool errors (`SessionPoolExhaustedError` and session acquisition timeouts) to `TemporarySpannerError`, the `spannerLeaks` field logged when closing the Spanner client fails, and `catchSpannerDatabaseErrors`. Since `@google-cloud/spanner` 9.1, the client only uses multiplexed sessions, the session pool is never used, and the `Database` no longer emits `error` events.
+- `SpannerStateTransaction.delete` no longer reads the entity before deleting it, and no longer throws an `EntityNotFoundError` if the entity does not exist, consistently with the `FirestoreStateTransaction`. This saves a Spanner read, e.g. when releasing a lock using the `LockManager`.
+- `convertFirestoreTimestampsToDates` converts `Timestamp`s in place in arrays and plain objects, rather than returning a copy. The Firestore converter uses it on the object returned by `snapshot.data()`, which avoids copying the document data before `plainToInstance`.
+- Rows returned by `SpannerEntityManager.query`, `queryStream`, and `queryBatches` without an `entityType` contain `Date`s rather than `PreciseDate`s for `TIMESTAMP` values (top-level values and elements of top-level arrays), consistently with typed rows. This ensures they are serialized with millisecond precision by `JSON.stringify`, e.g. in responses and events. The `preciseDates` option can be set to `true` to keep `PreciseDate`s. `DATE` values are not converted, and are serialized as `YYYY-MM-DD`.
+- Pub/Sub messages whose data is not valid Base64 are no longer rejected with a `400` error, which caused them to be redelivered or dead-lettered. They now fail the deserialization of the event, which is logged as an invalid event, and are acknowledged.
+
+Features:
+
+- Implement `SpannerEntityManager.blindDelete`, which deletes an entity without reading it first.
+- Support the `sequentialSoftDeleteLookups` option in `FirestorePubSubTransactionModule.forRoot`, also read from the `FIRESTORE_SEQUENTIAL_SOFT_DELETE_LOOKUPS` environment variable. When enabled, state transactions only read the soft-deleted version of a document if the active one does not exist, in a second request. This avoids looking up the soft-deleted document when the active one exists, at the cost of an additional round trip when it does not.
+- Implement `SpannerEntityManager.upsert`, which inserts or updates entities using an `insert_or_update` mutation, without reading them first. Contrary to `replace`, interleaved child rows are kept, and columns for `undefined` properties keep their current value.
+
+Chores:
+
+- Depend on `google-gax` rather than `@grpc/grpc-js`, and import gRPC status codes from it.
+
+Fixes:
+
+- Delete successfully published events from the outbox using blind delete mutations committed with `writeAtLeastOnce`, rather than DML in a read-write transaction.
+- Check the Pub/Sub push payload and the Cloud Tasks and Cloud Scheduler headers manually rather than using `parseObject`.
+- Retry transactions failing with a `TransactionOldTimestampError` in the `SpannerOutboxTransactionRunner`, outside of the Spanner transaction.
+- Do not wait for the rollback response before rethrowing an error in `SpannerEntityManager.transaction`, which saves one Spanner round trip for failed transactions. An error during the rollback no longer replaces the original error.
+- Map pino levels to Cloud Logging severities using a level formatter in `googlePinoConfiguration`, rather than a `logMethod` hook.
+- Read the active and soft-deleted versions of a document in a single request in `FirestoreReadOnlyStateTransaction.get` and `FirestoreStateTransaction.get`, rather than reading the soft-deleted document after the active one. `FirestoreStateTransaction.set` and `delete` no longer delete documents that were read in the transaction and are known not to exist.
+- Remove the filtering of `undefined` rows in `SpannerEntityManager.queryStream`.
+
 ## v3.0.0 (2026-09-07)
 
 See the changelog of the beta releases.
