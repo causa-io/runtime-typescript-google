@@ -1,5 +1,6 @@
-import { EntityNotFoundError } from '@causa/runtime';
 import { Database } from '@google-cloud/spanner';
+import { jest } from '@jest/globals';
+import 'jest-extended';
 import {
   SpannerColumn,
   SpannerEntityManager,
@@ -113,7 +114,7 @@ describe('SpannerStateTransaction', () => {
   });
 
   describe('delete', () => {
-    it('should delete the entity', async () => {
+    it('should delete the entity without reading it', async () => {
       const entity = new MyEntity({ id1: 'id1', id2: 'id2', value: '🌠' });
       await entityManager.insert(entity);
 
@@ -122,7 +123,11 @@ describe('SpannerStateTransaction', () => {
           entityManager,
           spannerTransaction,
         );
+        jest.spyOn(spannerTransaction, 'read');
+
         await transaction.delete(MyEntity, { id1: 'id1', id2: 'id2' });
+
+        expect(spannerTransaction.read).not.toHaveBeenCalled();
       });
 
       const actualEntity = await entityManager.findOneByKey(MyEntity, [
@@ -151,7 +156,7 @@ describe('SpannerStateTransaction', () => {
       expect(actualEntity).toBeUndefined();
     });
 
-    it('should throw if the entity does not exist', async () => {
+    it('should not throw if the entity does not exist', async () => {
       const actualPromise = entityManager.transaction(
         async (spannerTransaction) => {
           const transaction = new SpannerStateTransaction(
@@ -162,7 +167,7 @@ describe('SpannerStateTransaction', () => {
         },
       );
 
-      expect(actualPromise).rejects.toThrow(EntityNotFoundError);
+      await expect(actualPromise).toResolve();
     });
 
     it('should delete a soft deleted entity', async () => {

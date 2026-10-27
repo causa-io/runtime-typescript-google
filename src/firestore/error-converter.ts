@@ -3,8 +3,10 @@ import {
   EntityNotFoundError,
   IncorrectEntityVersionError,
 } from '@causa/runtime';
-import { status } from '@grpc/grpc-js';
+import { grpc } from 'google-gax';
 import { TemporaryFirestoreError } from './errors.js';
+
+const { status } = grpc;
 
 /**
  * Converts a Firestore error to an entity error or a {@link TemporaryFirestoreError}.

@@ -1,5 +1,7 @@
 import { RetryableError } from '@causa/runtime';
-import { status } from '@grpc/grpc-js';
+import { grpc } from 'google-gax';
+
+const { status } = grpc;
 
 /**
  * An error thrown when a Firestore operation fails due to a temporary error.
@@ -9,7 +11,7 @@ import { status } from '@grpc/grpc-js';
 export class TemporaryFirestoreError extends RetryableError {
   constructor(
     message: string,
-    readonly code?: status,
+    readonly code?: grpc.status,
   ) {
     super(message);
   }

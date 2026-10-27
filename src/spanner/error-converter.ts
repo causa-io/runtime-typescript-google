@@ -1,12 +1,13 @@
 import { EntityAlreadyExistsError, RetryableError } from '@causa/runtime';
-import { SessionPoolExhaustedError } from '@google-cloud/spanner/build/src/session-pool.js';
-import { status } from '@grpc/grpc-js';
+import { grpc } from 'google-gax';
 import {
   InvalidArgumentError,
   InvalidQueryError,
   TemporarySpannerError,
   UnexpectedSpannerError,
 } from './errors.js';
+
+const { status } = grpc;
 
 /**
  * Converts an error thrown by Spanner to an entity error or a Spanner error subclass.
@@ -21,14 +22,6 @@ export function convertSpannerToEntityError(error: any): Error | undefined {
     error instanceof UnexpectedSpannerError
   ) {
     return;
-  }
-
-  // Those are not gRPC errors and are thrown by the session pool.
-  if (
-    error instanceof SessionPoolExhaustedError ||
-    error.message == 'Timeout occurred while acquiring session.'
-  ) {
-    return new TemporarySpannerError(error.message);
   }
 
   switch (error.code) {

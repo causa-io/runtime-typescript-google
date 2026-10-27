@@ -1,10 +1,17 @@
-import type { EventAttributes, OutboxEventPublishResult } from '@causa/runtime';
+import type {
+  EventAttributes,
+  OutboxEvent,
+  OutboxEventPublishResult,
+} from '@causa/runtime';
 import { Logger } from '@causa/runtime/nestjs';
 import { AppFixture } from '@causa/runtime/nestjs/testing';
 import { Database } from '@google-cloud/spanner';
+import { jest } from '@jest/globals';
+import 'jest-extended';
 import { Module } from '@nestjs/common';
 import { PubSubPublisher, PubSubPublisherModule } from '../../pubsub/index.js';
 import {
+  InvalidEntityDefinitionError,
   SpannerColumn,
   SpannerEntityManager,
   SpannerModule,
@@ -55,6 +62,24 @@ class SpannerOutboxEventWithShard {
 
   @SpannerColumn({ isInt: true })
   readonly shard!: number;
+}
+
+@SpannerTable({ name: 'MyOutboxEvent', primaryKey: ['myIdColumn'] })
+class OutboxEventWithCustomColumns implements OutboxEvent {
+  @SpannerColumn({ name: 'myIdColumn' })
+  readonly id!: string;
+
+  @SpannerColumn()
+  readonly topic!: string;
+
+  @SpannerColumn()
+  readonly data!: Buffer;
+
+  @SpannerColumn({ isJson: true })
+  readonly attributes!: EventAttributes;
+
+  @SpannerColumn({ name: 'myLeaseColumn' })
+  readonly leaseExpiration!: Date | null;
 }
 
 type PublicSpannerOutboxSender = SpannerOutboxSender & {
@@ -116,18 +141,13 @@ describe('SpannerOutboxSender', () => {
     it('should use the passed options', () => {
       const sender = new SpannerOutboxSender(
         entityManager,
-        SpannerOutboxEventWithShard,
+        OutboxEventWithCustomColumns,
         publisher,
         logger,
-        {
-          pollingInterval: 0,
-          batchSize: 10,
-          idColumn: 'myIdColumn',
-          leaseExpirationColumn: 'myLeaseColumn',
-          index: 'MyIndex',
-        },
+        { pollingInterval: 0, batchSize: 10, index: 'MyIndex' },
       );
 
+      expect(sender.tableName).toBe('MyOutboxEvent');
       expect(sender.idColumn).toBe('myIdColumn');
       expect(sender.leaseExpirationColumn).toBe('myLeaseColumn');
       expect(sender.index).toBe('MyIndex');
@@ -135,6 +155,43 @@ describe('SpannerOutboxSender', () => {
       expect((sender as any).fetchEventsSql).toContain('`myLeaseColumn`');
       expect((sender as any).fetchEventsSql).toContain('FORCE_INDEX=`MyIndex`');
       expect((sender as any).acquireLeaseSql).toContain('`myLeaseColumn`');
+    });
+
+    it('should throw if the ID or lease expiration columns are not defined', () => {
+      @SpannerTable({ name: 'OutboxEvent', primaryKey: ['id'] })
+      class OutboxEventWithoutLeaseColumn implements OutboxEvent {
+        @SpannerColumn()
+        readonly id!: string;
+        readonly topic!: string;
+        readonly data!: Buffer;
+        readonly attributes!: EventAttributes;
+        readonly leaseExpiration!: Date | null;
+      }
+
+      expect(
+        () =>
+          new SpannerOutboxSender(
+            entityManager,
+            OutboxEventWithoutLeaseColumn,
+            publisher,
+            logger,
+          ),
+      ).toThrow(InvalidEntityDefinitionError);
+    });
+
+    it('should throw if the ID column is not the only primary key column', () => {
+      @SpannerTable({ name: 'OutboxEvent', primaryKey: ['shard', 'id'] })
+      class OutboxEventWithCompositeKey extends SpannerOutboxEventWithShard {}
+
+      expect(
+        () =>
+          new SpannerOutboxSender(
+            entityManager,
+            OutboxEventWithCompositeKey,
+            publisher,
+            logger,
+          ),
+      ).toThrow(InvalidEntityDefinitionError);
     });
   });
 
@@ -354,6 +411,52 @@ describe('SpannerOutboxSender', () => {
         leaseExpiration: null,
       });
       expect(actualEvent3).toEqual(event3);
+    });
+
+    it('should update failed events before rethrowing an error when deleting published events', async () => {
+      const event1 = new SpannerOutboxEventWithShard({
+        id: '1',
+        topic: 'my-topic',
+        data: Buffer.from('🎉'),
+        attributes: {},
+        leaseExpiration: new Date(Date.now() + 1000),
+      });
+      const event2 = new SpannerOutboxEventWithShard({
+        id: '2',
+        topic: 'my-topic',
+        data: Buffer.from('🎉'),
+        attributes: {},
+        leaseExpiration: new Date(Date.now() + 1000),
+      });
+      await entityManager.insert([event1, event2]);
+      const error = new Error('💥');
+      jest
+        .spyOn(entityManager.database, 'writeAtLeastOnce')
+        .mockRejectedValueOnce(error as never);
+      let failedUpdateDone = false;
+      const transaction = entityManager.transaction.bind(entityManager);
+      jest
+        .spyOn(entityManager, 'transaction')
+        .mockImplementationOnce(async (...args: any[]) => {
+          const result = await (transaction as any)(...args);
+          failedUpdateDone = true;
+          return result;
+        });
+
+      const actualPromise = sender.updateOutbox({ '1': true, '2': false });
+
+      await expect(actualPromise).rejects.toThrow(error);
+      expect(failedUpdateDone).toBeTrue();
+      const actualEvent1 = await entityManager.findOneByKey(
+        SpannerOutboxEventWithShard,
+        '1',
+      );
+      const actualEvent2 = await entityManager.findOneByKey(
+        SpannerOutboxEventWithShard,
+        '2',
+      );
+      expect(actualEvent1).toEqual(event1);
+      expect(actualEvent2).toEqual({ ...event2, leaseExpiration: null });
     });
   });
 });

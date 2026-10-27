@@ -1,9 +1,11 @@
 import type { VersionedEntity } from '@causa/runtime';
+import { jest } from '@jest/globals';
 import { initializeApp } from 'firebase-admin/app';
 import {
   CollectionReference,
   Firestore,
   getFirestore,
+  Transaction,
 } from 'firebase-admin/firestore';
 import 'jest-extended';
 import { randomUUID } from 'node:crypto';
@@ -181,6 +183,24 @@ describe('FirestoreStateTransaction', () => {
       expect(actualDeletedDocument.exists).toBeFalse();
     });
 
+    it('should not delete documents read in the transaction that do not exist', async () => {
+      let firestoreTransaction!: Transaction;
+
+      await firestore.runTransaction(async (transaction) => {
+        firestoreTransaction = transaction;
+        jest.spyOn(transaction, 'delete');
+        const stateTransaction = new FirestoreStateTransaction(
+          transaction,
+          firestore,
+        );
+
+        await stateTransaction.get(MyDocument, { id: '🎁' });
+        await stateTransaction.delete(MyDocument, { id: '🎁' });
+      });
+
+      expect(firestoreTransaction.delete).not.toHaveBeenCalled();
+    });
+
     it('should handle a document without a soft delete collection', async () => {
       const document = new MyNonSoftDeletedDocument();
       await nonSoftDeleteCollection.doc(document.id).set(document);
@@ -356,6 +376,113 @@ describe('FirestoreStateTransaction', () => {
         .doc(document.id)
         .get();
       expect(actualActiveDocument.exists).toBeFalse();
+    });
+
+    it('should not delete the deleted document if it was read in the transaction and does not exist', async () => {
+      const document = new MyDocument();
+      await activeCollection.doc(document.id).set(document);
+      const updatedDocument = new MyDocument({ updatedAt: new Date() });
+      let firestoreTransaction!: Transaction;
+
+      await firestore.runTransaction(async (transaction) => {
+        firestoreTransaction = transaction;
+        jest.spyOn(transaction, 'delete');
+        const stateTransaction = new FirestoreStateTransaction(
+          transaction,
+          firestore,
+        );
+
+        await stateTransaction.get(MyDocument, { id: document.id });
+        await stateTransaction.set(updatedDocument);
+      });
+
+      expect(firestoreTransaction.delete).not.toHaveBeenCalled();
+      const actualDocument = await activeCollection.doc(document.id).get();
+      expect(actualDocument.data()).toEqual(updatedDocument);
+    });
+
+    it('should delete the deleted document if it was read in the transaction and exists', async () => {
+      const deletedAt = new Date();
+      const document = new MyDocument();
+      await deletedCollection.doc(document.id).set({
+        ...document,
+        deletedAt,
+        _expirationDate: new Date(deletedAt.getTime() + 24 * 3600 * 1000),
+      } as any);
+      let firestoreTransaction!: Transaction;
+
+      await firestore.runTransaction(async (transaction) => {
+        firestoreTransaction = transaction;
+        jest.spyOn(transaction, 'delete');
+        const stateTransaction = new FirestoreStateTransaction(
+          transaction,
+          firestore,
+        );
+
+        await stateTransaction.get(MyDocument, { id: document.id });
+        await stateTransaction.set(document);
+      });
+
+      expect(firestoreTransaction.delete).toHaveBeenCalledOnce();
+      const actualDocument = await activeCollection.doc(document.id).get();
+      expect(actualDocument.data()).toEqual(document);
+      const actualDeletedDocument = await deletedCollection
+        .doc(document.id)
+        .get();
+      expect(actualDeletedDocument.exists).toBeFalse();
+    });
+
+    it('should delete the deleted document after reading the active document using sequential lookups', async () => {
+      const document = new MyDocument();
+      await activeCollection.doc(document.id).set(document);
+      const updatedDocument = new MyDocument({ updatedAt: new Date() });
+      let firestoreTransaction!: Transaction;
+
+      await firestore.runTransaction(async (transaction) => {
+        firestoreTransaction = transaction;
+        jest.spyOn(transaction, 'getAll');
+        jest.spyOn(transaction, 'delete');
+        const stateTransaction = new FirestoreStateTransaction(
+          transaction,
+          firestore,
+          { sequentialSoftDeleteLookups: true },
+        );
+
+        await stateTransaction.get(MyDocument, { id: document.id });
+        await stateTransaction.set(updatedDocument);
+      });
+
+      expect(firestoreTransaction.getAll).not.toHaveBeenCalled();
+      // The soft-deleted document was not read, so it is deleted as it may exist.
+      expect(firestoreTransaction.delete).toHaveBeenCalledExactlyOnceWith(
+        deletedCollection.doc(document.id),
+      );
+      const actualDocument = await activeCollection.doc(document.id).get();
+      expect(actualDocument.data()).toEqual(updatedDocument);
+    });
+
+    it('should not delete the deleted document after reading a missing document using sequential lookups', async () => {
+      const document = new MyDocument();
+      let firestoreTransaction!: Transaction;
+
+      await firestore.runTransaction(async (transaction) => {
+        firestoreTransaction = transaction;
+        jest.spyOn(transaction, 'get');
+        jest.spyOn(transaction, 'delete');
+        const stateTransaction = new FirestoreStateTransaction(
+          transaction,
+          firestore,
+          { sequentialSoftDeleteLookups: true },
+        );
+
+        await stateTransaction.get(MyDocument, { id: document.id });
+        await stateTransaction.set(document);
+      });
+
+      expect(firestoreTransaction.get).toHaveBeenCalledTimes(2);
+      expect(firestoreTransaction.delete).not.toHaveBeenCalled();
+      const actualDocument = await activeCollection.doc(document.id).get();
+      expect(actualDocument.data()).toEqual(document);
     });
 
     it('should insert a document without a soft delete collection', async () => {

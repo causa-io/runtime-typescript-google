@@ -1,8 +1,8 @@
+import { PreciseDate } from '@google-cloud/precise-date';
 import { Database, Transaction } from '@google-cloud/spanner';
-import { status } from '@grpc/grpc-js';
 import { jest } from '@jest/globals';
+import { grpc } from 'google-gax';
 import 'jest-extended';
-import { Readable } from 'node:stream';
 import { SpannerEntityManager } from './entity-manager.js';
 import {
   clearAllTestEntities,
@@ -12,6 +12,8 @@ import {
 } from './entity-manager.test.js';
 import { InvalidArgumentError, TemporarySpannerError } from './errors.js';
 import { SpannerRequestPriority } from './types.js';
+
+const { status } = grpc;
 
 describe('SpannerEntityManager', () => {
   let database: Database;
@@ -70,6 +72,42 @@ describe('SpannerEntityManager', () => {
       expect(actualEntities[0]).not.toBeInstanceOf(IntEntity);
     });
 
+    it('should convert timestamps to dates in rows without typed entities', async () => {
+      const actualRows: any[] = [];
+      for await (const row of manager.queryStream({
+        sql: `SELECT TIMESTAMP '2026-10-23T10:11:12.345678Z' AS timestamp, [TIMESTAMP '2026-10-24T10:11:12.345678Z'] AS timestamps`,
+      })) {
+        actualRows.push(row);
+      }
+
+      expect(actualRows).toEqual([
+        {
+          timestamp: new Date('2026-10-23T10:11:12.345Z'),
+          timestamps: [new Date('2026-10-24T10:11:12.345Z')],
+        },
+      ]);
+      expect(actualRows[0].timestamp.constructor).toBe(Date);
+      expect(actualRows[0].timestamps[0].constructor).toBe(Date);
+    });
+
+    it('should keep precise dates in rows without typed entities if requested', async () => {
+      const actualRows: any[] = [];
+      for await (const row of manager.queryStream(
+        { preciseDates: true },
+        {
+          sql: `SELECT TIMESTAMP '2026-10-23T10:11:12.345678Z' AS timestamp, [TIMESTAMP '2026-10-24T10:11:12.345678Z'] AS timestamps`,
+        },
+      )) {
+        actualRows.push(row);
+      }
+
+      expect(actualRows[0].timestamp).toBeInstanceOf(PreciseDate);
+      expect(actualRows[0].timestamp.toISOString()).toEqual(
+        '2026-10-23T10:11:12.345678000Z',
+      );
+      expect(actualRows[0].timestamps[0]).toBeInstanceOf(PreciseDate);
+    });
+
     it('should use a read only transaction by default', async () => {
       const stream = manager.queryStream({
         sql: `INSERT INTO IntEntity(id, value) VALUES ('1', 10)`,
@@ -123,29 +161,6 @@ describe('SpannerEntityManager', () => {
       expect(spy).toHaveBeenCalledWith(
         expect.objectContaining({ requestOptions }),
       );
-    });
-
-    it('should filter out undefined rows sent by the PartialResultStream', async () => {
-      const actualRows = await manager.snapshot(async (transaction) => {
-        jest
-          .spyOn(transaction, 'runStream')
-          .mockReturnValueOnce(
-            Readable.from([{ value: '🎁' }, undefined, { value: '🎉' }]) as any,
-          );
-
-        const stream = manager.queryStream(
-          { transaction },
-          { sql: 'SELECT value FROM MyEntity ORDER BY id' },
-        );
-
-        const rows: any[] = [];
-        for await (const row of stream) {
-          rows.push(row);
-        }
-        return rows;
-      });
-
-      expect(actualRows).toEqual([{ value: '🎁' }, { value: '🎉' }]);
     });
 
     it('should convert Spanner errors when getSnapshot fails', async () => {

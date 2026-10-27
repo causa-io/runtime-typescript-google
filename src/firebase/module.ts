@@ -16,7 +16,6 @@ import {
   type Settings,
 } from 'firebase-admin/firestore';
 import { getMessaging, Messaging } from 'firebase-admin/messaging';
-import { FirestoreAdminClient } from './firestore-admin-client.type.js';
 import { FIREBASE_APP_TOKEN } from './inject-firebase-app.decorator.js';
 import { FirebaseLifecycleService } from './lifecycle.service.js';
 
@@ -83,10 +82,6 @@ const childProviders: (
     provide: Messaging,
     useFactory: getMessaging,
     inject: [FIREBASE_APP_TOKEN],
-  },
-  {
-    provide: FirestoreAdminClient,
-    useFactory: () => new FirestoreAdminClient(),
   },
 ];
 

@@ -1,4 +1,22 @@
-import type { LogFn, Logger, LoggerOptions } from 'pino';
+import { levels, type LoggerOptions } from 'pino';
+
+/**
+ * The type added to error logs, such that they are detected by Cloud Error Reporting.
+ */
+const ERROR_REPORTING_TYPE =
+  'type.googleapis.com/google.devtools.clouderrorreporting.v1beta1.ReportedErrorEvent';
+
+/**
+ * The Cloud Logging severities for each pino level label. Other levels are mapped to `CRITICAL`.
+ * https://cloud.google.com/logging/docs/reference/v2/rest/v2/LogEntry#LogSeverity
+ */
+const SEVERITIES: Record<string, string> = {
+  trace: 'DEBUG',
+  debug: 'DEBUG',
+  info: 'INFO',
+  warn: 'WARNING',
+  error: 'ERROR',
+};
 
 /**
  * Options that should be passed to `updatePinoConfiguration` when initializing a logger for a GCP environment.
@@ -10,33 +28,12 @@ export const googlePinoConfiguration: LoggerOptions = {
   redact: {
     paths: ['req.headers["x-firebase-appcheck"]'],
   },
-  hooks: {
-    logMethod(args: any[], method: LogFn, level: number) {
-      let binding: any;
-      if (typeof args[0] === 'object') {
-        binding = args[0];
-      } else {
-        binding = {};
-        args.unshift(binding);
-      }
-
-      const levelMapping = (this as Logger).levels.values;
-      if (level >= levelMapping.error) {
-        binding['@type'] =
-          'type.googleapis.com/google.devtools.clouderrorreporting.v1beta1.ReportedErrorEvent';
-      }
-
-      // https://cloud.google.com/logging/docs/reference/v2/rest/v2/LogEntry#LogSeverity
-      binding.severity =
-        {
-          [levelMapping.trace]: 'DEBUG',
-          [levelMapping.debug]: 'DEBUG',
-          [levelMapping.info]: 'INFO',
-          [levelMapping.warn]: 'WARNING',
-          [levelMapping.error]: 'ERROR',
-        }[level] ?? 'CRITICAL';
-
-      method.apply(this, args as any);
+  formatters: {
+    level(label, level) {
+      const severity = SEVERITIES[label] ?? 'CRITICAL';
+      return level >= levels.values.error
+        ? { level, severity, '@type': ERROR_REPORTING_TYPE }
+        : { level, severity };
     },
   },
 };

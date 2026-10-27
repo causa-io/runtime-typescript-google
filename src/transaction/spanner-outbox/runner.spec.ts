@@ -191,6 +191,7 @@ describe('SpannerOutboxTransactionRunner', () => {
 
   it('should retry the transaction when a TransactionOldTimestampError is thrown', async () => {
     let numCalls = 0;
+    const start = Date.now();
 
     const actualResult = await runner.run(async (transaction) => {
       numCalls += 1;
@@ -208,8 +209,11 @@ describe('SpannerOutboxTransactionRunner', () => {
       return '🎉';
     });
 
+    const elapsed = Date.now() - start;
     expect(actualResult).toEqual('🎉');
     expect(numCalls).toBe(2);
+    // The retry should only wait for the timestamp delay, rather than the seconds of the Spanner client's backoff.
+    expect(elapsed).toBeLessThan(1000);
     const actualRow1 = await entityManager.findOneByKey(MyTable, '1');
     expect(actualRow1).toBeUndefined();
     const actualRow2 = await entityManager.findOneByKey(MyTable, '2');
@@ -286,6 +290,18 @@ describe('SpannerOutboxTransactionRunner', () => {
     expect(actualRow).toBeUndefined();
     await pubSubFixture.expectNoMessage('my-topic');
     await expectOutboxToEqual(entityManager, []);
+  });
+
+  it('should stop retrying the transaction after the maximum number of attempts', async () => {
+    let numCalls = 0;
+
+    const actualPromise = runner.run(async (transaction) => {
+      numCalls += 1;
+      throw new TransactionOldTimestampError(transaction.timestamp, 0);
+    });
+
+    await expect(actualPromise).rejects.toThrow(TransactionOldTimestampError);
+    expect(numCalls).toBe(10);
   });
 
   it('should run a readonly transaction', async () => {

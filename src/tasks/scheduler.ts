@@ -1,7 +1,7 @@
 import { CloudTasksClient, protos } from '@google-cloud/tasks';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { RetryOptions, grpc } from 'google-gax';
+import { type RetryOptions, grpc } from 'google-gax';
 import { TemporaryCloudTasksError } from './errors.js';
 
 export type Task = protos.google.cloud.tasks.v2.ITask;

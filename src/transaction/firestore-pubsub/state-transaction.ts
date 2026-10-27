@@ -3,7 +3,11 @@ import type { Type } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { getReferenceForFirestoreDocument } from '../../firestore/index.js';
 import { FirestoreReadOnlyStateTransaction } from './readonly-state-transaction.js';
-import { getSoftDeleteInfo } from './soft-deleted-collection.decorator.js';
+import {
+  getSoftDeletableDocument,
+  getSoftDeleteInfo,
+  type SoftDeletableDocumentState,
+} from './soft-deleted-collection.decorator.js';
 
 /**
  * A {@link StateTransaction} that uses Firestore for state storage.
@@ -26,6 +30,40 @@ export class FirestoreStateTransaction
   extends FirestoreReadOnlyStateTransaction
   implements StateTransaction
 {
+  /**
+   * Whether the active and soft-deleted versions of documents exist, as read or written in this transaction, keyed by
+   * the path of the active document.
+   * This is used to avoid deleting documents that are known not to exist. This is safe because documents read in a
+   * Firestore transaction cannot change before it is committed, and because a new state transaction is created for each
+   * attempt of the Firestore transaction.
+   */
+  private readonly softDeleteStates = new Map<
+    string,
+    SoftDeletableDocumentState
+  >();
+
+  async get<T extends object>(
+    type: Type<T>,
+    entity: Partial<T>,
+  ): Promise<T | null> {
+    const activeDocRef = getReferenceForFirestoreDocument(
+      this.firestore,
+      entity,
+      type,
+    );
+    const { document, state } = await getSoftDeletableDocument(
+      this.firestoreTransaction,
+      activeDocRef,
+      type,
+      this.options,
+    );
+    if (state) {
+      this.softDeleteStates.set(activeDocRef.path, state);
+    }
+
+    return document;
+  }
+
   async delete<T extends object>(
     typeOrEntity: Type<T> | T,
     key?: Partial<T>,
@@ -40,14 +78,24 @@ export class FirestoreStateTransaction
       key,
       type,
     );
-    this.firestoreTransaction.delete(activeDocRef);
 
     const softDeleteInfo = getSoftDeleteInfo(activeDocRef, type);
     if (!softDeleteInfo) {
+      this.firestoreTransaction.delete(activeDocRef);
       return;
     }
 
-    this.firestoreTransaction.delete(softDeleteInfo.ref);
+    const state = this.softDeleteStates.get(activeDocRef.path);
+    if (state?.active !== false) {
+      this.firestoreTransaction.delete(activeDocRef);
+    }
+    if (state?.deleted !== false) {
+      this.firestoreTransaction.delete(softDeleteInfo.ref);
+    }
+    this.softDeleteStates.set(activeDocRef.path, {
+      active: false,
+      deleted: false,
+    });
   }
 
   async set<T extends object>(entity: T): Promise<void> {
@@ -69,6 +117,7 @@ export class FirestoreStateTransaction
       expirationDelay,
       expirationField,
     } = softDeleteInfo;
+    const state = this.softDeleteStates.get(activeDocRef.path);
 
     if ('deletedAt' in entity && entity.deletedAt instanceof Date) {
       const expiresAt = new Date(entity.deletedAt.getTime() + expirationDelay);
@@ -77,11 +126,23 @@ export class FirestoreStateTransaction
         [expirationField]: expiresAt,
       });
 
-      this.firestoreTransaction.delete(activeDocRef);
+      if (state?.active !== false) {
+        this.firestoreTransaction.delete(activeDocRef);
+      }
       this.firestoreTransaction.set(deletedDocRef, deletedDoc);
+      this.softDeleteStates.set(activeDocRef.path, {
+        active: false,
+        deleted: true,
+      });
     } else {
       this.firestoreTransaction.set(activeDocRef, entity);
-      this.firestoreTransaction.delete(deletedDocRef);
+      if (state?.deleted !== false) {
+        this.firestoreTransaction.delete(deletedDocRef);
+      }
+      this.softDeleteStates.set(activeDocRef.path, {
+        active: true,
+        deleted: false,
+      });
     }
   }
 }

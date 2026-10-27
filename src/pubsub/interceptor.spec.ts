@@ -109,6 +109,49 @@ describe('PubSubEventHandlerInterceptor', () => {
     });
   });
 
+  it('should return 400 when the message is invalid', async () => {
+    await appFixture.request
+      .post('/')
+      .send({
+        subscription: 'my-subscription',
+        message: {
+          messageId: 123,
+          publishTime: 'nope',
+          attributes: null,
+          data: 123,
+        },
+      })
+      .expect(400);
+
+    appFixture.get(LoggingFixture).expectErrors({
+      message: 'Received invalid Pub/Sub message.',
+      validationMessages: expect.toIncludeSameMembers([
+        'messageId must be a string',
+        'publishTime must be a Date instance',
+        'attributes must be an object',
+        'data must be a string',
+      ]),
+    });
+  });
+
+  it('should return 200 and log an error when the data is not valid Base64', async () => {
+    await appFixture.request
+      .post('/')
+      .send({
+        subscription: 'my-subscription',
+        message: {
+          messageId: '123',
+          publishTime: new Date().toISOString(),
+          data: 'not Base64!',
+        },
+      })
+      .expect(200);
+
+    appFixture
+      .get(LoggingFixture)
+      .expectErrors({ message: 'Received an invalid event.' });
+  });
+
   it('should deserialize the message data and return it', async () => {
     const expectedDate = new Date();
 

@@ -93,8 +93,6 @@ describe('SpannerOutboxTransactionModule', () => {
       config: {
         SPANNER_OUTBOX_BATCH_SIZE: '10',
         SPANNER_OUTBOX_POLLING_INTERVAL: '0',
-        SPANNER_OUTBOX_ID_COLUMN: 'myId',
-        SPANNER_OUTBOX_LEASE_EXPIRATION_COLUMN: 'myLease',
         SPANNER_OUTBOX_INDEX: 'MyIndex',
         SPANNER_OUTBOX_SHARDING_COLUMN: 'myColumn',
         SPANNER_OUTBOX_SHARDING_COUNT: '5',
@@ -108,8 +106,6 @@ describe('SpannerOutboxTransactionModule', () => {
     expect(sender.outboxEventType).toBe(SpannerOutboxEvent);
     expect(sender.batchSize).toBe(10);
     expect(sender.pollingInterval).toBe(0);
-    expect(sender.idColumn).toBe('myId');
-    expect(sender.leaseExpirationColumn).toBe('myLease');
     expect(sender.index).toBe('MyIndex');
     expect(sender.sharding).toEqual({
       column: 'myColumn',
@@ -120,13 +116,14 @@ describe('SpannerOutboxTransactionModule', () => {
   });
 
   it('should use the passed options', async () => {
-    @SpannerTable({ primaryKey: ['id'] })
+    @SpannerTable({ primaryKey: ['myIdColumn'] })
     class MyEvent implements OutboxEvent {
-      @SpannerColumn()
+      @SpannerColumn({ name: 'myIdColumn' })
       readonly id!: string;
       readonly topic!: string;
       readonly data!: Buffer;
       readonly attributes!: Record<string, string>;
+      @SpannerColumn({ name: 'myLeaseColumn' })
       readonly leaseExpiration!: Date | null;
     }
 
@@ -134,8 +131,6 @@ describe('SpannerOutboxTransactionModule', () => {
       options: {
         batchSize: 8,
         pollingInterval: 40000,
-        idColumn: 'myIdColumn',
-        leaseExpirationColumn: 'myLeaseColumn',
         index: 'MyFetchIndex',
         sharding: {
           column: 'myShardColumn',

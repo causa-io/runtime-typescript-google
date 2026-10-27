@@ -9,10 +9,11 @@ import {
 } from '@causa/runtime';
 import { Logger } from '@causa/runtime/nestjs';
 import type { Type } from '@nestjs/common';
+import { setTimeout } from 'timers/promises';
 import { SpannerEntityManager } from '../../spanner/index.js';
 import { SpannerReadOnlyStateTransaction } from './readonly-transaction.js';
 import { SpannerOutboxSender } from './sender.js';
-import { throwRetryableInTransactionIfNeeded } from './spanner-utils.js';
+import { getOldTimestampRetryDelay } from './spanner-utils.js';
 import { SpannerStateTransaction } from './state-transaction.js';
 import { SpannerOutboxTransaction } from './transaction.js';
 
@@ -62,29 +63,41 @@ export class SpannerOutboxTransactionRunner extends OutboxTransactionRunner<
     options: SpannerOutboxReadWriteTransactionOptions,
     runFn: TransactionFn<SpannerOutboxTransaction, RT>,
   ): Promise<RT> {
-    return await this.entityManager.transaction(
-      { tag: options.tag },
-      async (dbTransaction) => {
-        const stateTransaction = new SpannerStateTransaction(
-          this.entityManager,
-          dbTransaction,
-        );
-        const eventTransaction = eventTransactionFactory();
+    // `TransactionOldTimestampError`s are retried outside of the Spanner transaction. The rollback (releasing locks) is
+    // sent before waiting.
+    for (let attempt = 1; ; attempt++) {
+      try {
+        return await this.entityManager.transaction(
+          { tag: options.tag },
+          async (dbTransaction) => {
+            const stateTransaction = new SpannerStateTransaction(
+              this.entityManager,
+              dbTransaction,
+            );
+            const eventTransaction = eventTransactionFactory();
 
-        const transaction = new SpannerOutboxTransaction(
-          stateTransaction,
-          eventTransaction,
-          options.publishOptions,
-        );
+            const transaction = new SpannerOutboxTransaction(
+              stateTransaction,
+              eventTransaction,
+              options.publishOptions,
+            );
 
-        try {
-          return await runFn(transaction);
-        } catch (error) {
-          await throwRetryableInTransactionIfNeeded(error);
+            return await runFn(transaction);
+          },
+        );
+      } catch (error) {
+        const retryDelay = getOldTimestampRetryDelay(error, attempt);
+        if (retryDelay === undefined) {
           throw error;
         }
-      },
-    );
+
+        this.logger.debug(
+          { attempt, retryDelay },
+          'Retrying the transaction with a newer timestamp.',
+        );
+        await setTimeout(retryDelay);
+      }
+    }
   }
 
   run<RT>(runFn: TransactionFn<SpannerOutboxTransaction, RT>): Promise<RT>;

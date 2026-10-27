@@ -1,4 +1,5 @@
 import { PreciseDate } from '@google-cloud/precise-date';
+import { Spanner } from '@google-cloud/spanner';
 import 'jest-extended';
 import 'reflect-metadata';
 import {
@@ -111,5 +112,13 @@ describe('SpannerColumn', () => {
         'anotherOne',
       ]);
     });
+  });
+
+  it('should use the same PreciseDate class as the Spanner client', () => {
+    // The Spanner client checks `PreciseDate` values using `instanceof`, which fails if `@google-cloud/precise-date`
+    // resolves to a different copy for the runtime (e.g. because their version ranges are incompatible).
+    const actualTimestamp = Spanner.timestamp(Date.now());
+
+    expect(actualTimestamp).toBeInstanceOf(PreciseDate);
   });
 });

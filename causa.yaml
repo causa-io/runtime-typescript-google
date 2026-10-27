@@ -19,9 +19,8 @@ javascript:
   dependencies:
     check:
       allowlist:
-        - GHSA-w5hq-g745-h8pq
         - GHSA-4x5r-pxfx-6jf8
-        - GHSA-8988-4f7v-96qf
+        - GHSA-q7qp-rjg7-q26m
     update:
       packageTargets:
         "@types/node": minor

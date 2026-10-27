@@ -6,6 +6,7 @@ import type {
 } from '@google-cloud/spanner/build/src/transaction.js';
 import { Injectable, type Type } from '@nestjs/common';
 import {
+  convertPreciseDatesInSpannerRow,
   copyInstanceWithMissingColumnsToNull,
   instanceToSpannerObject,
   spannerObjectToInstance,
@@ -64,6 +65,13 @@ export type QueryOptions<T> = SpannerReadOnlyTransactionOption &
      * The type of entity to return in the list of results.
      */
     entityType?: Type<T>;
+
+    /**
+     * When {@link QueryOptions.entityType} is not set, `TIMESTAMP` values in returned rows are converted to regular
+     * `Date`s, losing the sub-millisecond precision. Set this to `true` to keep them as `PreciseDate`s instead.
+     * Only top-level values and the elements of top-level arrays are converted.
+     */
+    preciseDates?: boolean;
   };
 
 /**
@@ -400,7 +408,9 @@ export class SpannerEntityManager {
           } catch (error) {
             if (!transaction.ended) {
               if (transaction.id) {
-                await transaction.rollback();
+                // The rollback response is not awaited, such that the error is rethrown immediately. Spanner releases
+                // the locks as soon as it receives the request. Failing to roll back should not replace the error.
+                transaction.rollback().catch(() => {});
               } else {
                 transaction.end();
               }
@@ -548,7 +558,7 @@ export class SpannerEntityManager {
       ? (optionsOrStatement as QueryOptions<T>)
       : {};
     const sqlStatement = statement ?? (optionsOrStatement as SqlStatement);
-    const { entityType, requestOptions, transaction } = options;
+    const { entityType, preciseDates, requestOptions, transaction } = options;
 
     let snapshot: Snapshot | undefined;
     try {
@@ -566,12 +576,11 @@ export class SpannerEntityManager {
       });
 
       for await (const row of stream) {
-        // `undefined` may be sent by the `PartialResultStream` to test whether the consumer can accept more data.
-        if (row === undefined) {
-          continue;
+        if (entityType) {
+          yield spannerObjectToInstance(row, entityType);
+        } else {
+          yield preciseDates ? row : convertPreciseDatesInSpannerRow(row);
         }
-
-        yield entityType ? spannerObjectToInstance(row, entityType) : row;
       }
     } catch (error) {
       throw convertSpannerToEntityError(error) ?? error;
@@ -725,6 +734,33 @@ export class SpannerEntityManager {
   }
 
   /**
+   * Inserts or updates the given entities in the database, using an `insert_or_update` mutation.
+   * Contrary to {@link SpannerEntityManager.replace}, interleaved child rows are kept, and the columns of `undefined`
+   * properties keep their current value if the entity already exists. Properties should be set to `null` to clear the
+   * corresponding columns.
+   * Contrary to {@link SpannerEntityManager.update} with the `upsert` option, the entity is not read first, and
+   * soft-deleted entities are also updated.
+   *
+   * Either a single entity or an array of entities can be provided. If an array is provided, all entities should
+   * specify the same set of columns.
+   *
+   * @param entity The entity or array of entities to write.
+   * @param options Options for the operation.
+   */
+  async upsert(
+    entity: object | object[],
+    options: SpannerReadWriteTransactionOption = {},
+  ): Promise<void> {
+    const objs = this.entitiesToSpannerObjects(entity);
+
+    await this.transaction(options, async (transaction) =>
+      Object.entries(objs).forEach(([tableName, objs]) =>
+        transaction.upsert(tableName, objs),
+      ),
+    );
+  }
+
+  /**
    * Updates the given entity in the database.
    *
    * The update should also contain the primary key of the entity.
@@ -838,6 +874,32 @@ export class SpannerEntityManager {
 
         return existingEntity;
       },
+    );
+  }
+
+  /**
+   * Deletes the entity with the given primary key from the database, without reading it first.
+   * This only adds a delete mutation to the transaction, and is a no-op if the entity does not exist. Soft-deleted
+   * entities are also deleted.
+   *
+   * Use {@link SpannerEntityManager.delete} to check that the entity exists, to validate it, or to retrieve it.
+   *
+   * @param entityType The type of entity to delete.
+   * @param key The primary key of the entity to delete.
+   * @param options Options for the operation.
+   */
+  async blindDelete<T>(
+    entityType: Type<T>,
+    key: SpannerKey | SpannerKey[number],
+    options: SpannerReadWriteTransactionOption = {},
+  ): Promise<void> {
+    if (!Array.isArray(key)) {
+      key = [key];
+    }
+    const { tableName } = this.tableCache.getMetadata(entityType);
+
+    await this.transaction(options, async (transaction) =>
+      transaction.deleteRows(tableName, [key as any]),
     );
   }
 }

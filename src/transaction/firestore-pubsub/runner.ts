@@ -5,13 +5,23 @@ import {
   type TransactionFn,
 } from '@causa/runtime';
 import { Logger } from '@causa/runtime/nestjs';
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import { Firestore } from 'firebase-admin/firestore';
 import { wrapFirestoreOperation } from '../../firestore/index.js';
 import { PubSubPublisher } from '../../pubsub/index.js';
-import { FirestoreReadOnlyStateTransaction } from './readonly-state-transaction.js';
+import {
+  FirestoreReadOnlyStateTransaction,
+  type FirestoreStateTransactionOptions,
+} from './readonly-state-transaction.js';
 import { FirestoreStateTransaction } from './state-transaction.js';
 import { FirestorePubSubTransaction } from './transaction.js';
+
+/**
+ * The injection token for the {@link FirestoreStateTransactionOptions} used by the
+ * {@link FirestorePubSubTransactionRunner}.
+ */
+export const FIRESTORE_STATE_TRANSACTION_OPTIONS_INJECTION_NAME =
+  'CAUSA_FIRESTORE_STATE_TRANSACTION_OPTIONS';
 
 /**
  * A {@link TransactionRunner} that uses Firestore for state and Pub/Sub for events.
@@ -29,6 +39,9 @@ export class FirestorePubSubTransactionRunner extends TransactionRunner<
     readonly firestore: Firestore,
     readonly pubSubPublisher: PubSubPublisher,
     private readonly logger: Logger,
+    @Optional()
+    @Inject(FIRESTORE_STATE_TRANSACTION_OPTIONS_INJECTION_NAME)
+    readonly stateTransactionOptions: FirestoreStateTransactionOptions = {},
   ) {
     super();
     this.logger.setContext(FirestorePubSubTransactionRunner.name);
@@ -45,6 +58,7 @@ export class FirestorePubSubTransactionRunner extends TransactionRunner<
         const stateTransaction = new FirestoreStateTransaction(
           firestoreTransaction,
           this.firestore,
+          this.stateTransactionOptions,
         );
         const eventTransaction = new OutboxEventTransaction(
           this.pubSubPublisher,
@@ -81,6 +95,7 @@ export class FirestorePubSubTransactionRunner extends TransactionRunner<
           const transaction = new FirestoreReadOnlyStateTransaction(
             firestoreTransaction,
             this.firestore,
+            this.stateTransactionOptions,
           );
 
           return await runFn(transaction);

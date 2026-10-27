@@ -22,10 +22,12 @@ describe('configuration', () => {
     logger = getDefaultLogger();
   });
 
-  it('should add the @type field for errors', () => {
+  it('should add the @type field for errors without modifying the logged object', () => {
+    const loggedObject = { message: '🚨', extra: 1234 };
+
     logger.warn('⚠️');
     logger.error('❌');
-    logger.error({ message: '🚨', extra: 1234 });
+    logger.error(loggedObject);
     logger.error({ extra: 1234 }, '%s', '💀');
     logger.error({ message: '%s', extra: 1234 }, '💥');
     logger.warn('%s %d', 'err', 4567);
@@ -65,6 +67,7 @@ describe('configuration', () => {
         'type.googleapis.com/google.devtools.clouderrorreporting.v1beta1.ReportedErrorEvent',
       message: 'err 4567',
     });
+    expect(loggedObject).toEqual({ message: '🚨', extra: 1234 });
   });
 
   it('should map the severity levels', () => {

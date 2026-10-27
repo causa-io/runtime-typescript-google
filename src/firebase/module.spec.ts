@@ -4,10 +4,9 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { type App, deleteApp, initializeApp } from 'firebase-admin/app';
 import { AppCheck } from 'firebase-admin/app-check';
 import { Auth, getAuth } from 'firebase-admin/auth';
-import { Firestore, v1 } from 'firebase-admin/firestore';
+import { Firestore } from 'firebase-admin/firestore';
 import { Messaging } from 'firebase-admin/messaging';
 import 'jest-extended';
-import { FirestoreAdminClient } from './firestore-admin-client.type.js';
 import { InjectFirebaseApp } from './inject-firebase-app.decorator.js';
 import { FirebaseModule, type FirebaseModuleOptions } from './module.js';
 
@@ -21,7 +20,6 @@ describe('FirebaseModule', () => {
       readonly auth: Auth,
       readonly appCheck: AppCheck,
       readonly messaging: Messaging,
-      readonly firestoreAdmin: FirestoreAdminClient,
     ) {}
   }
 
@@ -87,12 +85,6 @@ describe('FirebaseModule', () => {
     await createInjectedService();
 
     expect(service.messaging).toBeInstanceOf(Messaging);
-  });
-
-  it('should inject the FirestoreAdminClient', async () => {
-    await createInjectedService();
-
-    expect(service.firestoreAdmin).toBeInstanceOf(v1.FirestoreAdminClient);
   });
 
   it('should use options when initializing the app', async () => {

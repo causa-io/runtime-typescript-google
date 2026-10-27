@@ -1,12 +1,14 @@
 import { HealthCheckModule, createApp } from '@causa/runtime/nestjs';
 import { PubSub } from '@google-cloud/pubsub';
-import { status } from '@grpc/grpc-js';
 import { jest } from '@jest/globals';
 import { type INestApplication, Module } from '@nestjs/common';
+import { grpc } from 'google-gax';
 import supertest from 'supertest';
 import TestAgent from 'supertest/lib/agent.js';
 import { PubSubHealthIndicator } from './healthcheck.js';
 import { PubSubPublisherModule } from './publisher.module.js';
+
+const { status } = grpc;
 
 @Module({
   imports: [

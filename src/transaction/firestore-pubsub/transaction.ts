@@ -9,7 +9,10 @@ import {
   Firestore,
   Transaction as FirestoreTransaction,
 } from 'firebase-admin/firestore';
-import { FirestoreReadOnlyStateTransaction } from './readonly-state-transaction.js';
+import {
+  FirestoreReadOnlyStateTransaction,
+  type FirestoreStateTransactionOptions,
+} from './readonly-state-transaction.js';
 import type { FirestoreStateTransaction } from './state-transaction.js';
 
 /**
@@ -45,6 +48,13 @@ export class FirestorePubSubTransaction
    */
   get firestore(): Firestore {
     return this.stateTransaction.firestore;
+  }
+
+  /**
+   * The options used by the state transaction.
+   */
+  get options(): FirestoreStateTransactionOptions {
+    return this.stateTransaction.options;
   }
 
   set<T extends object>(entity: T): Promise<void> {

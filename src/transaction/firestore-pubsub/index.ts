@@ -1,4 +1,7 @@
-export { FirestorePubSubTransactionModule } from './module.js';
+export {
+  FirestorePubSubTransactionModule,
+  type FirestorePubSubTransactionModuleOptions,
+} from './module.js';
 export * from './readonly-state-transaction.js';
 export { FirestorePubSubTransactionRunner } from './runner.js';
 export { SoftDeletedFirestoreCollection } from './soft-deleted-collection.decorator.js';

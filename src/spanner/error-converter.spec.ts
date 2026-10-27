@@ -1,6 +1,5 @@
 import { EntityAlreadyExistsError, RetryableError } from '@causa/runtime';
-import { SessionPoolExhaustedError } from '@google-cloud/spanner/build/src/session-pool.js';
-import { status } from '@grpc/grpc-js';
+import { grpc } from 'google-gax';
 import { convertSpannerToEntityError } from './error-converter.js';
 import {
   InvalidArgumentError,
@@ -8,6 +7,8 @@ import {
   TemporarySpannerError,
   UnexpectedSpannerError,
 } from './errors.js';
+
+const { status } = grpc;
 
 describe('convertSpannerToEntityError', () => {
   it('should return undefined for an unknown error', () => {
@@ -42,22 +43,6 @@ describe('convertSpannerToEntityError', () => {
     const actual = convertSpannerToEntityError(error);
 
     expect(actual).toBeUndefined();
-  });
-
-  it('should convert a SessionPoolExhaustedError to a TemporarySpannerError', () => {
-    const error = new SessionPoolExhaustedError([]);
-
-    const actual = convertSpannerToEntityError(error);
-
-    expect(actual).toBeInstanceOf(TemporarySpannerError);
-  });
-
-  it('should convert a session acquisition timeout error to a TemporarySpannerError', () => {
-    const error = new Error('Timeout occurred while acquiring session.');
-
-    const actual = convertSpannerToEntityError(error);
-
-    expect(actual).toBeInstanceOf(TemporarySpannerError);
   });
 
   it('should convert an INVALID_ARGUMENT error to an InvalidArgumentError', () => {
