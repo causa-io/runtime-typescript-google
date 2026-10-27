@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v4.0.0-beta.1 (2026-10-27)
+
 Breaking changes:
 
 - Declare most dependencies as peer dependencies.
