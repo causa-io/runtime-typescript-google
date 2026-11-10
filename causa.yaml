@@ -20,7 +20,9 @@ javascript:
     check:
       allowlist:
         - GHSA-4x5r-pxfx-6jf8
-        - GHSA-q7qp-rjg7-q26m
+        - GHSA-3g3m-2fjr-6pw4
+        - GHSA-g3hv-75wg-m249
+        - GHSA-gcqx-w48m-w2h4
     update:
       packageTargets:
         "@types/node": minor
